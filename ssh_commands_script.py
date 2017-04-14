@@ -7,6 +7,7 @@ import os
 import sys
 import datetime
 import argparse
+import json
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Verify all necessary packages are present
@@ -34,37 +35,55 @@ from ssh_helper import RunCommand
 # ----------------------------------------------------------------------------------------------------------------------
 # Parse arguments
 
-def parse_arguments():
+def load_settings():
+    CONFIG_PATH = 'config.json'
 
-    parser = argparse.ArgumentParser(
-        description='This script is to run a tournament between teams of agents for the Pacman package developed by '
-                    'John DeNero (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu) at UC Berkeley.\n'
-                    '\n'
-                    'After running the tournament, the script generates a report in HTML. The report is, optionally,'
-                    'uploaded to a specified server via scp.\n')
+    if os.path.exists(CONFIG_PATH):
+        with open(CONFIG_PATH, 'r') as f:
+            settings = json.load(f)
 
-    parser.add_argument(
-        '--uni',
-        help='name of the University running the tournament',
-        required=True
-    )
-    parser.add_argument(
-        '--host',
-        help='ssh host',
-        nargs='?'
-    )
-    parser.add_argument(
-        '--user',
-        help='username',
-        nargs='?'
-    )
-    parser.add_argument(
-        '--www',
-        help='output directory',
-        default='www'
-    )
-    args = vars(parser.parse_args())
-    return args
+    else:
+        parser = argparse.ArgumentParser(
+            description='This script is to run a tournament between teams of agents for the Pacman package developed by '
+                        'John DeNero (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu) at UC Berkeley.\n'
+                        '\n'
+                        'After running the tournament, the script generates a report in HTML. The report is, optionally,'
+                        'uploaded to a specified server via scp.\n')
+
+        parser.add_argument(
+            '--organizer',
+            help='name of the University running the tournament',
+        )
+        parser.add_argument(
+            '--host',
+            help='ssh host'
+        )
+        parser.add_argument(
+            '--user',
+            help='username'
+        )
+        parser.add_argument(
+            '--output-path',
+            help='output directory',
+            default='www'
+        )
+        parser.add_argument(
+            '--contest-name',
+            help='output directory',
+            default='contest_%s' % datetime.datetime.today().year
+        )
+        args = vars(parser.parse_args())
+        settings = {
+            "organizer": args.organizer,
+            "host": args.host,
+            "user": args.user,
+            "output_path": args.output_path,
+            "contest_code_name": args.contest_name
+        }
+        with open(CONFIG_PATH, 'w') as f:
+            json.load(f, settings)
+
+    return settings
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -110,14 +129,14 @@ def upload_files(run):
 
 
 if __name__ == '__main__':
-    args = parse_arguments()
+    settings = load_settings()
 
     run = RunCommand()
 
     '''
     ' ADD HOSTS
     '''
-    run.do_add_host("%s,%s,%s" % (args.host,args.user, getpass()))
+    run.do_add_host("%s,%s,%s" % (settings['host'], settings['user'], getpass()))
 
     run.do_connect()
 
