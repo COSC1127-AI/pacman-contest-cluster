@@ -117,7 +117,7 @@ if __name__ == '__main__':
     '''
     ' ADD HOSTS
     '''
-    run.do_add_host("dimefox.eng.unimelb.edu.au,%s,%s" % (args.user, getpass()))
+    run.do_add_host("%s,%s,%s" % (args.host,args.user, getpass()))
 
     run.do_connect()
 
