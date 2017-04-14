@@ -80,6 +80,11 @@ def load_settings():
         default='contest_%s' % datetime.datetime.today().year
     )
     parser.add_argument(
+        '--teams-root',
+        help='directory containing the zip files of the teams',
+        default='teams'
+    )
+    parser.add_argument(
         '--include-staff-team',
         help='if passed, the staff team will be included (it should sit in a directory called staff_name)',
         action='store_true'
@@ -98,6 +103,8 @@ def load_settings():
         settings['contest_code_name'] = args.contest_code_name
     if args.include_staff_team:
         settings['include_staff_team'] = args.include_staff_team
+    if args.teams_root:
+        settings['teams_root'] = args.teams_root
 
 
     missing_parameters = {'organizer', 'host', 'user', 'output_path', 'contest_code_name'} - set(settings.keys())
@@ -135,7 +142,6 @@ def upload_files(date_str, settings):
     # os.system( "chmod 755  %s" % RESULTS_FOLDER )
     os.system("mv %s %s/%s" % (RESULTS_FOLDER, destination, RESULTS_FOLDER))
 
-    # TODO Parameterize this string
     output = "<html><body><h1>Results Pacman %s Tournament by Date</h1>" % settings['organizer']
     for root, dirs, files in os.walk(destination):
         for d in dirs:
@@ -153,16 +159,20 @@ def upload_files(date_str, settings):
     print "%s  Uploaded!" % RESULTS_TAR
 
 
-def parse_result(lines):
+def parse_result(lines, n1, n2):
     """
     Parses the result log of a match.
     :param lines: an iterator of the lines of the result log
+    :param n1: name of Red team
+    :param n2: name of Blue team
     :return: a tuple containing score, winner, loser and a flag signalling whether there was a bug
     """
     score = 0
     winner = None
     loser = None
     bug = False
+    t1_errors = 0
+    t2_errors = 0
     for line in lines:
         if line.find("wins by") != -1:
             score = abs(int(line.split('wins by')[1].split('points')[0]))
@@ -185,33 +195,60 @@ def parse_result(lines):
             loser = None
         elif line.find("agent crashed") != -1:
             bug = True
-            if line.find("Blue agent crashed") != -1:
-                errors[n2] += 1
             if line.find("Red agent crashed") != -1:
-                errors[n1] += 1
-    return score, winner, loser, bug
+                t1_errors += 1
+            if line.find("Blue agent crashed") != -1:
+                t2_errors += 1
+    return score, winner, loser, bug, t1_errors, t2_errors
 
+
+def generate_output(date_str, team_stats, games):
+    # TODO fill documentation
+    """
+    Generates the output HTML of the report of the tournament
+    :param date_str: 
+    :param team_stats: 
+    :param games: 
+    :return: 
+    """
+    output = "<html><body><h1>Date Tournament %s </h1><br><table border=\"1\">" % date_str
+    output += "<tr><th>Team</th><th>Points</th><th>Win</th><th>Tie</th><th>Lost</th><th>FAILED</th><th>Score Balance</th></tr>"
+    for key, (points, wins, draws, loses, errors, sum_score) in sorted(team_stats.items(), key=lambda (k, v): v[0], reverse=True):
+        output += "<tr><td align=\"center\">%s</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\" >%d</td></tr>" % (
+        key, points, wins, draws, loses, errors, sum_score)
+    output += "</table>"
+
+    output += "<br><br> <h2>Games</h2><br><a href=\"recorded_games_%s.tar\">DOWNLOAD RECORDED GAMES!</a><br><table border=\"1\">" % date_str
+    output += "<tr><th>Team1</th><th>Team2</th><th>Layout</th><th>Score</th><th>Winner</th></tr>"
+    for (n1, n2, layout, score, winner) in games:
+        output += "<tr><td align=\"center\">"
+        if winner == n1:
+            output += "<b>%s</b>" % n1
+        else:
+            output += "%s" % n1
+        output += "</td><td align=\"center\">"
+        if winner == n2:
+            output += "<b>%s</b>" % n2
+        else:
+            output += "%s" % n2
+        if score == 9999:
+            output += "</td><td align=\"center\">%s</td><td align=\"center\" >--</td><td align=\"center\"><b>FAILED</b></td></tr>" % layout
+        else:
+            output += "</td><td align=\"center\">%s</td><td align=\"center\" >%d</td><td align=\"center\"><b>%s</b></td></tr>" % (layout, score, winner)
+
+    output += "</table></body></html>"
+    return output
 
 if __name__ == '__main__':
     settings = load_settings()
 
     run = RunCommand()
-
-    '''
-    ' ADD HOSTS
-    '''
     run.do_add_host("%s,%s,%s" % (settings['host'], settings['user'], getpass()))
-
     run.do_connect()
 
-    '''
-    ' RUN THE COMMANDS HERE
-    '''
     date_str = datetime.date.today().isoformat()
 
-    '''
-    ' tar the submitted teams and download to local machine
-    '''
+    # Tar the submitted teams and download to local machine
 
     # CHANGE STORAGE2 FOR LOCAL     ###########run.do_run( "tar cvf teams_%s.tar  /storage2/beta/users/nlipovetzky/test_teams/* "%(today.year,today.month,today.day) )
 
@@ -228,36 +265,38 @@ if __name__ == '__main__':
     ' unzip each team, copy it to teams folder, retrieve TeamName and AgentFactory from each config.py file, 
     ' and copy ff to each team folder
     '''
+    # Init teams environment
     teams = []
     os.system("rm -rf teams/")
     os.system("mkdir teams")
+
     # CHANGE STORAGE2 FOR LOCAL
-    # for root, dirs, files in os.walk("storage2"):
-    for root, dirs, files in os.walk("local"):
-        for f in files:
-            full_path = os.path.join(root, f)
-            if full_path.split('/')[-1].find(".zip") != -1:
-                os.system("cp -rf %s teams/." % full_path)
-                print "cp -rf %s teams/." % full_path
-                os.system("unzip teams/%s -d teams/" % f)
-                print "unzip teams/%s -d teams/" % f
-                os.system("rm teams/%s" % f)
-                print "rm teams/%s" % f
-                folder_name = f.split(".zip")[0]
+    for team_zip in os.listdir(settings['teams_root']):
+        full_path = os.path.join(settings['teams_root'], team_zip)
+        if full_path.endswith(".zip"):
+            # Unzip team in the teams folder
+            os.system("cp -rf %s teams/." % full_path)
+            print "cp -rf %s teams/." % full_path
+            os.system("unzip teams/%s -d teams/" % team_zip)
+            print "unzip teams/%s -d teams/" % team_zip
+            os.system("rm teams/%s" % team_zip)
+            print "rm teams/%s" % team_zip
+            folder_name = team_zip.split[:-4]
 
-                if os.path.isfile("teams/%s/ff" % folder_name) is False:
-                    os.system("cp staff_team/ff teams/%s/." % folder_name)
-                    print "cp staff_team/ff teams/%s/." % folder_name
+            # Copy ff in the team directory
+            if os.path.isfile("teams/%s/ff" % folder_name) is False:
+                os.system("cp staff_team/ff teams/%s/." % folder_name)
+                print "cp staff_team/ff teams/%s/." % folder_name
 
-                TeamName = full_path.split('/')[-1].split('.')[0]
-                AgentFactory = 'teams/' + TeamName + '/team.py'
+            team_name = os.path.basename(full_path)[:-4]
+            agent_factory = 'teams/' + team_name + '/team.py'
 
-                print "teams/%s/team.py" % TeamName
-                if os.path.isfile("teams/%s/team.py" % TeamName) is False:
-                    print "team.py missing!"
-                    exit(1)
+            print "teams/%s/team.py" % team_name
+            if os.path.isfile("teams/%s/team.py" % team_name) is False:
+                print "team.py missing!"
+                exit(1)
 
-                teams.append((TeamName, AgentFactory))
+            teams.append((team_name, agent_factory))
 
 
 
@@ -290,15 +329,9 @@ if __name__ == '__main__':
         run.do_close()
         exit(0)
 
-    ladder = dict()
+    ladder = {n: [] for n, _ in teams}
     games = []
-    for n, a in teams:
-        ladder[n] = []
-
-    errors = dict()
-    for i in range(0, len(teams)):
-        (n, a) = teams[i]
-        errors[n] = 0
+    errors = {n: 0 for n, _ in teams}
     '''
     ' captureLayouts sets how many layouts are going to be used at the tournament
     ' steps is the length of each game
@@ -312,20 +345,22 @@ if __name__ == '__main__':
     steps = 1200
     #    captureLayouts = 4
     #    steps = 3000
-    for home_team, away_team in product(teams, teams):
+    for red_team, blue_team in product(teams, teams):
         for g in xrange(1, captureLayouts):
-            (n1, a1) = home_team
-            (n2, a2) = away_team
+            (n1, a1) = red_team
+            (n2, a2) = blue_team
             print "game %s vs %s" % (n1, n2)
             print "python capture.py -r %s -b %s -l contest1%dCapture -i %d -q --record" % (a1, a2, g, steps)
             os.system("python capture.py -r %s -b %s -l contest1%dCapture -i %d -q --record > ../results_%s/%s_vs_%s_contest1%dCapture_recorded.log" % (
                 a1, a2, g, steps, date_str, n1, n2, g))
-            in_stream = open("../results_%s/%s_vs_%s_contest1%dCapture_recorded.log" % (
-            date_str, n1, n2, g), "r")
+            in_stream = open("../results_%s/%s_vs_%s_contest1%dCapture_recorded.log" % (date_str, n1, n2, g), "r")
             lines = in_stream.readlines()
             in_stream.close()
 
-            score, winner, loser, bug = parse_result(lines)
+            score, winner, loser, bug, t1_errors, t2_errors = parse_result(lines, n1, n2)
+
+            errors[n1] += t1_errors
+            errors[n2] += t2_errors
 
             if winner is None and bug is False:
                 ladder[n1].append(score)
@@ -365,46 +400,15 @@ if __name__ == '__main__':
 
         team_stats[team] = [((wins * 3) + draws), wins, draws, loses, errors[team], sum_score]
 
-    output = "<html><body><h1>Date Tournament %s/%s/%s </h1><br><table border=\"1\">" % (
-    date_str)
-    output += "<tr><th>Team</th><th>Points</th><th>Win</th><th>Tie</th><th>Lost</th><th>FAILED</th><th>Score Balance</th></tr>"
-    for key, (points, wins, draws, loses, errors, sum_score) in sorted(team_stats.items(), key=lambda (k, v): v[0],
-                                                                       reverse=True):
-        output += "<tr><td align=\"center\">%s</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\" >%d</td></tr>" % (
-        key, points, wins, draws, loses, errors, sum_score)
-    output += "</table>"
-
-    output += "<br><br> <h2>Games</h2><br><a href=\"recorded_games_%s.tar\">DOWNLOAD RECORDED GAMES!</a><br><table border=\"1\">" % (
-    date_str)
-    output += "<tr><th>Team1</th><th>Team2</th><th>Layout</th><th>Score</th><th>Winner</th></tr>"
-    for (n1, n2, layout, score, winner) in games:
-        output += "<tr><td align=\"center\">"
-        if winner == n1:
-            output += "<b>%s</b>" % n1
-        else:
-            output += "%s" % n1
-        output += "</td><td align=\"center\">"
-        if winner == n2:
-            output += "<b>%s</b>" % n2
-        else:
-            output += "%s" % n2
-        if score == 9999:
-            output += "</td><td align=\"center\">%s</td><td align=\"center\" >--</td><td align=\"center\"><b>FAILED</b></td></tr>" % (
-            layout,)
-        else:
-            output += "</td><td align=\"center\">%s</td><td align=\"center\" >%d</td><td align=\"center\"><b>%s</b></td></tr>" % (
-            layout, score, winner)
-
-    output += "</table></body></html>"
+    output = generate_output(date_str, team_stats, games)
     print "results_%s/results.html summary generated!" % date_str
 
     out_stream = open("results_%s/results.html" % date_str, "w")
     out_stream.writelines(output)
     out_stream.close()
 
-    '''
-    ' upload files to server
-    '''
+
+    # Upload files to server
     upload_files(date_str, settings)
 
     run.do_close()

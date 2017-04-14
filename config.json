@@ -2,8 +2,9 @@
   "organizer": "RMIT University",
   "host": "coreteaching01.csit.rmit.edu.au",
   "user": "e12345",
-  "output_path": "www",
+  "output_path": "www/",
   "contest_code_name": "rmit_ai_2017_contest",
   "results_web_page": "coreteaching01.csit.rmit.edu.au:40000",
-  "include_staff_team": true
+  "include_staff_team": true,
+  "teams_root": "local/"
 }
