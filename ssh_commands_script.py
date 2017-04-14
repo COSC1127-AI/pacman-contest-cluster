@@ -249,7 +249,7 @@ if __name__ == '__main__':
     date_str = datetime.date.today().isoformat()
 
     # Tar the submitted teams and download to local machine
-
+    # TODO should this commented code be removed?
     # CHANGE STORAGE2 FOR LOCAL     ###########run.do_run( "tar cvf teams_%s.tar  /storage2/beta/users/nlipovetzky/test_teams/* "%(today.year,today.month,today.day) )
 
     # run.do_run( "tar cvf teams_%s.tar  /local/submit/submit/COMP90054/2/* "%(today.year,today.month,today.day) )
