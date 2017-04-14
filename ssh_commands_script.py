@@ -15,11 +15,13 @@ from itertools import product
 
 missing_packages = []
 try:
+    # Used to prompt the password without echoing
     from getpass import getpass
 except:
     missing_packages.append('getpass')
 
 try:
+    # Used to establish ssh connections
     import paramiko
 except:
     missing_packages.append('paramiko')
@@ -34,7 +36,7 @@ if missing_packages:
 from ssh_helper import RunCommand
 
 # ----------------------------------------------------------------------------------------------------------------------
-# Parse arguments
+# Load settings either from config.json or from the command line
 
 def load_settings():
     CONFIG_PATH = 'config.json'
@@ -74,8 +76,13 @@ def load_settings():
     )
     parser.add_argument(
         '--contest-code-name',
-        help='output directory',
+        help='code name for the contest; this is suggested to not contain spaces and be lower-case',
         default='contest_%s' % datetime.datetime.today().year
+    )
+    parser.add_argument(
+        '--include-staff-team',
+        help='if passed, the staff team will be included (it should sit in a directory called staff_name)',
+        action='store_true'
     )
     args = vars(parser.parse_args())
 
@@ -89,6 +96,9 @@ def load_settings():
         settings['output_path'] = args.output_path
     if args.organizer:
         settings['contest_code_name'] = args.contest_code_name
+    if args.include_staff_team:
+        settings['include_staff_team'] = args.include_staff_team
+
 
     missing_parameters = {'organizer', 'host', 'user', 'output_path', 'contest_code_name'} - set(settings.keys())
     if missing_parameters:
@@ -103,24 +113,27 @@ def load_settings():
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-def upload_files(run, date_str, settings):
-    os.chdir("results_%s" % date_str)
-    os.system("tar cvf recorded_games_%s.tar *recorded*  *replay*" % date_str)
-    print "tar cvf recorded_games_%s.tar *recorded* *replay*" % date_str
-    os.chdir('..')
-    os.system("tar cvf results_%s.tar results_%s/*" % (date_str, date_str))
+def upload_files(date_str, settings):
+    RESULTS_FOLDER = "results_%s" % date_str
+    RESULTS_TAR = "results_%s.tar" % date_str
+    RECORDED_GAMES_TAR = 'recorded_games_%s' % date_str
 
-    destination = "www"
+    print "tar cvf %s *recorded* *replay*" % RECORDED_GAMES_TAR
+    os.chdir(RESULTS_FOLDER)
+    os.system("tar cvf %s *recorded*  *replay*" % RECORDED_GAMES_TAR)
+    os.chdir('..')
+    os.system("tar cvf %s %s/*" % (RESULTS_TAR, RESULTS_FOLDER))
+
+    destination = settings['output_path']
 
     # TODO change to use Python functions so that this can run on non-Unix systems
-    print "tar cvf results_%s.tar results_%s/*" % (
-    date_str, date_str)
-    os.system("cp results_%s.tar %s" % (date_str, destination))
-    os.system("tar xvf results_%s.tar " % date_str)
-    os.system("rm  -rf %s/results_%s" % (destination, date_str))
-    # os.system( "chmod 755  results_%s/*"%(today.year,today.month,today.day) )
-    # os.system( "chmod 755  results_%s"%(today.year,today.month,today.day) )
-    os.system("mv results_%s %s/results_%s" % (date_str, destination, date_str))
+    print "tar cvf %s %s/*" % (RESULTS_TAR, RESULTS_FOLDER)
+    os.system("cp %s %s" % (RESULTS_TAR, destination))
+    os.system("tar xvf %s " % RESULTS_TAR)
+    os.system("rm  -rf %s/%s" % (destination, RESULTS_FOLDER))
+    # os.system( "chmod 755  %s/*" % RESULTS_FOLDER )
+    # os.system( "chmod 755  %s" % RESULTS_FOLDER )
+    os.system("mv %s %s/%s" % (RESULTS_FOLDER, destination, RESULTS_FOLDER))
 
     # TODO Parameterize this string
     output = "<html><body><h1>Results Pacman %s Tournament by Date</h1>" % settings['organizer']
@@ -137,7 +150,7 @@ def upload_files(run, date_str, settings):
     # <a href="http://ww2.cs.mu.oz.au/482/tournament/layouts.tar.bz2"> Layouts used. Each day 2 new layouts are used  </a> <br>
 
 
-    print "results_%s.tar  Uploaded!" % date_str
+    print "%s  Uploaded!" % RESULTS_TAR
 
 
 if __name__ == '__main__':
@@ -209,8 +222,8 @@ if __name__ == '__main__':
 
 
 
-    # uncomment to add staff_team in the competition
-    teams.append(("staff_team", "teams/staff_team/team.py"))
+    if settings['include_staff_team']:
+        teams.append(("staff_team", "teams/staff_team/team.py"))
     os.system("cp  -rf staff_team teams/.")
     os.system("rm -rf %s/teams/" % settings['contest_code_name'])
     os.system("cp  -rf teams %s/." % settings['contest_code_name'])
@@ -226,7 +239,7 @@ if __name__ == '__main__':
     os.system("rm -rf results_%s" % date_str)
     os.system("mkdir results_%s" % date_str)
 
-    if len(teams) is 1:
+    if len(teams) == 1:
         output = "<html><body><h1>Date Tournament %s/%s/%s <br> 0 Teams participated!!</h1>" % (
         date_str)
         output += "</body></html>"
@@ -234,7 +247,7 @@ if __name__ == '__main__':
         out_stream.writelines(output)
         out_stream.close()
         print "results_%s/results.html summary generated!" % date_str
-        upload_files(run, date_str, settings)
+        upload_files(date_str, settings)
 
         run.do_close()
         exit(0)
@@ -383,6 +396,6 @@ if __name__ == '__main__':
     '''
     ' upload files to server
     '''
-    upload_files(run, date_str, settings)
+    upload_files(date_str, settings)
 
     run.do_close()
