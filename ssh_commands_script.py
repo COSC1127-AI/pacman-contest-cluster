@@ -1,67 +1,14 @@
 #!/usr/bin/python
 
+import argparse
 import os
-import paramiko
 import datetime
-from scp import SCPClient
-
-
-class RunCommand:
-    def __init__(self):
-        self.hosts = []
-
-        self.connections = []
-
-    def do_add_host(self, args):
-        """add_host 
-        Add the host to the host list"""
-        if args:
-            self.hosts.append(args.split(','))
-        else:
-            print "usage: host "
-
-    def do_connect(self):
-        """Connect to all hosts in the hosts list"""
-        for host in self.hosts:
-            client = paramiko.SSHClient()
-            client.set_missing_host_key_policy(
-                paramiko.AutoAddPolicy())
-            client.connect(host[0],
-                           username=host[1],
-                           password=host[2])
-            self.connections.append(client)
-
-    def do_run(self, command):
-        """run 
-        Execute this command on all hosts in the list"""
-        if command:
-            for host, conn in zip(self.hosts, self.connections):
-                print 'host: %s: %s' % (host[0], command)
-                stdin, stdout, stderr = conn.exec_command(command)
-                stdin.close()
-                for line in stdout.read().split("\n"):
-                    print 'host: %s: %s' % (host[0], line)
-        else:
-            print "usage: run "
-
-    def do_close(self):
-        for conn in self.connections:
-            conn.close()
-
-    def do_get(self, filename):
-        for host, conn in zip(self.hosts, self.connections):
-            scp = SCPClient(conn.get_transport())
-            scp.get(filename)
-            print 'get %s file from host: %s:' % (filename, host[0])
-
-    def do_put(self, filename, dest):
-        for host, conn in zip(self.hosts, self.connections):
-            scp = SCPClient(conn.get_transport())
-            scp.put(filename, dest)
-            print 'put %s file from host: %s:' % (filename, host[0])
+from getpass import getpass
+from ssh_helper import RunCommand
 
 
 def upload_files(run):
+    # TODO replace date manual format with iso6801 format
     today = datetime.date.today()
     os.chdir("results%s_%s_%s" % (today.year, today.month, today.day))
     os.system("tar cvf recorded_games_%s_%s_%s.tar *recorded*  *replay*" % (today.year, today.month, today.day))
@@ -70,9 +17,9 @@ def upload_files(run):
     os.system("tar cvf results%s_%s_%s.tar results%s_%s_%s/*" % (
     today.year, today.month, today.day, today.year, today.month, today.day))
 
-    # destination = "/run/user/1000/gvfs/smb-share\:server\=storage1.eng.unimelb.edu.au\,share\=mywebpages/comp90054tournament/"
     destination = "www"
 
+    # TODO change to use Python functions so that this can run on non-Unix systems
     print "tar cvf results%s_%s_%s.tar results%s_%s_%s/*" % (
     today.year, today.month, today.day, today.year, today.month, today.day)
     os.system("cp results%s_%s_%s.tar %s" % (today.year, today.month, today.day, destination))
@@ -83,6 +30,7 @@ def upload_files(run):
     os.system("mv results%s_%s_%s %s/results%s_%s_%s" % (
     today.year, today.month, today.day, destination, today.year, today.month, today.day))
 
+    # TODO Parameterize this string
     output = "<html><body><h1>Results Pacman Unimelb Tournament by Date</h1>"
     for root, dirs, files in os.walk(destination):
         for d in dirs:
@@ -91,9 +39,9 @@ def upload_files(run):
     output += "<br></body></html>"
     print "%s/results.html" % destination
     print output
-    outstream = open("%s/results.html" % destination, "w")
-    outstream.writelines(output)
-    outstream.close()
+    out_stream = open("%s/results.html" % destination, "w")
+    out_stream.writelines(output)
+    out_stream.close()
 
     # <a href="http://ww2.cs.mu.oz.au/482/tournament/layouts.tar.bz2"> Layouts used. Each day 2 new layouts are used  </a> <br>
 
@@ -104,19 +52,40 @@ def upload_files(run):
 if __name__ == '__main__':
     run = RunCommand()
 
-    # parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description='This script is to run a tournament between teams of agents for the Pacman package developed by '
+                    'John DeNero (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu) at UC Berkeley.\n'
+                    '\n'
+                    'After running the tournament, the script generates a report in HTML. The report is, optionally,'
+                    'uploaded to a specified server via scp.\n')
 
-    # parser.add_argument('--user',  help='username', nargs='?' )
-    # parser.add_argument('--pass',  help='password', nargs='?' )
-    # args = vars(parser.parse_args())
+    parser.add_argument(
+        '--uni',
+        help='name of the University running the tournament',
+        required=True
+    )
+    parser.add_argument(
+        '--host',
+        help='ssh host',
+        nargs='?'
+    )
+    parser.add_argument(
+        '--user',
+        help='username',
+        nargs='?'
+    )
+    parser.add_argument(
+        '--www',
+        help='output directory',
+        default='www'
+    )
+    args = vars(parser.parse_args())
 
 
     '''
     ' ADD HOSTS
     '''
-    username = 'nlipovetzky'
-    password = ''
-    run.do_add_host("dimefox.eng.unimelb.edu.au,%s,%s" % (username, password))
+    run.do_add_host("dimefox.eng.unimelb.edu.au,%s,%s" % (args.user, getpass()))
 
     run.do_connect()
 
@@ -141,7 +110,7 @@ if __name__ == '__main__':
     # os.system("tar xvf teams%s_%s_%s.tar"%(today.year,today.month,today.day) )
 
     '''
-    ' unzip each team, copy it to teams folder, retrieve Teamname and AgentFactory from each config.py file, 
+    ' unzip each team, copy it to teams folder, retrieve TeamName and AgentFactory from each config.py file, 
     ' and copy ff to each team folder
     '''
     teams = []
@@ -182,6 +151,7 @@ if __name__ == '__main__':
     os.system("cp  -rf staff_team teams/.")
     os.system("rm -rf contest2016/teams/")
     os.system("cp  -rf teams contest2016/.")
+    # TODO parameterize this
     print "cp  -rf unimelb_tournament_scripts/teams contest2016/."
 
     '''
@@ -222,6 +192,7 @@ if __name__ == '__main__':
     ' the tournament plays each team twice against each other, once as red team, once as blue
     '''
 
+    # TODO parameterize this (and all other instances of this string)
     os.chdir('contest2016')
 
     print os.system('pwd')
