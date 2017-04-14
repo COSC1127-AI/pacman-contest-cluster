@@ -153,6 +153,45 @@ def upload_files(date_str, settings):
     print "%s  Uploaded!" % RESULTS_TAR
 
 
+def parse_result(lines):
+    """
+    Parses the result log of a match.
+    :param lines: an iterator of the lines of the result log
+    :return: a tuple containing score, winner, loser and a flag signalling whether there was a bug
+    """
+    score = 0
+    winner = None
+    loser = None
+    bug = False
+    for line in lines:
+        if line.find("wins by") != -1:
+            score = abs(int(line.split('wins by')[1].split('points')[0]))
+            if line.find('Red') != -1:
+                winner = n1
+                loser = n2
+            elif line.find('Blue') != -1:
+                winner = n2
+                loser = n1
+        if line.find("The Blue team has returned at least ") != -1:
+            score = abs(int(line.split('The Blue team has returned at least ')[1].split(' ')[0]))
+            winner = n2
+            loser = n1
+        elif line.find("The Red team has returned at least ") != -1:
+            score = abs(int(line.split('The Red team has returned at least ')[1].split(' ')[0]))
+            winner = n1
+            loser = n2
+        elif line.find("Tie Game") != -1:
+            winner = None
+            loser = None
+        elif line.find("agent crashed") != -1:
+            bug = True
+            if line.find("Blue agent crashed") != -1:
+                errors[n2] += 1
+            if line.find("Red agent crashed") != -1:
+                errors[n1] += 1
+    return score, winner, loser, bug
+
+
 if __name__ == '__main__':
     settings = load_settings()
 
@@ -239,9 +278,8 @@ if __name__ == '__main__':
     os.system("rm -rf results_%s" % date_str)
     os.system("mkdir results_%s" % date_str)
 
-    if len(teams) == 1:
-        output = "<html><body><h1>Date Tournament %s/%s/%s <br> 0 Teams participated!!</h1>" % (
-        date_str)
+    if len(teams) <= 1:
+        output = "<html><body><h1>Date Tournament %s <br> 0 Teams participated!!</h1>" % date_str
         output += "</body></html>"
         out_stream = open("results_%s/results.html" % date_str, "w")
         out_stream.writelines(output)
@@ -280,50 +318,21 @@ if __name__ == '__main__':
             (n2, a2) = away_team
             print "game %s vs %s" % (n1, n2)
             print "python capture.py -r %s -b %s -l contest1%dCapture -i %d -q --record" % (a1, a2, g, steps)
-            os.system(
-                "python capture.py -r %s -b %s -l contest1%dCapture -i %d -q --record > ../results_%s/%s_vs_%s_contest1%dCapture_recorded.log" % (
+            os.system("python capture.py -r %s -b %s -l contest1%dCapture -i %d -q --record > ../results_%s/%s_vs_%s_contest1%dCapture_recorded.log" % (
                 a1, a2, g, steps, date_str, n1, n2, g))
             in_stream = open("../results_%s/%s_vs_%s_contest1%dCapture_recorded.log" % (
             date_str, n1, n2, g), "r")
             lines = in_stream.readlines()
             in_stream.close()
-            score = 0
-            winner = None
-            looser = None
-            bug = False
-            for line in lines:
-                if line.find("wins by") != -1:
-                    score = abs(int(line.split('wins by')[1].split('points')[0]))
-                    if line.find('Red') != -1:
-                        winner = n1
-                        looser = n2
-                    elif line.find('Blue') != -1:
-                        winner = n2
-                        looser = n1
-                if line.find("The Blue team has returned at least ") != -1:
-                    score = abs(int(line.split('The Blue team has returned at least ')[1].split(' ')[0]))
-                    winner = n2
-                    looser = n1
-                elif line.find("The Red team has returned at least ") != -1:
-                    score = abs(int(line.split('The Red team has returned at least ')[1].split(' ')[0]))
-                    winner = n1
-                    looser = n2
-                elif line.find("Tie Game") != -1:
-                    winner = None
-                    looser = None
-                elif line.find("agent crashed") != -1:
-                    bug = True
-                    if line.find("Blue agent crashed") != -1:
-                        errors[n2] += 1
-                    if line.find("Red agent crashed") != -1:
-                        errors[n1] += 1
+
+            score, winner, loser, bug = parse_result(lines)
 
             if winner is None and bug is False:
                 ladder[n1].append(score)
                 ladder[n2].append(score)
             elif bug is False:
                 ladder[winner].append(score)
-                ladder[looser].append(-1 * score)
+                ladder[loser].append(-score)
 
             os.system("mv replay* ../results_%s/%s_vs_%s_contest1%dCapture_replay" % (
             date_str, n1, n2, g))
