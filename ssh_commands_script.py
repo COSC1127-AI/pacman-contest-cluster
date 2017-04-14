@@ -8,6 +8,7 @@ import sys
 import datetime
 import argparse
 import json
+from itertools import product
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Verify all necessary packages are present
@@ -253,7 +254,6 @@ if __name__ == '__main__':
     ' the tournament plays each team twice against each other, once as red team, once as blue
     '''
 
-    # TODO parameterize this (and all other instances of this string)
     os.chdir(settings['contest_code_name'])
 
     print os.system('pwd')
@@ -261,74 +261,63 @@ if __name__ == '__main__':
     steps = 1200
     #    captureLayouts = 4
     #    steps = 3000
-    for i in range(0, len(teams)):
-        for j in range(i + 1, len(teams)):
-            for g in xrange(1, captureLayouts):
-                for home in xrange(0, 2):
-                    home_team = None
-                    away_team = None
-                    if home == 0:
-                        home_team = teams[i]
-                        away_team = teams[j]
-                    else:
-                        home_team = teams[j]
-                        away_team = teams[i]
-
-                    (n1, a1) = home_team
-                    (n2, a2) = away_team
-                    print "game %s vs %s" % (n1, n2)
-                    print "python capture.py -r %s -b %s -l contest1%dCapture -i %d -q --record" % (a1, a2, g, steps)
-                    os.system(
-                        "python capture.py -r %s -b %s -l contest1%dCapture -i %d -q --record > ../results_%s/%s_vs_%s_contest1%dCapture_recorded.log" % (
-                        a1, a2, g, steps, date_str, n1, n2, g))
-                    in_stream = open("../results_%s/%s_vs_%s_contest1%dCapture_recorded.log" % (
-                    date_str, n1, n2, g), "r")
-                    lines = in_stream.readlines()
-                    in_stream.close()
-                    score = 0
+    for home_team, away_team in product(teams, teams):
+        for g in xrange(1, captureLayouts):
+            (n1, a1) = home_team
+            (n2, a2) = away_team
+            print "game %s vs %s" % (n1, n2)
+            print "python capture.py -r %s -b %s -l contest1%dCapture -i %d -q --record" % (a1, a2, g, steps)
+            os.system(
+                "python capture.py -r %s -b %s -l contest1%dCapture -i %d -q --record > ../results_%s/%s_vs_%s_contest1%dCapture_recorded.log" % (
+                a1, a2, g, steps, date_str, n1, n2, g))
+            in_stream = open("../results_%s/%s_vs_%s_contest1%dCapture_recorded.log" % (
+            date_str, n1, n2, g), "r")
+            lines = in_stream.readlines()
+            in_stream.close()
+            score = 0
+            winner = None
+            looser = None
+            bug = False
+            for line in lines:
+                if line.find("wins by") != -1:
+                    score = abs(int(line.split('wins by')[1].split('points')[0]))
+                    if line.find('Red') != -1:
+                        winner = n1
+                        looser = n2
+                    elif line.find('Blue') != -1:
+                        winner = n2
+                        looser = n1
+                if line.find("The Blue team has returned at least ") != -1:
+                    score = abs(int(line.split('The Blue team has returned at least ')[1].split(' ')[0]))
+                    winner = n2
+                    looser = n1
+                elif line.find("The Red team has returned at least ") != -1:
+                    score = abs(int(line.split('The Red team has returned at least ')[1].split(' ')[0]))
+                    winner = n1
+                    looser = n2
+                elif line.find("Tie Game") != -1:
                     winner = None
                     looser = None
-                    bug = False
-                    for line in lines:
-                        if line.find("wins by") != -1:
-                            score = abs(int(line.split('wins by')[1].split('points')[0]))
-                            if line.find('Red') != -1:
-                                winner = n1
-                                looser = n2
-                            elif line.find('Blue') != -1:
-                                winner = n2
-                                looser = n1
-                        if line.find("The Blue team has returned at least ") != -1:
-                            score = abs(int(line.split('The Blue team has returned at least ')[1].split(' ')[0]))
-                            winner = n2
-                            looser = n1
-                        elif line.find("The Red team has returned at least ") != -1:
-                            score = abs(int(line.split('The Red team has returned at least ')[1].split(' ')[0]))
-                            winner = n1
-                            looser = n2
-                        elif line.find("Tie Game") != -1:
-                            winner = None
-                            looser = None
-                        elif line.find("agent crashed") != -1:
-                            bug = True
-                            if line.find("Blue agent crashed") != -1:
-                                errors[n2] += 1
-                            if line.find("Red agent crashed") != -1:
-                                errors[n1] += 1
+                elif line.find("agent crashed") != -1:
+                    bug = True
+                    if line.find("Blue agent crashed") != -1:
+                        errors[n2] += 1
+                    if line.find("Red agent crashed") != -1:
+                        errors[n1] += 1
 
-                    if winner is None and bug is False:
-                        ladder[n1].append(score)
-                        ladder[n2].append(score)
-                    elif bug is False:
-                        ladder[winner].append(score)
-                        ladder[looser].append(-1 * score)
+            if winner is None and bug is False:
+                ladder[n1].append(score)
+                ladder[n2].append(score)
+            elif bug is False:
+                ladder[winner].append(score)
+                ladder[looser].append(-1 * score)
 
-                    os.system("mv replay* ../results_%s/%s_vs_%s_contest1%dCapture_replay" % (
-                    date_str, n1, n2, g))
-                    if bug is False:
-                        games.append((n1, n2, "contest1%dCapture" % g, score, winner))
-                    else:
-                        games.append((n1, n2, "contest1%dCapture" % g, 9999, winner))
+            os.system("mv replay* ../results_%s/%s_vs_%s_contest1%dCapture_replay" % (
+            date_str, n1, n2, g))
+            if bug is False:
+                games.append((n1, n2, "contest1%dCapture" % g, score, winner))
+            else:
+                games.append((n1, n2, "contest1%dCapture" % g, 9999, winner))
 
     team_stats = dict()
 
