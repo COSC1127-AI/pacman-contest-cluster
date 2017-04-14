@@ -98,6 +98,5 @@ ENV/
 .idea/
 contest2016/
 local/
-scp.py
 scp.pyc
 staffteam/
