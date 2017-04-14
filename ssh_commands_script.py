@@ -52,7 +52,7 @@ def load_settings():
 
         parser.add_argument(
             '--organizer',
-            help='name of the University running the tournament',
+            help='name of the organizer of the contest',
         )
         parser.add_argument(
             '--host',
@@ -87,14 +87,12 @@ def load_settings():
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-def upload_files(run):
-    date_str = datetime.date.today().isoformat()
+def upload_files(run, date_str, settings):
     os.chdir("results_%s" % date_str)
     os.system("tar cvf recorded_games_%s.tar *recorded*  *replay*" % date_str)
     print "tar cvf recorded_games_%s.tar *recorded* *replay*" % date_str
     os.chdir('..')
-    os.system("tar cvf results_%s.tar results_%s/*" % (
-    date_str, date_str))
+    os.system("tar cvf results_%s.tar results_%s/*" % (date_str, date_str))
 
     destination = "www"
 
@@ -106,15 +104,13 @@ def upload_files(run):
     os.system("rm  -rf %s/results_%s" % (destination, date_str))
     # os.system( "chmod 755  results_%s/*"%(today.year,today.month,today.day) )
     # os.system( "chmod 755  results_%s"%(today.year,today.month,today.day) )
-    os.system("mv results_%s %s/results_%s" % (
-    date_str, destination, date_str))
+    os.system("mv results_%s %s/results_%s" % (date_str, destination, date_str))
 
     # TODO Parameterize this string
-    output = "<html><body><h1>Results Pacman Unimelb Tournament by Date</h1>"
+    output = "<html><body><h1>Results Pacman %s Tournament by Date</h1>" % settings['organizer']
     for root, dirs, files in os.walk(destination):
         for d in dirs:
-            output += "<a href=\"http://people.eng.unimelb.edu.au/nlipovetzky/comp90054tournament/%s/results.html\"> %s  </a> <br>" % (
-            d, d)
+            output += "<a href=\"%s/%s/results.html\"> %s  </a> <br>" % (settings['results_web_page'], d, d)
     output += "<br></body></html>"
     print "%s/results.html" % destination
     print output
@@ -200,10 +196,9 @@ if __name__ == '__main__':
     # uncomment to add staff_team in the competition
     teams.append(("staff_team", "teams/staff_team/team.py"))
     os.system("cp  -rf staff_team teams/.")
-    os.system("rm -rf contest2016/teams/")
-    os.system("cp  -rf teams contest2016/.")
-    # TODO parameterize this
-    print "cp  -rf unimelb_tournament_scripts/teams contest2016/."
+    os.system("rm -rf %s/teams/" % settings['contest_code_name'])
+    os.system("cp  -rf teams %s/." % settings['contest_code_name'])
+    print "cp  -rf %s_tournament_scripts/teams %s/." % (settings['organizer'], settings['contest_code_name'])
 
     '''
     ' Move to folder where pacman code is located (assume) is at '..'
@@ -223,7 +218,7 @@ if __name__ == '__main__':
         out_stream.writelines(output)
         out_stream.close()
         print "results_%s/results.html summary generated!" % date_str
-        upload_files(run)
+        upload_files(run, date_str, settings)
 
         run.do_close()
         exit(0)
@@ -244,7 +239,7 @@ if __name__ == '__main__':
     '''
 
     # TODO parameterize this (and all other instances of this string)
-    os.chdir('contest2016')
+    os.chdir(settings['contest_code_name'])
 
     print os.system('pwd')
     captureLayouts = 4
@@ -384,6 +379,6 @@ if __name__ == '__main__':
     '''
     ' upload files to server
     '''
-    upload_files(run)
+    upload_files(run, date_str, settings)
 
     run.do_close()
