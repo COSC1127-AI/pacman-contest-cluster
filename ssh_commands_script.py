@@ -41,47 +41,62 @@ def load_settings():
     if os.path.exists(CONFIG_PATH):
         with open(CONFIG_PATH, 'r') as f:
             settings = json.load(f)
-
     else:
-        parser = argparse.ArgumentParser(
-            description='This script is to run a tournament between teams of agents for the Pacman package developed by '
-                        'John DeNero (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu) at UC Berkeley.\n'
-                        '\n'
-                        'After running the tournament, the script generates a report in HTML. The report is, optionally,'
-                        'uploaded to a specified server via scp.\n')
+        settings = {}
 
-        parser.add_argument(
-            '--organizer',
-            help='name of the organizer of the contest',
-        )
-        parser.add_argument(
-            '--host',
-            help='ssh host'
-        )
-        parser.add_argument(
-            '--user',
-            help='username'
-        )
-        parser.add_argument(
-            '--output-path',
-            help='output directory',
-            default='www'
-        )
-        parser.add_argument(
-            '--contest-name',
-            help='output directory',
-            default='contest_%s' % datetime.datetime.today().year
-        )
-        args = vars(parser.parse_args())
-        settings = {
-            "organizer": args.organizer,
-            "host": args.host,
-            "user": args.user,
-            "output_path": args.output_path,
-            "contest_code_name": args.contest_name
-        }
-        with open(CONFIG_PATH, 'w') as f:
-            json.load(f, settings)
+    parser = argparse.ArgumentParser(
+        description='This script is to run a tournament between teams of agents for the Pacman package developed by '
+                    'John DeNero (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu) at UC Berkeley.\n'
+                    '\n'
+                    'After running the tournament, the script generates a report in HTML. The report is, optionally, '
+                    'uploaded to a specified server via scp.\n'
+                    '\n'
+                    'The parameters are saved in config.json, so it is only necessary to pass them the first time or '
+                    'if they have to be updated.')
+
+    parser.add_argument(
+        '--organizer',
+        help='name of the organizer of the contest',
+    )
+    parser.add_argument(
+        '--host',
+        help='ssh host'
+    )
+    parser.add_argument(
+        '--user',
+        help='username'
+    )
+    parser.add_argument(
+        '--output-path',
+        help='output directory',
+        default='www'
+    )
+    parser.add_argument(
+        '--contest-code-name',
+        help='output directory',
+        default='contest_%s' % datetime.datetime.today().year
+    )
+    args = vars(parser.parse_args())
+
+    if args.organizer:
+        settings['organizer'] = args.organizer
+    if args.organizer:
+        settings['host'] = args.host
+    if args.organizer:
+        settings['user'] = args.user
+    if args.organizer:
+        settings['output_path'] = args.output_path
+    if args.organizer:
+        settings['contest_code_name'] = args.contest_code_name
+
+    missing_parameters = {'organizer', 'host', 'user', 'output_path', 'contest_code_name'} - set(settings.keys())
+    if missing_parameters:
+        print('Missing parameters: %s. Aborting.' % list(sorted(missing_parameters)))
+        parser.print_help()
+        sys.exit(1)
+
+    with open(CONFIG_PATH, 'w') as f:
+        json.load(f, settings)
 
     return settings
 
