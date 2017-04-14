@@ -1,11 +1,77 @@
 #!/usr/bin/python
 
-import argparse
+#  ----------------------------------------------------------------------------------------------------------------------
+# Import standard stuff
+
 import os
+import sys
 import datetime
-from getpass import getpass
+import argparse
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Verify all necessary packages are present
+
+missing_packages = []
+try:
+    from getpass import getpass
+except:
+    missing_packages.append('getpass')
+
+try:
+    import paramiko
+except:
+    missing_packages.append('paramiko')
+
+try:
+    import iso8601
+except:
+    missing_packages.append('iso8601')
+
+if missing_packages:
+    print('Some packages are missing. Please, run `pip install %s`' % ' '.join(missing_packages))
+    sys.exit(1)
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Import class from helper module
+
 from ssh_helper import RunCommand
 
+# ----------------------------------------------------------------------------------------------------------------------
+# Parse arguments
+
+def parse_arguments():
+
+    parser = argparse.ArgumentParser(
+        description='This script is to run a tournament between teams of agents for the Pacman package developed by '
+                    'John DeNero (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu) at UC Berkeley.\n'
+                    '\n'
+                    'After running the tournament, the script generates a report in HTML. The report is, optionally,'
+                    'uploaded to a specified server via scp.\n')
+
+    parser.add_argument(
+        '--uni',
+        help='name of the University running the tournament',
+        required=True
+    )
+    parser.add_argument(
+        '--host',
+        help='ssh host',
+        nargs='?'
+    )
+    parser.add_argument(
+        '--user',
+        help='username',
+        nargs='?'
+    )
+    parser.add_argument(
+        '--www',
+        help='output directory',
+        default='www'
+    )
+    args = vars(parser.parse_args())
+    return args
+
+# ----------------------------------------------------------------------------------------------------------------------
 
 def upload_files(run):
     # TODO replace date manual format with iso6801 format
@@ -50,37 +116,9 @@ def upload_files(run):
 
 
 if __name__ == '__main__':
+    args = parse_arguments()
+
     run = RunCommand()
-
-    parser = argparse.ArgumentParser(
-        description='This script is to run a tournament between teams of agents for the Pacman package developed by '
-                    'John DeNero (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu) at UC Berkeley.\n'
-                    '\n'
-                    'After running the tournament, the script generates a report in HTML. The report is, optionally,'
-                    'uploaded to a specified server via scp.\n')
-
-    parser.add_argument(
-        '--uni',
-        help='name of the University running the tournament',
-        required=True
-    )
-    parser.add_argument(
-        '--host',
-        help='ssh host',
-        nargs='?'
-    )
-    parser.add_argument(
-        '--user',
-        help='username',
-        nargs='?'
-    )
-    parser.add_argument(
-        '--www',
-        help='output directory',
-        default='www'
-    )
-    args = vars(parser.parse_args())
-
 
     '''
     ' ADD HOSTS
