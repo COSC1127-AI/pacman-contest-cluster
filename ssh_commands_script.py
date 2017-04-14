@@ -22,11 +22,6 @@ try:
 except:
     missing_packages.append('paramiko')
 
-try:
-    import iso8601
-except:
-    missing_packages.append('iso8601')
-
 if missing_packages:
     print('Some packages are missing. Please, run `pip install %s`' % ' '.join(missing_packages))
     sys.exit(1)
@@ -74,27 +69,26 @@ def parse_arguments():
 # ----------------------------------------------------------------------------------------------------------------------
 
 def upload_files(run):
-    # TODO replace date manual format with iso6801 format
-    today = datetime.date.today()
-    os.chdir("results%s_%s_%s" % (today.year, today.month, today.day))
-    os.system("tar cvf recorded_games_%s_%s_%s.tar *recorded*  *replay*" % (today.year, today.month, today.day))
-    print "tar cvf recorded_games_%s_%s_%s.tar *recorded* *replay*" % (today.year, today.month, today.day)
+    date_str = datetime.date.today().isoformat()
+    os.chdir("results_%s" % date_str)
+    os.system("tar cvf recorded_games_%s.tar *recorded*  *replay*" % date_str)
+    print "tar cvf recorded_games_%s.tar *recorded* *replay*" % date_str
     os.chdir('..')
-    os.system("tar cvf results%s_%s_%s.tar results%s_%s_%s/*" % (
-    today.year, today.month, today.day, today.year, today.month, today.day))
+    os.system("tar cvf results_%s.tar results_%s/*" % (
+    date_str, date_str))
 
     destination = "www"
 
     # TODO change to use Python functions so that this can run on non-Unix systems
-    print "tar cvf results%s_%s_%s.tar results%s_%s_%s/*" % (
-    today.year, today.month, today.day, today.year, today.month, today.day)
-    os.system("cp results%s_%s_%s.tar %s" % (today.year, today.month, today.day, destination))
-    os.system("tar xvf results%s_%s_%s.tar " % (today.year, today.month, today.day))
-    os.system("rm  -rf %s/results%s_%s_%s" % (destination, today.year, today.month, today.day))
-    # os.system( "chmod 755  results%s_%s_%s/*"%(today.year,today.month,today.day) )
-    # os.system( "chmod 755  results%s_%s_%s"%(today.year,today.month,today.day) )
-    os.system("mv results%s_%s_%s %s/results%s_%s_%s" % (
-    today.year, today.month, today.day, destination, today.year, today.month, today.day))
+    print "tar cvf results_%s.tar results_%s/*" % (
+    date_str, date_str)
+    os.system("cp results_%s.tar %s" % (date_str, destination))
+    os.system("tar xvf results_%s.tar " % date_str)
+    os.system("rm  -rf %s/results_%s" % (destination, date_str))
+    # os.system( "chmod 755  results_%s/*"%(today.year,today.month,today.day) )
+    # os.system( "chmod 755  results_%s"%(today.year,today.month,today.day) )
+    os.system("mv results_%s %s/results_%s" % (
+    date_str, destination, date_str))
 
     # TODO Parameterize this string
     output = "<html><body><h1>Results Pacman Unimelb Tournament by Date</h1>"
@@ -112,7 +106,7 @@ def upload_files(run):
     # <a href="http://ww2.cs.mu.oz.au/482/tournament/layouts.tar.bz2"> Layouts used. Each day 2 new layouts are used  </a> <br>
 
 
-    print "results%s_%s_%s.tar  Uploaded!" % (today.year, today.month, today.day)
+    print "results_%s.tar  Uploaded!" % date_str
 
 
 if __name__ == '__main__':
@@ -130,22 +124,22 @@ if __name__ == '__main__':
     '''
     ' RUN THE COMMANDS HERE
     '''
-    today = datetime.date.today()
+    date_str = datetime.date.today().isoformat()
 
     '''
     ' tar the submitted teams and download to local machine
     '''
 
-    # CHANGE STORAGE2 FOR LOCAL     ###########run.do_run( "tar cvf teams%s_%s_%s.tar  /storage2/beta/users/nlipovetzky/test_teams/* "%(today.year,today.month,today.day) )
+    # CHANGE STORAGE2 FOR LOCAL     ###########run.do_run( "tar cvf teams_%s.tar  /storage2/beta/users/nlipovetzky/test_teams/* "%(today.year,today.month,today.day) )
 
-    # run.do_run( "tar cvf teams%s_%s_%s.tar  /local/submit/submit/COMP90054/2/* "%(today.year,today.month,today.day) )
+    # run.do_run( "tar cvf teams_%s.tar  /local/submit/submit/COMP90054/2/* "%(today.year,today.month,today.day) )
 
-    # run.do_get( "teams%s_%s_%s.tar"%(today.year,today.month,today.day) )    
+    # run.do_get( "teams_%s.tar"%(today.year,today.month,today.day) )
 
     # os.system("rm -rf storage2/")
     # os.system("rm -rf local/")
 
-    # os.system("tar xvf teams%s_%s_%s.tar"%(today.year,today.month,today.day) )
+    # os.system("tar xvf teams_%s.tar"%(today.year,today.month,today.day) )
 
     '''
     ' unzip each team, copy it to teams folder, retrieve TeamName and AgentFactory from each config.py file, 
@@ -199,17 +193,17 @@ if __name__ == '__main__':
 
     print "\n\n", teams, "\n\n"
 
-    os.system("rm -rf results%s_%s_%s" % (today.year, today.month, today.day))
-    os.system("mkdir results%s_%s_%s" % (today.year, today.month, today.day))
+    os.system("rm -rf results_%s" % date_str)
+    os.system("mkdir results_%s" % date_str)
 
     if len(teams) is 1:
         output = "<html><body><h1>Date Tournament %s/%s/%s <br> 0 Teams participated!!</h1>" % (
-        today.year, today.month, today.day)
+        date_str)
         output += "</body></html>"
-        out_stream = open("results%s_%s_%s/results.html" % (today.year, today.month, today.day), "w")
+        out_stream = open("results_%s/results.html" % date_str, "w")
         out_stream.writelines(output)
         out_stream.close()
-        print "results%s_%s_%s/results.html summary generated!" % (today.year, today.month, today.day)
+        print "results_%s/results.html summary generated!" % date_str
         upload_files(run)
 
         run.do_close()
@@ -256,10 +250,10 @@ if __name__ == '__main__':
                     print "game %s vs %s" % (n1, n2)
                     print "python capture.py -r %s -b %s -l contest1%dCapture -i %d -q --record" % (a1, a2, g, steps)
                     os.system(
-                        "python capture.py -r %s -b %s -l contest1%dCapture -i %d -q --record > ../results%s_%s_%s/%s_vs_%s_contest1%dCapture_recorded.log" % (
-                        a1, a2, g, steps, today.year, today.month, today.day, n1, n2, g))
-                    in_stream = open("../results%s_%s_%s/%s_vs_%s_contest1%dCapture_recorded.log" % (
-                    today.year, today.month, today.day, n1, n2, g), "r")
+                        "python capture.py -r %s -b %s -l contest1%dCapture -i %d -q --record > ../results_%s/%s_vs_%s_contest1%dCapture_recorded.log" % (
+                        a1, a2, g, steps, date_str, n1, n2, g))
+                    in_stream = open("../results_%s/%s_vs_%s_contest1%dCapture_recorded.log" % (
+                    date_str, n1, n2, g), "r")
                     lines = in_stream.readlines()
                     in_stream.close()
                     score = 0
@@ -300,8 +294,8 @@ if __name__ == '__main__':
                         ladder[winner].append(score)
                         ladder[looser].append(-1 * score)
 
-                    os.system("mv replay* ../results%s_%s_%s/%s_vs_%s_contest1%dCapture_replay" % (
-                    today.year, today.month, today.day, n1, n2, g))
+                    os.system("mv replay* ../results_%s/%s_vs_%s_contest1%dCapture_replay" % (
+                    date_str, n1, n2, g))
                     if bug is False:
                         games.append((n1, n2, "contest1%dCapture" % g, score, winner))
                     else:
@@ -332,7 +326,7 @@ if __name__ == '__main__':
         team_stats[team] = [((wins * 3) + draws), wins, draws, loses, errors[team], sum_score]
 
     output = "<html><body><h1>Date Tournament %s/%s/%s </h1><br><table border=\"1\">" % (
-    today.year, today.month, today.day)
+    date_str)
     output += "<tr><th>Team</th><th>Points</th><th>Win</th><th>Tie</th><th>Lost</th><th>FAILED</th><th>Score Balance</th></tr>"
     for key, (points, wins, draws, loses, errors, sum_score) in sorted(team_stats.items(), key=lambda (k, v): v[0],
                                                                        reverse=True):
@@ -340,8 +334,8 @@ if __name__ == '__main__':
         key, points, wins, draws, loses, errors, sum_score)
     output += "</table>"
 
-    output += "<br><br> <h2>Games</h2><br><a href=\"recorded_games_%s_%s_%s.tar\">DOWNLOAD RECORDED GAMES!</a><br><table border=\"1\">" % (
-    today.year, today.month, today.day)
+    output += "<br><br> <h2>Games</h2><br><a href=\"recorded_games_%s.tar\">DOWNLOAD RECORDED GAMES!</a><br><table border=\"1\">" % (
+    date_str)
     output += "<tr><th>Team1</th><th>Team2</th><th>Layout</th><th>Score</th><th>Winner</th></tr>"
     for (n1, n2, layout, score, winner) in games:
         output += "<tr><td align=\"center\">"
@@ -362,9 +356,9 @@ if __name__ == '__main__':
             layout, score, winner)
 
     output += "</table></body></html>"
-    print "results%s_%s_%s/results.html summary generated!" % (today.year, today.month, today.day)
+    print "results_%s/results.html summary generated!" % date_str
 
-    out_stream = open("results%s_%s_%s/results.html" % (today.year, today.month, today.day), "w")
+    out_stream = open("results_%s/results.html" % date_str, "w")
     out_stream.writelines(output)
     out_stream.close()
 
