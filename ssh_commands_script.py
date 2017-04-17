@@ -21,7 +21,7 @@ import glob
 import tarfile
 # noinspection PyCompatibility
 import commands
-from itertools import product
+from itertools import combinations
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Verify all necessary packages are present
@@ -88,11 +88,6 @@ def load_settings():
         default='www'
     )
     parser.add_argument(
-        '--contest-code-name',
-        help='code name for the contest; this is suggested to not contain spaces and be lower-case',
-        default='contest_%s' % datetime.datetime.today().year
-    )
-    parser.add_argument(
         '--teams-root',
         help='directory containing the zip files of the teams',
         default='teams'
@@ -115,19 +110,15 @@ def load_settings():
         settings['host'] = args.host
     if args.organizer:
         settings['user'] = args.user
-    if args.organizer:
-        settings['output_path'] = args.output_path
     if args.compress_logs:
         settings['compress_logs'] = args.compress_logs
-    if args.organizer:
-        contest_code_name = args.contest_code_name
     if args.include_staff_team:
         include_staff_team = args.include_staff_team
     if args.teams_root:
         teams_root = args.teams_root
 
 
-    missing_parameters = {'organizer', 'host', 'user', 'output_path', 'contest_code_name'} - set(settings.keys())
+    missing_parameters = {'organizer'} - set(settings.keys())
     if missing_parameters:
         print('Missing parameters: %s. Aborting.' % list(sorted(missing_parameters)))
         parser.print_help()
@@ -141,7 +132,8 @@ def load_settings():
 # ----------------------------------------------------------------------------------------------------------------------
 
 class ContestRunner:
-    
+
+    ENV_DIR = 'contest'
     CONTEST_ZIP_FILE = 'contest.zip'
     LAYOUTS_ZIP_FILE = 'layouts.zip'
     STAFF_TEAM_ZIP_FILE = 'staff_team.zip'
@@ -150,8 +142,8 @@ class ContestRunner:
     WWW_DIR = 'www'
     MAX_STEPS = 1200
     
-    def __init__(self, contest_code_name, teams_root, include_staff_team, output_path, organizer, compress_logs,
-                 results_web_page=None, host=None, user=None):
+    def __init__(self, teams_root, include_staff_team, organizer, compress_logs,
+                 host=None, user=None):
 
         self.run = RunCommand()
         if host is not None:
@@ -162,16 +154,10 @@ class ContestRunner:
         self.contest_run_id = datetime.datetime.now().isoformat()
 
         # path that contains files that make-up a html navigable web folder
-        self.www_path = output_path
+        self.www_path = self.WWW_DIR
 
         # just used in html as a readable string
         self.organizer = organizer
-
-        # a link to a server serving the results file online; again, just used as a string ti be printed
-        self.results_web_page = results_web_page
-
-        # the name of the folder where the contest environment will be setup; there is not much reason to have it variable, but...
-        self.contest_code_name = contest_code_name
 
         # a flag indicating whether to compress the logs
         self.compress_logs = compress_logs
@@ -192,11 +178,12 @@ class ContestRunner:
 
         # Setup Pacman CTF environment by extracting it from a clean zip file
         self.layouts = None
-        self._prepare_platform(self.CONTEST_ZIP_FILE, self.LAYOUTS_ZIP_FILE, contest_code_name)
+        self._prepare_platform(self.CONTEST_ZIP_FILE, self.LAYOUTS_ZIP_FILE, self.ENV_DIR)
 
         # Setup all of the teams
-        teams_dir = os.path.join(contest_code_name, self.TEAMS_SUBDIR)
-        shutil.rmtree(teams_dir)
+        teams_dir = os.path.join(self.ENV_DIR, self.TEAMS_SUBDIR)
+        if os.path.exists(teams_dir):
+            shutil.rmtree(teams_dir)
         os.makedirs(teams_dir)
         self.teams = []
         for team_zip in os.listdir(teams_root):
@@ -241,7 +228,8 @@ class ContestRunner:
         with open(os.path.join(self.www_dir_full_path, 'results.html'), "w") as f:
             print(run_html, file=f)
 
-        shutil.rmtree(self.results_dir_full_path)
+        shutil.rmtree(self.RESULTS_DIR)
+        shutil.rmtree(self.ENV_DIR)
 
 
     def _generate_main_html(self):
@@ -253,7 +241,7 @@ class ContestRunner:
         main_html = "<html><body><h1>Results Pacman %s Tournament by Date</h1>" % self.organizer
         for root, dirs, files in os.walk(self.www_path):
             for d in dirs:
-                main_html += "<a href=\"%s/%s/results.html\"> %s  </a> <br>" % (self.results_web_page, d, d)
+                main_html += "<a href=\"%s/results.html\"> %s  </a> <br>" % (d, d)
         main_html += "<br></body></html>"
         with open(os.path.join(self.www_path, 'results.html'), "w") as f:
             print(main_html, file=f)
@@ -357,9 +345,9 @@ class ContestRunner:
             shutil.rmtree(destination)
         os.makedirs(destination)
         contest_zip_file = zipfile.ZipFile(contest_zip_file_path)
-        contest_zip_file.extractall(destination)
+        contest_zip_file.extractall('.')
         layouts_zip_file = zipfile.ZipFile(layouts_zip_file_path)
-        layouts_zip_file.extractall(destination)
+        layouts_zip_file.extractall(os.path.join(self.ENV_DIR, 'layouts'))
         self.layouts = [file_in_zip[:-4] for file_in_zip in layouts_zip_file.namelist()]
     
 
@@ -377,23 +365,12 @@ class ContestRunner:
         team_name = os.path.basename(zip_file)[:-4]
         team_destination_dir = os.path.join(destination, team_name)
         desired_file = 'team.py'
-        try:
-            student_zip_file.extract(desired_file, team_destination_dir)
-        except KeyError:
-            matching = [file_in_zip for file_in_zip in student_zip_file.namelist() if os.path.basename(file_in_zip) == desired_file]
-            if len(matching) == 1:
-                # unzip the found match file and move it to the right place in the temporal directory
-                student_zip_file.extract(matching[0], team_destination_dir)
-                os.remove(os.path.join(team_destination_dir, desired_file))
-                shutil.move(os.path.join(team_destination_dir, matching[0]), team_destination_dir)
-            elif len(matching) > 1:
-                logging.error('File %s contains multiple copies of some of %s.' % (student_zip_file, desired_file))
-                raise
+        student_zip_file.extractall(team_destination_dir)
     
         if add_ff_binary:
             shutil.copy('ff', team_destination_dir)
     
-        agent_factory = os.path.join(team_destination_dir, desired_file)
+        agent_factory = os.path.join(self.TEAMS_SUBDIR, team_name, desired_file)
         self.teams.append((team_name, agent_factory))
     
     
@@ -402,12 +379,13 @@ class ContestRunner:
         (red_team_name, red_team_agent_factory) = red_team
         (blue_team_name, blue_team_agent_factory) = blue_team
         print('Running game %s vs %s (layout: %s).' % (red_team_name, blue_team_name, layout), end='')
+        sys.stdout.flush()
 
         command = 'python capture.py -r {red_team_agent_factory} -b {blue_team_agent_factory} -l {layout} -i {steps} -q --record'.format(
                 red_team_agent_factory=red_team_agent_factory, blue_team_agent_factory=blue_team_agent_factory,
                 layout=layout, steps=self.MAX_STEPS)
         logging.info(command)
-        exit_code, output = commands.getstatusoutput(command)
+        exit_code, output = commands.getstatusoutput('cd %s && %s' % (self.ENV_DIR, command))
 
         log_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.log'.format(
             layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
@@ -433,7 +411,10 @@ class ContestRunner:
 
         replay_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.replay'.format(
             layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
-        shutil.move(os.path.join(self.contest_code_name, glob.glob('replay*')[0]),
+
+        replays = glob.glob('replay*')
+        if replays:
+            shutil.move(os.path.join(self.ENV_DIR, replays[0]),
         # results/results_<run_id>/{red_team_name}_vs_{blue_team_name}_{layout}.replay
                     os.path.join(self.results_dir_full_path, replay_file_name))
         if not bug:
@@ -449,12 +430,10 @@ class ContestRunner:
         if len(self.teams) <= 1:
             output = "<html><body><h1>Date Tournament %s <br> 0 Teams participated!!</h1>" % self.contest_run_id
             output += "</body></html>"
-            out_stream = open("results_%s/results.html" % self.contest_run_id, "w")
-            out_stream.writelines(output)
-            out_stream.close()
-            print('results_%s/results.html summary generated!' % self.contest_run_id)
+            with open("results_%s/results.html" % self.contest_run_id, "w") as f:
+                print(output, file=f)
 
-        for red_team, blue_team in product(self.teams, self.teams):
+        for red_team, blue_team in combinations(self.teams, r=2):
             for layout in self.layouts:
                 self._run_match(red_team, blue_team, layout)
 
