@@ -1,6 +1,12 @@
 #!/usr/bin/python
 
 #  ----------------------------------------------------------------------------------------------------------------------
+# Import future stuff (syntax equivalent to Python 3)
+
+from __future__ import print_function
+from future.utils import iteritems
+
+#  ----------------------------------------------------------------------------------------------------------------------
 # Import standard stuff
 
 import os
@@ -8,6 +14,13 @@ import sys
 import datetime
 import argparse
 import json
+import shutil
+import zipfile
+import logging
+import glob
+import tarfile
+# noinspection PyCompatibility
+import commands
 from itertools import product
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -89,7 +102,12 @@ def load_settings():
         help='if passed, the staff team will be included (it should sit in a directory called staff_name)',
         action='store_true'
     )
-    args = vars(parser.parse_args())
+    parser.add_argument(
+        '--compress-logs',
+        help='if passed, the logs will be compressed in a tar.gz file; otherwise, they will just be archived in a tar file',
+        action='store_true'
+    )
+    args = parser.parse_args()
 
     if args.organizer:
         settings['organizer'] = args.organizer
@@ -99,12 +117,14 @@ def load_settings():
         settings['user'] = args.user
     if args.organizer:
         settings['output_path'] = args.output_path
+    if args.compress_logs:
+        settings['compress_logs'] = args.compress_logs
     if args.organizer:
-        settings['contest_code_name'] = args.contest_code_name
+        contest_code_name = args.contest_code_name
     if args.include_staff_team:
-        settings['include_staff_team'] = args.include_staff_team
+        include_staff_team = args.include_staff_team
     if args.teams_root:
-        settings['teams_root'] = args.teams_root
+        teams_root = args.teams_root
 
 
     missing_parameters = {'organizer', 'host', 'user', 'output_path', 'contest_code_name'} - set(settings.keys())
@@ -120,295 +140,349 @@ def load_settings():
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-def upload_files(date_str, settings):
-    RESULTS_FOLDER = "results_%s" % date_str
-    RESULTS_TAR = "results_%s.tar" % date_str
-    RECORDED_GAMES_TAR = 'recorded_games_%s' % date_str
+class ContestRunner:
+    
+    CONTEST_ZIP_FILE = 'contest.zip'
+    LAYOUTS_ZIP_FILE = 'layouts.zip'
+    STAFF_TEAM_ZIP_FILE = 'staff_team.zip'
+    TEAMS_SUBDIR = 'teams'
+    RESULTS_DIR = 'results'
+    WWW_DIR = 'www'
+    MAX_STEPS = 1200
+    
+    def __init__(self, contest_code_name, teams_root, include_staff_team, output_path, organizer, compress_logs,
+                 results_web_page=None, host=None, user=None):
 
-    print "tar cvf %s *recorded* *replay*" % RECORDED_GAMES_TAR
-    os.chdir(RESULTS_FOLDER)
-    os.system("tar cvf %s *recorded*  *replay*" % RECORDED_GAMES_TAR)
-    os.chdir('..')
-    os.system("tar cvf %s %s/*" % (RESULTS_TAR, RESULTS_FOLDER))
+        self.run = RunCommand()
+        if host is not None:
+            self.run.do_add_host("%s,%s,%s" % (host, user, getpass()))
+            self.run.do_connect()
 
-    destination = settings['output_path']
+        # unique id for this execution of the contest; used to label logs
+        self.contest_run_id = datetime.datetime.now().isoformat()
 
-    # TODO change to use Python functions so that this can run on non-Unix systems
-    print "tar cvf %s %s/*" % (RESULTS_TAR, RESULTS_FOLDER)
-    os.system("cp %s %s" % (RESULTS_TAR, destination))
-    os.system("tar xvf %s " % RESULTS_TAR)
-    os.system("rm  -rf %s/%s" % (destination, RESULTS_FOLDER))
-    # os.system( "chmod 755  %s/*" % RESULTS_FOLDER )
-    # os.system( "chmod 755  %s" % RESULTS_FOLDER )
-    os.system("mv %s %s/%s" % (RESULTS_FOLDER, destination, RESULTS_FOLDER))
+        # path that contains files that make-up a html navigable web folder
+        self.www_path = output_path
 
-    output = "<html><body><h1>Results Pacman %s Tournament by Date</h1>" % settings['organizer']
-    for root, dirs, files in os.walk(destination):
-        for d in dirs:
-            output += "<a href=\"%s/%s/results.html\"> %s  </a> <br>" % (settings['results_web_page'], d, d)
-    output += "<br></body></html>"
-    print "%s/results.html" % destination
-    print output
-    out_stream = open("%s/results.html" % destination, "w")
-    out_stream.writelines(output)
-    out_stream.close()
+        # just used in html as a readable string
+        self.organizer = organizer
 
-    # <a href="http://ww2.cs.mu.oz.au/482/tournament/layouts.tar.bz2"> Layouts used. Each day 2 new layouts are used  </a> <br>
+        # a link to a server serving the results file online; again, just used as a string ti be printed
+        self.results_web_page = results_web_page
 
+        # the name of the folder where the contest environment will be setup; there is not much reason to have it variable, but...
+        self.contest_code_name = contest_code_name
 
-    print "%s  Uploaded!" % RESULTS_TAR
+        # a flag indicating whether to compress the logs
+        self.compress_logs = compress_logs
 
-
-def parse_result(lines, n1, n2):
-    """
-    Parses the result log of a match.
-    :param lines: an iterator of the lines of the result log
-    :param n1: name of Red team
-    :param n2: name of Blue team
-    :return: a tuple containing score, winner, loser and a flag signalling whether there was a bug
-    """
-    score = 0
-    winner = None
-    loser = None
-    bug = False
-    t1_errors = 0
-    t2_errors = 0
-    for line in lines:
-        if line.find("wins by") != -1:
-            score = abs(int(line.split('wins by')[1].split('points')[0]))
-            if line.find('Red') != -1:
-                winner = n1
-                loser = n2
-            elif line.find('Blue') != -1:
-                winner = n2
-                loser = n1
-        if line.find("The Blue team has returned at least ") != -1:
-            score = abs(int(line.split('The Blue team has returned at least ')[1].split(' ')[0]))
-            winner = n2
-            loser = n1
-        elif line.find("The Red team has returned at least ") != -1:
-            score = abs(int(line.split('The Red team has returned at least ')[1].split(' ')[0]))
-            winner = n1
-            loser = n2
-        elif line.find("Tie Game") != -1:
-            winner = None
-            loser = None
-        elif line.find("agent crashed") != -1:
-            bug = True
-            if line.find("Red agent crashed") != -1:
-                t1_errors += 1
-            if line.find("Blue agent crashed") != -1:
-                t2_errors += 1
-    return score, winner, loser, bug, t1_errors, t2_errors
+        # name and full path of the directory where the results of this execution will be stored
+        self.results_dir_name = 'results_{run_id}'.format(run_id=self.contest_run_id)
+        self.results_dir_full_path = os.path.join(self.RESULTS_DIR, self.results_dir_name)
+        self.www_dir_full_path = os.path.join(self.WWW_DIR, self.results_dir_name)
 
 
-def generate_output(date_str, team_stats, games):
-    # TODO fill documentation
-    """
-    Generates the output HTML of the report of the tournament
-    :param date_str: 
-    :param team_stats: 
-    :param games: 
-    :return: 
-    """
-    output = "<html><body><h1>Date Tournament %s </h1><br><table border=\"1\">" % date_str
-    output += "<tr><th>Team</th><th>Points</th><th>Win</th><th>Tie</th><th>Lost</th><th>FAILED</th><th>Score Balance</th></tr>"
-    for key, (points, wins, draws, loses, errors, sum_score) in sorted(team_stats.items(), key=lambda (k, v): v[0], reverse=True):
-        output += "<tr><td align=\"center\">%s</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\" >%d</td></tr>" % (
-        key, points, wins, draws, loses, errors, sum_score)
-    output += "</table>"
+        if not os.path.exists(self.CONTEST_ZIP_FILE):
+            logging.error('File %s could not be found. Aborting.' % self.CONTEST_ZIP_FILE)
+            sys.exit(1)
 
-    output += "<br><br> <h2>Games</h2><br><a href=\"recorded_games_%s.tar\">DOWNLOAD RECORDED GAMES!</a><br><table border=\"1\">" % date_str
-    output += "<tr><th>Team1</th><th>Team2</th><th>Layout</th><th>Score</th><th>Winner</th></tr>"
-    for (n1, n2, layout, score, winner) in games:
-        output += "<tr><td align=\"center\">"
-        if winner == n1:
-            output += "<b>%s</b>" % n1
+        if not os.path.exists(self.LAYOUTS_ZIP_FILE):
+            logging.error('File %s could not be found. Aborting.' % self.LAYOUTS_ZIP_FILE)
+            sys.exit(1)
+
+        # Setup Pacman CTF environment by extracting it from a clean zip file
+        self.layouts = None
+        self._prepare_platform(self.CONTEST_ZIP_FILE, self.LAYOUTS_ZIP_FILE, contest_code_name)
+
+        # Setup all of the teams
+        teams_dir = os.path.join(contest_code_name, self.TEAMS_SUBDIR)
+        shutil.rmtree(teams_dir)
+        os.makedirs(teams_dir)
+        self.teams = []
+        for team_zip in os.listdir(teams_root):
+            if team_zip.endswith(".zip"):
+                team_zip_path = os.path.join(teams_root, team_zip)
+                self._setup_team(team_zip_path, teams_dir, add_ff_binary=True)
+
+        # Add the staff team, if necessary
+        if include_staff_team:
+            if not os.path.exists(self.STAFF_TEAM_ZIP_FILE):
+                logging.error('File %s could not be found. Aborting.' % self.STAFF_TEAM_ZIP_FILE)
+                sys.exit(1)
+            self._setup_team(self.STAFF_TEAM_ZIP_FILE, teams_dir, add_ff_binary=True)
+
+        self.ladder = {n: [] for n, _ in self.teams}
+        self.games = []
+        self.errors = {n: 0 for n, _ in self.teams}
+        self.team_stats = {n: 0 for n, _ in self.teams}
+
+
+
+    def _close(self):
+        self.run.do_close()
+
+
+    def _generate_run_html(self):
+        """
+        Generates the html with the results of this run. The html is saved in www/results_<run_id>/results.html.
+        """
+        os.makedirs(self.www_dir_full_path)
+
+        # tar cvf www/results_<run_id>/recorded_games_<run_id>.tar results/results_<run_id>/*
+        tar_full_path = os.path.join(self.www_dir_full_path, 'recorded_games_%s.tar' % self.contest_run_id)
+
+        with tarfile.open(tar_full_path, 'w:gz' if self.compress_logs else 'w') as tar:
+            tar.add(self.results_dir_full_path, arcname='/')
+
+        # generate html for this run
+        self._calculate_team_stats()
+        run_html = self._generate_output()
+        # output --> www/results_<run_id>/results.html
+        with open(os.path.join(self.www_dir_full_path, 'results.html'), "w") as f:
+            print(run_html, file=f)
+
+        shutil.rmtree(self.results_dir_full_path)
+
+
+    def _generate_main_html(self):
+        """
+        Generates the html that points at the html files of all the runs.
+        The html is saved in www/results.html.
+        """
+        # regenerate main html
+        main_html = "<html><body><h1>Results Pacman %s Tournament by Date</h1>" % self.organizer
+        for root, dirs, files in os.walk(self.www_path):
+            for d in dirs:
+                main_html += "<a href=\"%s/%s/results.html\"> %s  </a> <br>" % (self.results_web_page, d, d)
+        main_html += "<br></body></html>"
+        with open(os.path.join(self.www_path, 'results.html'), "w") as f:
+            print(main_html, file=f)
+
+
+    def update_www(self):
+        """
+        (Re)Generates the html for this run and updates the main html.
+        :return: 
+        """
+        self._generate_run_html()
+        self._generate_main_html()
+
+    
+    def _parse_result(self, lines, red_team_name, blue_team_name):
+        """
+        Parses the result log of a match.
+        :param lines: an iterator of the lines of the result log
+        :param red_team_name: name of Red team
+        :param blue_team_name: name of Blue team
+        :return: a tuple containing score, winner, loser and a flag signalling whether there was a bug
+        """
+        score = 0
+        winner = None
+        loser = None
+        bug = False
+        for line in lines:
+            if line.find("wins by") != -1:
+                score = abs(int(line.split('wins by')[1].split('points')[0]))
+                if line.find('Red') != -1:
+                    winner = red_team_name
+                    loser = blue_team_name
+                elif line.find('Blue') != -1:
+                    winner = blue_team_name
+                    loser = red_team_name
+            if line.find("The Blue team has returned at least ") != -1:
+                score = abs(int(line.split('The Blue team has returned at least ')[1].split(' ')[0]))
+                winner = blue_team_name
+                loser = red_team_name
+            elif line.find("The Red team has returned at least ") != -1:
+                score = abs(int(line.split('The Red team has returned at least ')[1].split(' ')[0]))
+                winner = red_team_name
+                loser = blue_team_name
+            elif line.find("Tie Game") != -1:
+                winner = None
+                loser = None
+            elif line.find("agent crashed") != -1:
+                bug = True
+                if line.find("Red agent crashed") != -1:
+                    self.errors[red_team_name] += 1
+                if line.find("Blue agent crashed") != -1:
+                    self.errors[blue_team_name] += 1
+        return score, winner, loser, bug
+    
+    
+    def _generate_output(self):
+        """
+        Generates the output HTML of the report of the tournament and returns it.
+        """
+        output = "<html><body><h1>Date Tournament %s </h1><br><table border=\"1\">" % self.contest_run_id
+        output += "<tr><th>Team</th><th>Points</th><th>Win</th><th>Tie</th><th>Lost</th><th>FAILED</th><th>Score Balance</th></tr>"
+        for key, (points, wins, draws, loses, errors, sum_score) in sorted(self.team_stats.items(), key=lambda (k, v): v[0], reverse=True):
+            output += "<tr><td align=\"center\">%s</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\" >%d</td></tr>" % (
+            key, points, wins, draws, loses, errors, sum_score)
+        output += "</table>"
+    
+        output += "<br><br> <h2>Games</h2><br><a href=\"recorded_games_%s.tar\">DOWNLOAD RECORDED GAMES!</a><br><table border=\"1\">" % self.contest_run_id
+        output += "<tr><th>Team1</th><th>Team2</th><th>Layout</th><th>Score</th><th>Winner</th></tr>"
+        for (n1, n2, layout, score, winner) in self.games:
+            output += "<tr><td align=\"center\">"
+            if winner == n1:
+                output += "<b>%s</b>" % n1
+            else:
+                output += "%s" % n1
+            output += "</td><td align=\"center\">"
+            if winner == n2:
+                output += "<b>%s</b>" % n2
+            else:
+                output += "%s" % n2
+            if score == 9999:
+                output += "</td><td align=\"center\">%s</td><td align=\"center\" >--</td><td align=\"center\"><b>FAILED</b></td></tr>" % layout
+            else:
+                output += "</td><td align=\"center\">%s</td><td align=\"center\" >%d</td><td align=\"center\"><b>%s</b></td></tr>" % (layout, score, winner)
+    
+        output += "</table></body></html>"
+
+        return output
+    
+    
+    def _prepare_platform(self, contest_zip_file_path, layouts_zip_file_path, destination):
+        """
+        Cleans the given destination directory and prepares a fresh setup to execute a Pacman CTF game within.
+        Information on the layouts are saved in the member variable layouts.
+        
+        :param contest_zip_file_path: the zip file containing the necessary files for the contest (no sub-folder).
+        :param layouts_zip_file_path: the zip file containing the layouts to be used for the contest (in the root).
+        :param destination: the directory in which to setup the environment.
+        :returns: a list of all the layouts
+        """
+        if os.path.exists(destination):
+            shutil.rmtree(destination)
+        os.makedirs(destination)
+        contest_zip_file = zipfile.ZipFile(contest_zip_file_path)
+        contest_zip_file.extractall(destination)
+        layouts_zip_file = zipfile.ZipFile(layouts_zip_file_path)
+        layouts_zip_file.extractall(destination)
+        self.layouts = [file_in_zip[:-4] for file_in_zip in layouts_zip_file.namelist()]
+    
+
+    def _setup_team(self, zip_file, destination, add_ff_binary=True):
+        """
+        Extracts team.py from the team zip file into a directory named after the zip file inside the given destination.
+        Information on the teams are saved in the member variable teams.
+        
+        :param zip_file: the zip file of the team.
+        :param destination: the directory where the team directory is to be created.
+        :param add_ff_binary: whether to add the ff binary to the team folder.
+        :raises KeyError if the zip file contains multiple copies of team.py, non of which is in the root.
+        """
+        student_zip_file = zipfile.ZipFile(zip_file)
+        team_name = os.path.basename(zip_file)[:-4]
+        team_destination_dir = os.path.join(destination, team_name)
+        desired_file = 'team.py'
+        try:
+            student_zip_file.extract(desired_file, team_destination_dir)
+        except KeyError:
+            matching = [file_in_zip for file_in_zip in student_zip_file.namelist() if os.path.basename(file_in_zip) == desired_file]
+            if len(matching) == 1:
+                # unzip the found match file and move it to the right place in the temporal directory
+                student_zip_file.extract(matching[0], team_destination_dir)
+                os.remove(os.path.join(team_destination_dir, desired_file))
+                shutil.move(os.path.join(team_destination_dir, matching[0]), team_destination_dir)
+            elif len(matching) > 1:
+                logging.error('File %s contains multiple copies of some of %s.' % (student_zip_file, desired_file))
+                raise
+    
+        if add_ff_binary:
+            shutil.copy('ff', team_destination_dir)
+    
+        agent_factory = os.path.join(team_destination_dir, desired_file)
+        self.teams.append((team_name, agent_factory))
+    
+    
+    def _run_match(self, red_team, blue_team, layout):
+
+        (red_team_name, red_team_agent_factory) = red_team
+        (blue_team_name, blue_team_agent_factory) = blue_team
+        print('Running game %s vs %s (layout: %s).' % (red_team_name, blue_team_name, layout), end='')
+
+        command = 'python capture.py -r {red_team_agent_factory} -b {blue_team_agent_factory} -l {layout} -i {steps} -q --record'.format(
+                red_team_agent_factory=red_team_agent_factory, blue_team_agent_factory=blue_team_agent_factory,
+                layout=layout, steps=self.MAX_STEPS)
+        logging.info(command)
+        exit_code, output = commands.getstatusoutput(command)
+
+        log_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.log'.format(
+            layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
+        # results/results_<run_id>/{red_team_name}_vs_{blue_team_name}_{layout}.log
+        with open(os.path.join(self.results_dir_full_path, log_file_name), 'w') as f:
+            print(output, file=f)
+
+        if exit_code == 0:
+            print(' Successful. Output in {output_file}.'.format(output_file=log_file_name))
         else:
-            output += "%s" % n1
-        output += "</td><td align=\"center\">"
-        if winner == n2:
-            output += "<b>%s</b>" % n2
-        else:
-            output += "%s" % n2
-        if score == 9999:
-            output += "</td><td align=\"center\">%s</td><td align=\"center\" >--</td><td align=\"center\"><b>FAILED</b></td></tr>" % layout
-        else:
-            output += "</td><td align=\"center\">%s</td><td align=\"center\" >%d</td><td align=\"center\"><b>%s</b></td></tr>" % (layout, score, winner)
+            print(' Failed. Output in {output_file}.'.format(output_file=log_file_name))
+    
+        score, winner, loser, bug = self._parse_result(output, red_team_name, blue_team_name)
 
-    output += "</table></body></html>"
-    return output
+
+        if not bug:
+            if winner is None:
+                self.ladder[red_team_name].append(score)
+                self.ladder[blue_team_name].append(score)
+            else:
+                self.ladder[winner].append(score)
+                self.ladder[loser].append(-score)
+
+        replay_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.replay'.format(
+            layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
+        shutil.move(os.path.join(self.contest_code_name, glob.glob('replay*')[0]),
+        # results/results_<run_id>/{red_team_name}_vs_{blue_team_name}_{layout}.replay
+                    os.path.join(self.results_dir_full_path, replay_file_name))
+        if not bug:
+            self.games.append((red_team_name, blue_team_name, layout, score, winner))
+        else:
+            self.games.append((red_team_name, blue_team_name, layout, 9999, winner))
+
+
+    def run_contest(self):
+
+        os.makedirs(self.results_dir_full_path)
+
+        if len(self.teams) <= 1:
+            output = "<html><body><h1>Date Tournament %s <br> 0 Teams participated!!</h1>" % self.contest_run_id
+            output += "</body></html>"
+            out_stream = open("results_%s/results.html" % self.contest_run_id, "w")
+            out_stream.writelines(output)
+            out_stream.close()
+            print('results_%s/results.html summary generated!' % self.contest_run_id)
+
+        for red_team, blue_team in product(self.teams, self.teams):
+            for layout in self.layouts:
+                self._run_match(red_team, blue_team, layout)
+
+
+    def _calculate_team_stats(self):
+        """
+        Compute ladder and create html with results. The html is saved in results_<run_id>/results.html.
+        """
+        for team, scores in iteritems(self.ladder):
+
+            wins = 0
+            draws = 0
+            loses = 0
+            sum_score = 0
+            for s in scores:
+                if s > 0:
+                    wins += 1
+                elif s == 0:
+                    draws += 1
+                else:
+                    loses += 1
+                sum_score += s
+
+            self.team_stats[team] = [((wins * 3) + draws), wins, draws, loses, self.errors[team], sum_score]
+
 
 if __name__ == '__main__':
     settings = load_settings()
-
-    run = RunCommand()
-    run.do_add_host("%s,%s,%s" % (settings['host'], settings['user'], getpass()))
-    run.do_connect()
-
-    date_str = datetime.date.today().isoformat()
-
-    # Tar the submitted teams and download to local machine
-    # TODO should this commented code be removed?
-    # CHANGE STORAGE2 FOR LOCAL     ###########run.do_run( "tar cvf teams_%s.tar  /storage2/beta/users/nlipovetzky/test_teams/* "%(today.year,today.month,today.day) )
-
-    # run.do_run( "tar cvf teams_%s.tar  /local/submit/submit/COMP90054/2/* "%(today.year,today.month,today.day) )
-
-    # run.do_get( "teams_%s.tar"%(today.year,today.month,today.day) )
-
-    # os.system("rm -rf storage2/")
-    # os.system("rm -rf local/")
-
-    # os.system("tar xvf teams_%s.tar"%(today.year,today.month,today.day) )
-
-    '''
-    ' unzip each team, copy it to teams folder, retrieve TeamName and AgentFactory from each config.py file, 
-    ' and copy ff to each team folder
-    '''
-    # Init teams environment
-    teams = []
-    os.system("rm -rf teams/")
-    os.system("mkdir teams")
-
-    # CHANGE STORAGE2 FOR LOCAL
-    for team_zip in os.listdir(settings['teams_root']):
-        full_path = os.path.join(settings['teams_root'], team_zip)
-        if full_path.endswith(".zip"):
-            # Unzip team in the teams folder
-            os.system("cp -rf %s teams/." % full_path)
-            print "cp -rf %s teams/." % full_path
-            os.system("unzip teams/%s -d teams/" % team_zip)
-            print "unzip teams/%s -d teams/" % team_zip
-            os.system("rm teams/%s" % team_zip)
-            print "rm teams/%s" % team_zip
-            folder_name = team_zip.split[:-4]
-
-            # Copy ff in the team directory
-            if os.path.isfile("teams/%s/ff" % folder_name) is False:
-                os.system("cp staff_team/ff teams/%s/." % folder_name)
-                print "cp staff_team/ff teams/%s/." % folder_name
-
-            team_name = os.path.basename(full_path)[:-4]
-            agent_factory = 'teams/' + team_name + '/team.py'
-
-            print "teams/%s/team.py" % team_name
-            if os.path.isfile("teams/%s/team.py" % team_name) is False:
-                print "team.py missing!"
-                exit(1)
-
-            teams.append((team_name, agent_factory))
-
-
-
-    if settings['include_staff_team']:
-        teams.append(("staff_team", "teams/staff_team/team.py"))
-    os.system("cp  -rf staff_team teams/.")
-    os.system("rm -rf %s/teams/" % settings['contest_code_name'])
-    os.system("cp  -rf teams %s/." % settings['contest_code_name'])
-    print "cp  -rf %s_tournament_scripts/teams %s/." % (settings['organizer'], settings['contest_code_name'])
-
-    '''
-    ' Move to folder where pacman code is located (assume) is at '..'
-    ' prepare the folder for the results, logs and the html
-    '''
-
-    print "\n\n", teams, "\n\n"
-
-    os.system("rm -rf results_%s" % date_str)
-    os.system("mkdir results_%s" % date_str)
-
-    if len(teams) <= 1:
-        output = "<html><body><h1>Date Tournament %s <br> 0 Teams participated!!</h1>" % date_str
-        output += "</body></html>"
-        out_stream = open("results_%s/results.html" % date_str, "w")
-        out_stream.writelines(output)
-        out_stream.close()
-        print "results_%s/results.html summary generated!" % date_str
-        upload_files(date_str, settings)
-
-        run.do_close()
-        exit(0)
-
-    ladder = {n: [] for n, _ in teams}
-    games = []
-    errors = {n: 0 for n, _ in teams}
-    '''
-    ' captureLayouts sets how many layouts are going to be used at the tournament
-    ' steps is the length of each game
-    ' the tournament plays each team twice against each other, once as red team, once as blue
-    '''
-
-    os.chdir(settings['contest_code_name'])
-
-    print os.system('pwd')
-    captureLayouts = 4
-    steps = 1200
-    #    captureLayouts = 4
-    #    steps = 3000
-    for red_team, blue_team in product(teams, teams):
-        for g in xrange(1, captureLayouts):
-            (n1, a1) = red_team
-            (n2, a2) = blue_team
-            print "game %s vs %s" % (n1, n2)
-            print "python capture.py -r %s -b %s -l contest1%dCapture -i %d -q --record" % (a1, a2, g, steps)
-            os.system("python capture.py -r %s -b %s -l contest1%dCapture -i %d -q --record > ../results_%s/%s_vs_%s_contest1%dCapture_recorded.log" % (
-                a1, a2, g, steps, date_str, n1, n2, g))
-            in_stream = open("../results_%s/%s_vs_%s_contest1%dCapture_recorded.log" % (date_str, n1, n2, g), "r")
-            lines = in_stream.readlines()
-            in_stream.close()
-
-            score, winner, loser, bug, t1_errors, t2_errors = parse_result(lines, n1, n2)
-
-            errors[n1] += t1_errors
-            errors[n2] += t2_errors
-
-            if winner is None and bug is False:
-                ladder[n1].append(score)
-                ladder[n2].append(score)
-            elif bug is False:
-                ladder[winner].append(score)
-                ladder[loser].append(-score)
-
-            os.system("mv replay* ../results_%s/%s_vs_%s_contest1%dCapture_replay" % (
-            date_str, n1, n2, g))
-            if bug is False:
-                games.append((n1, n2, "contest1%dCapture" % g, score, winner))
-            else:
-                games.append((n1, n2, "contest1%dCapture" % g, 9999, winner))
-
-    team_stats = dict()
-
-    os.chdir('..')
-
-    '''
-    ' Compute ladder and create html with results
-    '''
-    for team, scores in ladder.iteritems():
-
-        wins = 0
-        draws = 0
-        loses = 0
-        sum_score = 0
-        for s in scores:
-            if s > 0:
-                wins += 1
-            elif s == 0:
-                draws += 1
-            else:
-                loses += 1
-            sum_score += s
-
-        team_stats[team] = [((wins * 3) + draws), wins, draws, loses, errors[team], sum_score]
-
-    output = generate_output(date_str, team_stats, games)
-    print "results_%s/results.html summary generated!" % date_str
-
-    out_stream = open("results_%s/results.html" % date_str, "w")
-    out_stream.writelines(output)
-    out_stream.close()
-
-
-    # Upload files to server
-    upload_files(date_str, settings)
-
-    run.do_close()
+    runner = ContestRunner(**settings)
+    runner.run_contest()
+    runner.update_www()
