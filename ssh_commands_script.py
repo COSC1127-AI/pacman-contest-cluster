@@ -134,7 +134,7 @@ def load_settings():
         sys.exit(1)
 
     with open(CONFIG_PATH, 'w') as f:
-        json.load(f, settings)
+        json.dump(settings, f, sort_keys=True, indent=4, separators=(',', ': '))
 
     return settings
 
