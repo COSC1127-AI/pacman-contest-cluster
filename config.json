@@ -1,7 +1,7 @@
 {
     "compress_logs": true,
-    "include_staff_team": true,
+    "include_staff_team": false,
     "organizer": "RMIT University",
-    "teams_root": "teams/",
+    "teams_root": "teams",
     "user": "e12345"
 }
