@@ -41,6 +41,8 @@ except:
 
 if missing_packages:
     print('Some packages are missing. Please, run `pip install %s`' % ' '.join(missing_packages))
+    if 'paramiko' in missing_packages:
+        print('Note that you may need to install libssl-dev with `sudo apt-get install libssl-dev`')
     sys.exit(1)
 
 # ----------------------------------------------------------------------------------------------------------------------
