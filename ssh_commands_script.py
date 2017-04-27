@@ -115,9 +115,9 @@ def load_settings():
     if args.compress_logs:
         settings['compress_logs'] = args.compress_logs
     if args.include_staff_team:
-        include_staff_team = args.include_staff_team
+        settings['include_staff_team'] = args.include_staff_team
     if args.teams_root:
-        teams_root = args.teams_root
+        settings['teams_root'] = args.teams_root
 
 
     missing_parameters = {'organizer'} - set(settings.keys())
@@ -258,10 +258,10 @@ class ContestRunner:
         self._generate_main_html()
 
     
-    def _parse_result(self, lines, red_team_name, blue_team_name):
+    def _parse_result(self, output, red_team_name, blue_team_name):
         """
         Parses the result log of a match.
-        :param lines: an iterator of the lines of the result log
+        :param output: an iterator of the lines of the result log
         :param red_team_name: name of Red team
         :param blue_team_name: name of Blue team
         :return: a tuple containing score, winner, loser and a flag signalling whether there was a bug
@@ -270,7 +270,7 @@ class ContestRunner:
         winner = None
         loser = None
         bug = False
-        for line in lines:
+        for line in output.splitlines():
             if line.find("wins by") != -1:
                 score = abs(int(line.split('wins by')[1].split('points')[0]))
                 if line.find('Red') != -1:
