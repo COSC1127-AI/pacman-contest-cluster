@@ -432,7 +432,7 @@ class ContestRunner:
         if len(self.teams) <= 1:
             output = "<html><body><h1>Date Tournament %s <br> 0 Teams participated!!</h1>" % self.contest_run_id
             output += "</body></html>"
-            with open("results_%s/results.html" % self.contest_run_id, "w") as f:
+            with open(self.RESULTS_DIR + "/results_%s/results.html" % self.contest_run_id, "w") as f:
                 print(output, file=f)
 
         for red_team, blue_team in combinations(self.teams, r=2):
