@@ -11,23 +11,7 @@ CONTACT: Sebastian Sardina (ssardina@gmail.com)
 * Python >=2.7
 * python-future
 
+* Each teams is a .zip file; they should all go in a directory (e.g., teams/)
 
-### How do I get set up? ###
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
 
-### Contribution guidelines ###
-
-* Writing tests
-* Code review
-* Other guidelines
-
-### Who do I talk to? ###
-
-* Repo owner or admin
-* Other community or team contact
