@@ -242,7 +242,7 @@ class ContestRunner:
         # regenerate main html
         main_html = "<html><body><h1>Results Pacman %s Tournament by Date</h1>" % self.organizer
         for root, dirs, files in os.walk(self.www_path):
-            for d in dirs:
+            for d in sorted(dirs):
                 main_html += "<a href=\"%s/results.html\"> %s  </a> <br>" % (d, d)
         main_html += "<br></body></html>"
         with open(os.path.join(self.www_path, 'results.html'), "w") as f:
