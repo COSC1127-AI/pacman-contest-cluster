@@ -304,30 +304,35 @@ class ContestRunner:
         Generates the output HTML of the report of the tournament and returns it.
         """
         output = "<html><body><h1>Date Tournament %s </h1><br><table border=\"1\">" % self.contest_run_id
-        output += "<tr><th>Team</th><th>Points</th><th>Win</th><th>Tie</th><th>Lost</th><th>FAILED</th><th>Score Balance</th></tr>"
-        for key, (points, wins, draws, loses, errors, sum_score) in sorted(self.team_stats.items(), key=lambda (k, v): v[0], reverse=True):
-            output += "<tr><td align=\"center\">%s</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\" >%d</td></tr>" % (
-            key, points, wins, draws, loses, errors, sum_score)
-        output += "</table>"
-    
-        output += "<br><br> <h2>Games</h2><br><a href=\"recorded_games_%s.tar\">DOWNLOAD RECORDED GAMES!</a><br><table border=\"1\">" % self.contest_run_id
-        output += "<tr><th>Team1</th><th>Team2</th><th>Layout</th><th>Score</th><th>Winner</th></tr>"
-        for (n1, n2, layout, score, winner) in self.games:
-            output += "<tr><td align=\"center\">"
-            if winner == n1:
-                output += "<b>%s</b>" % n1
-            else:
-                output += "%s" % n1
-            output += "</td><td align=\"center\">"
-            if winner == n2:
-                output += "<b>%s</b>" % n2
-            else:
-                output += "%s" % n2
-            if score == 9999:
-                output += "</td><td align=\"center\">%s</td><td align=\"center\" >--</td><td align=\"center\"><b>FAILED</b></td></tr>" % layout
-            else:
-                output += "</td><td align=\"center\">%s</td><td align=\"center\" >%d</td><td align=\"center\"><b>%s</b></td></tr>" % (layout, score, winner)
-    
+        if len(self.teams) == 0:
+            output += "No teams participated, thus no match was run."
+        elif len(self.teams) == 1:
+            output += "Only one team participated, thus no match was run."
+        else:
+            output += "<tr><th>Team</th><th>Points</th><th>Win</th><th>Tie</th><th>Lost</th><th>FAILED</th><th>Score Balance</th></tr>"
+            for key, (points, wins, draws, loses, errors, sum_score) in sorted(self.team_stats.items(), key=lambda (k, v): v[0], reverse=True):
+                output += "<tr><td align=\"center\">%s</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\" >%d</td></tr>" % (
+                key, points, wins, draws, loses, errors, sum_score)
+            output += "</table>"
+
+            output += "<br><br> <h2>Games</h2><br><a href=\"recorded_games_%s.tar\">DOWNLOAD RECORDED GAMES!</a><br><table border=\"1\">" % self.contest_run_id
+            output += "<tr><th>Team1</th><th>Team2</th><th>Layout</th><th>Score</th><th>Winner</th></tr>"
+            for (n1, n2, layout, score, winner) in self.games:
+                output += "<tr><td align=\"center\">"
+                if winner == n1:
+                    output += "<b>%s</b>" % n1
+                else:
+                    output += "%s" % n1
+                output += "</td><td align=\"center\">"
+                if winner == n2:
+                    output += "<b>%s</b>" % n2
+                else:
+                    output += "%s" % n2
+                if score == 9999:
+                    output += "</td><td align=\"center\">%s</td><td align=\"center\" >--</td><td align=\"center\"><b>FAILED</b></td></tr>" % layout
+                else:
+                    output += "</td><td align=\"center\">%s</td><td align=\"center\" >%d</td><td align=\"center\"><b>%s</b></td></tr>" % (layout, score, winner)
+
         output += "</table></body></html>"
 
         return output
@@ -428,12 +433,6 @@ class ContestRunner:
     def run_contest(self):
 
         os.makedirs(self.results_dir_full_path)
-
-        if len(self.teams) <= 1:
-            output = "<html><body><h1>Date Tournament %s <br> 0 Teams participated!!</h1>" % self.contest_run_id
-            output += "</body></html>"
-            with open(self.RESULTS_DIR + "/results_%s/results.html" % self.contest_run_id, "w") as f:
-                print(output, file=f)
 
         for red_team, blue_team in combinations(self.teams, r=2):
             for layout in self.layouts:
