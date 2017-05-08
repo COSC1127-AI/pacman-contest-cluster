@@ -188,6 +188,7 @@ class ContestRunner:
         self.results_dir_full_path = os.path.join(self.RESULTS_DIR, self.results_dir_name)
         self.www_dir_full_path = os.path.join(self.WWW_DIR, self.results_dir_name)
 
+
         if not os.path.exists(self.CONTEST_ZIP_FILE):
             logging.error('File %s could not be found. Aborting.' % self.CONTEST_ZIP_FILE)
             sys.exit(1)
