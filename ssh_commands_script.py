@@ -110,11 +110,11 @@ def load_settings():
         '--max-steps',
         help='the limit on the number of steps for each game (default: 1200)',
         default=1200,
-        action='store_true'
     )
     parser.add_argument(
         '--team-names-file',
         help='the path of the csv that contains (at least) two columns headed "STUDENT_ID" and "TEAM_NAME", used to match submissions with teams',
+        required=True,
         default='team_names.csv'
     )
     args = parser.parse_args()
@@ -187,6 +187,7 @@ class ContestRunner:
         self.results_dir_name = 'results_{run_id}'.format(run_id=self.contest_run_id)
         self.results_dir_full_path = os.path.join(self.RESULTS_DIR, self.results_dir_name)
         self.www_dir_full_path = os.path.join(self.WWW_DIR, self.results_dir_name)
+
 
         if not os.path.exists(self.CONTEST_ZIP_FILE):
             logging.error('File %s could not be found. Aborting.' % self.CONTEST_ZIP_FILE)
