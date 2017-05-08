@@ -104,6 +104,13 @@ def load_settings():
         help='if passed, the logs will be compressed in a tar.gz file; otherwise, they will just be archived in a tar file',
         action='store_true'
     )
+    parser.add_argument(
+        '--max-steps',
+        type=int,
+        default=1200,
+        help='the limit on the number of steps for each game (default: 1200)',
+        action='store_true'
+    )
     args = parser.parse_args()
 
     if args.organizer:
@@ -118,6 +125,8 @@ def load_settings():
         settings['include_staff_team'] = args.include_staff_team
     if args.teams_root:
         settings['teams_root'] = args.teams_root
+    if args.max_steps:
+        settings['max_steps'] = args.max_steps
 
 
     missing_parameters = {'organizer'} - set(settings.keys())
@@ -142,15 +151,16 @@ class ContestRunner:
     TEAMS_SUBDIR = 'teams'
     RESULTS_DIR = 'results'
     WWW_DIR = 'www'
-    MAX_STEPS = 1200
     
-    def __init__(self, teams_root, include_staff_team, organizer, compress_logs,
+    def __init__(self, teams_root, include_staff_team, organizer, compress_logs, max_steps,
                  host=None, user=None):
 
         self.run = RunCommand()
         if host is not None:
             self.run.do_add_host("%s,%s,%s" % (host, user, getpass()))
             self.run.do_connect()
+
+        self.max_steps = max_steps
 
         # unique id for this execution of the contest; used to label logs
         self.contest_run_id = datetime.datetime.now().isoformat()
@@ -390,7 +400,7 @@ class ContestRunner:
 
         command = 'python capture.py -r {red_team_agent_factory} -b {blue_team_agent_factory} -l {layout} -i {steps} -q --record'.format(
                 red_team_agent_factory=red_team_agent_factory, blue_team_agent_factory=blue_team_agent_factory,
-                layout=layout, steps=self.MAX_STEPS)
+                layout=layout, steps=self.max_steps)
         logging.info(command)
         exit_code, output = commands.getstatusoutput('cd %s && %s' % (self.ENV_DIR, command))
 
