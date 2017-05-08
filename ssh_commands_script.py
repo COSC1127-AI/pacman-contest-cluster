@@ -10,6 +10,7 @@ from future.utils import iteritems
 # Import standard stuff
 
 import os
+import re
 import sys
 import datetime
 import argparse
@@ -18,6 +19,7 @@ import shutil
 import zipfile
 import logging
 import glob
+import csv
 import tarfile
 # noinspection PyCompatibility
 import commands
@@ -106,10 +108,14 @@ def load_settings():
     )
     parser.add_argument(
         '--max-steps',
-        type=int,
-        default=1200,
         help='the limit on the number of steps for each game (default: 1200)',
+        default=1200,
         action='store_true'
+    )
+    parser.add_argument(
+        '--team-names-file',
+        help='the path of the csv that contains (at least) two columns headed "STUDENT_ID" and "TEAM_NAME", used to match submissions with teams',
+        default='team_names.csv'
     )
     args = parser.parse_args()
 
@@ -127,6 +133,8 @@ def load_settings():
         settings['teams_root'] = args.teams_root
     if args.max_steps:
         settings['max_steps'] = args.max_steps
+    if args.team_names_file:
+        settings['team_names_file'] = args.team_names_file
 
 
     missing_parameters = {'organizer'} - set(settings.keys())
@@ -151,8 +159,9 @@ class ContestRunner:
     TEAMS_SUBDIR = 'teams'
     RESULTS_DIR = 'results'
     WWW_DIR = 'www'
-    
-    def __init__(self, teams_root, include_staff_team, organizer, compress_logs, max_steps,
+    TEAMS_FILENAME_PATTERN = re.compile(r'^(s\d+)-.+\.zip$')
+
+    def __init__(self, teams_root, include_staff_team, organizer, compress_logs, max_steps, team_names_file,
                  host=None, user=None):
 
         self.run = RunCommand()
@@ -179,7 +188,6 @@ class ContestRunner:
         self.results_dir_full_path = os.path.join(self.RESULTS_DIR, self.results_dir_name)
         self.www_dir_full_path = os.path.join(self.WWW_DIR, self.results_dir_name)
 
-
         if not os.path.exists(self.CONTEST_ZIP_FILE):
             logging.error('File %s could not be found. Aborting.' % self.CONTEST_ZIP_FILE)
             sys.exit(1)
@@ -197,6 +205,9 @@ class ContestRunner:
         if os.path.exists(teams_dir):
             shutil.rmtree(teams_dir)
         os.makedirs(teams_dir)
+
+        self.team_names = self._load_teams(team_names_file)
+
         self.teams = []
         for team_zip in os.listdir(teams_root):
             if team_zip.endswith(".zip"):
@@ -379,7 +390,15 @@ class ContestRunner:
         :raises KeyError if the zip file contains multiple copies of team.py, non of which is in the root.
         """
         student_zip_file = zipfile.ZipFile(zip_file)
-        team_name = os.path.basename(zip_file)[:-4]
+        match = re.match(self.TEAMS_FILENAME_PATTERN, os.path.basename(zip_file))
+        if match:
+            student_id = match.group(1)
+            if student_id in self.team_names:
+                team_name = self.team_names[student_id]
+            else:
+                team_name = os.path.basename(zip_file)[:-4]
+        else:
+            team_name = os.path.basename(zip_file)[:-4]
         team_destination_dir = os.path.join(destination, team_name)
         desired_file = 'team.py'
         student_zip_file.extractall(team_destination_dir)
@@ -469,6 +488,32 @@ class ContestRunner:
                 sum_score += s
 
             self.team_stats[team] = [((wins * 3) + draws), wins, draws, loses, self.errors[team], sum_score]
+
+    @staticmethod
+    def _load_teams(team_names_file):
+        team_names = {}
+        with open(team_names_file, 'r') as f:
+            reader = csv.reader(f, delimiter=',', quotechar='"')
+
+            student_id_col = None
+            team_col = None
+            for row in reader:
+                if student_id_col is None:
+                    student_id_col = row.index('STUDENT_ID')
+                    team_col = row.index('TEAM_NAME')
+
+                student_id = row[student_id_col]
+
+                # couple of controls
+                team_name = row[team_col].replace('/', 'NOT_FUNNY').replace(' ', '_')
+                if team_name == 'staff_team':
+                    print('staff_team is a reserved team name. Skipping.')
+                    continue
+
+                if not student_id or not team_name:
+                    continue
+                team_names[student_id] = team_name
+        return team_names
 
 
 if __name__ == '__main__':
