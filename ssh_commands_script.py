@@ -159,7 +159,7 @@ class ContestRunner:
     TEAMS_SUBDIR = 'teams'
     RESULTS_DIR = 'results'
     WWW_DIR = 'www'
-    TEAMS_FILENAME_PATTERN = re.compile(r'^(s\d+)-.+\.zip$')
+    TEAMS_FILENAME_PATTERN = re.compile(r'^(s\d+)-?.*\.zip$')    # s???????-<extra>.zip
 
     def __init__(self, teams_root, include_staff_team, organizer, compress_logs, max_steps, team_names_file,
                  host=None, user=None):
@@ -207,12 +207,14 @@ class ContestRunner:
             shutil.rmtree(teams_dir)
         os.makedirs(teams_dir)
 
+        # Get all team name mapping from mapping file
         self.team_names = self._load_teams(team_names_file)
-
+        print(self.team_names)
+        # Setup all team direcotries under contest/team subdir for contest (copy content in .zip to team dirs)
         self.teams = []
-        for team_zip in os.listdir(teams_root):
-            if team_zip.endswith(".zip"):
-                team_zip_path = os.path.join(teams_root, team_zip)
+        for submission_zip_file in os.listdir(teams_root):
+            if submission_zip_file.endswith(".zip"):
+                team_zip_path = os.path.join(teams_root, submission_zip_file)
                 self._setup_team(team_zip_path, teams_dir, add_ff_binary=True)
 
         # Add the staff team, if necessary
@@ -382,7 +384,9 @@ class ContestRunner:
 
     def _setup_team(self, zip_file, destination, add_ff_binary=True):
         """
-        Extracts team.py from the team zip file into a directory named after the zip file inside the given destination.
+        Extracts team.py from the team submission zip file into a directory inside contest/teams
+            If the zip file name is listed in team-name mapping, then name directory with team name
+            otherwise name directory after the zip file.
         Information on the teams are saved in the member variable teams.
         
         :param zip_file: the zip file of the team.
@@ -390,7 +394,9 @@ class ContestRunner:
         :param add_ff_binary: whether to add the ff binary to the team folder.
         :raises KeyError if the zip file contains multiple copies of team.py, non of which is in the root.
         """
-        student_zip_file = zipfile.ZipFile(zip_file)
+        submission_zip_file = zipfile.ZipFile(zip_file)
+
+        # Get team name from submission: if in self.team_names mapping, then use mapping; otherwise use filename
         match = re.match(self.TEAMS_FILENAME_PATTERN, os.path.basename(zip_file))
         if match:
             student_id = match.group(1)
@@ -400,9 +406,11 @@ class ContestRunner:
                 team_name = os.path.basename(zip_file)[:-4]
         else:
             team_name = os.path.basename(zip_file)[:-4]
+
+
         team_destination_dir = os.path.join(destination, team_name)
         desired_file = 'team.py'
-        student_zip_file.extractall(team_destination_dir)
+        submission_zip_file.extractall(team_destination_dir)
     
         if add_ff_binary:
             shutil.copy('ff', team_destination_dir)
