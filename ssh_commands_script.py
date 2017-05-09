@@ -25,6 +25,18 @@ import tarfile
 import commands
 from itertools import combinations
 
+try:
+    import iso8601
+except:
+    print('Package iso8601 is not installed. Please, run `pip install iso8601`')
+    sys.exit(1)
+
+try:
+    from pytz import timezone
+except:
+    print('Package pytz is not installed. Please, run `pip install pytz`')
+    sys.exit(1)
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Verify all necessary packages are present
 
@@ -114,8 +126,12 @@ def load_settings():
     parser.add_argument(
         '--team-names-file',
         help='the path of the csv that contains (at least) two columns headed "STUDENT_ID" and "TEAM_NAME", used to match submissions with teams',
-        required=True,
         default='team_names.csv'
+    )
+    parser.add_argument(
+        '--allow-non-registered-students',
+        help='if passed, students without a team are still allowed to participate',
+        action='store_true'
     )
     args = parser.parse_args()
 
@@ -135,6 +151,8 @@ def load_settings():
         settings['max_steps'] = args.max_steps
     if args.team_names_file:
         settings['team_names_file'] = args.team_names_file
+    if args.allow_non_registered_students:
+        settings['allow_non_registered_students'] = args.allow_non_registered_students
 
 
     missing_parameters = {'organizer'} - set(settings.keys())
@@ -159,10 +177,11 @@ class ContestRunner:
     TEAMS_SUBDIR = 'teams'
     RESULTS_DIR = 'results'
     WWW_DIR = 'www'
-    TEAMS_FILENAME_PATTERN = re.compile(r'^(s\d+)-?.*\.zip$')    # s???????-<extra>.zip
+    TIMEZONE = timezone('Australia/Melbourne')
+    TEAMS_FILENAME_PATTERN = re.compile(r'^(s\d+)-(.+)\.zip$')    # s???????-<extra>.zip
 
     def __init__(self, teams_root, include_staff_team, organizer, compress_logs, max_steps, team_names_file,
-                 host=None, user=None):
+                 allow_non_registered_students, host=None, user=None):
 
         self.run = RunCommand()
         if host is not None:
@@ -209,20 +228,22 @@ class ContestRunner:
 
         # Get all team name mapping from mapping file
         self.team_names = self._load_teams(team_names_file)
-        print(self.team_names)
-        # Setup all team direcotries under contest/team subdir for contest (copy content in .zip to team dirs)
+        # Setup all team directories under contest/team subdir for contest (copy content in .zip to team dirs)
         self.teams = []
+        self.submission_times = {}
         for submission_zip_file in os.listdir(teams_root):
             if submission_zip_file.endswith(".zip"):
                 team_zip_path = os.path.join(teams_root, submission_zip_file)
-                self._setup_team(team_zip_path, teams_dir, add_ff_binary=True)
+                self._setup_team(team_zip_path, teams_dir, allow_non_registered_students=allow_non_registered_students)
 
         # Add the staff team, if necessary
         if include_staff_team:
             if not os.path.exists(self.STAFF_TEAM_ZIP_FILE):
                 logging.error('File %s could not be found. Aborting.' % self.STAFF_TEAM_ZIP_FILE)
                 sys.exit(1)
-            self._setup_team(self.STAFF_TEAM_ZIP_FILE, teams_dir, add_ff_binary=True)
+            self._setup_team(self.STAFF_TEAM_ZIP_FILE, teams_dir, ignore_file_name_format=True)
+
+        print(self.teams)
 
         self.ladder = {n: [] for n, _ in self.teams}
         self.games = []
@@ -382,7 +403,7 @@ class ContestRunner:
         self.layouts = [file_in_zip[:-4] for file_in_zip in layouts_zip_file.namelist()]
     
 
-    def _setup_team(self, zip_file, destination, add_ff_binary=True):
+    def _setup_team(self, zip_file, destination, ignore_file_name_format=False, allow_non_registered_students=False):
         """
         Extracts team.py from the team submission zip file into a directory inside contest/teams
             If the zip file name is listed in team-name mapping, then name directory with team name
@@ -391,32 +412,55 @@ class ContestRunner:
         
         :param zip_file: the zip file of the team.
         :param destination: the directory where the team directory is to be created.
-        :param add_ff_binary: whether to add the ff binary to the team folder.
+        :param ignore_file_name_format: if True, an invalid file name format does not cause the team to be ignored.
+        In this case, if the file name truly is not respecting the format, the zip file name (minus the .zip part) is
+        used as team name. If this function is called twice with files having the same name (e.g., if they are in
+        different directories), only the first one is kept.
+        :param allow_non_registered_students: if True, students not appearing in the team_names are still allowed (team
+        name used is the student id).
         :raises KeyError if the zip file contains multiple copies of team.py, non of which is in the root.
         """
         submission_zip_file = zipfile.ZipFile(zip_file)
 
         # Get team name from submission: if in self.team_names mapping, then use mapping; otherwise use filename
         match = re.match(self.TEAMS_FILENAME_PATTERN, os.path.basename(zip_file))
+        submission_time = None
         if match:
             student_id = match.group(1)
             if student_id in self.team_names:
                 team_name = self.team_names[student_id]
+            elif allow_non_registered_students:
+                team_name = student_id
             else:
-                team_name = os.path.basename(zip_file)[:-4]
-        else:
-            team_name = os.path.basename(zip_file)[:-4]
+                print('Student not registered: "%s" (file %s). Skipping' % (student_id, zip_file))
+                return
 
+
+            try:
+                submission_time = iso8601.parse_date(match.group(2)).astimezone(self.TIMEZONE)
+            except iso8601.iso8601.ParseError:
+                if not ignore_file_name_format:
+                    print('Team zip file "%s" name has invalid date format. Skipping' % zip_file)
+                    return
+        else:
+            if not ignore_file_name_format:
+                print('Team zip file "%s" name has invalid name. Skipping' % zip_file)
+                return
+            team_name = os.path.basename(zip_file)[:-4]
 
         team_destination_dir = os.path.join(destination, team_name)
         desired_file = 'team.py'
-        submission_zip_file.extractall(team_destination_dir)
-    
-        if add_ff_binary:
-            shutil.copy('ff', team_destination_dir)
-    
-        agent_factory = os.path.join(self.TEAMS_SUBDIR, team_name, desired_file)
-        self.teams.append((team_name, agent_factory))
+
+        if team_name not in self.submission_times:
+            submission_zip_file.extractall(team_destination_dir)
+            agent_factory = os.path.join(self.TEAMS_SUBDIR, team_name, desired_file)
+            self.teams.append((team_name, agent_factory))
+            self.submission_times[team_name] = submission_time
+        elif submission_time is not None and self.submission_times[team_name] < submission_time:
+            shutil.rmtree(team_destination_dir)
+            submission_zip_file.extractall(team_destination_dir)
+            self.submission_times[team_name] = submission_time
+
     
     
     def _run_match(self, red_team, blue_team, layout):
