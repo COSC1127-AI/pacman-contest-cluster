@@ -80,7 +80,11 @@ def load_settings():
                     'uploaded to a specified server via scp.\n'
                     '\n'
                     'The parameters are saved in config.json, so it is only necessary to pass them the first time or '
-                    'if they have to be updated.')
+                    'if they have to be updated.\n'
+                    '\n'
+                    'The script was developed for RMIT COSC1125/1127 AI course in 2017 (A/Prof. Sebastian Sardina), '
+                    'and is based on an original script from Dr. Nir Lipovetzky.'
+        )
 
     parser.add_argument(
         '--config-file',
@@ -109,7 +113,8 @@ def load_settings():
     parser.add_argument(
         '--teams-root',
         default='teams',
-        help='directory containing the zip files of the teams'
+        help='directory containing the zip files of the teams. Files have to be of the form s<student no>_TIMESTAMP.zip;'
+             ' for example s9999999_2017-05-13T20:32:43.342000+10:00.zip'
     )
     parser.add_argument(
         '--include-staff-team',
@@ -180,7 +185,7 @@ def load_settings():
     # TODO: maybe this is not necessary anmore as everything is set already above by defaut (except user)
     missing_parameters = {'organizer'} - set(settings.keys())
     if missing_parameters:
-        print('Missing parameters: %s. Aborting.' % list(sorted(missing_parameters)))
+        logging.error('Missing parameters: %s. Aborting.' % list(sorted(missing_parameters)))
         parser.print_help()
         sys.exit(1)
 
@@ -269,7 +274,6 @@ class ContestRunner:
                 sys.exit(1)
             self._setup_team(self.STAFF_TEAM_ZIP_FILE, teams_dir, ignore_file_name_format=True)
 
-        print(self.teams)
 
         self.ladder = {n: [] for n, _ in self.teams}
         self.games = []
@@ -460,20 +464,19 @@ class ContestRunner:
             elif allow_non_registered_students:
                 team_name = student_id
             else:
-                print('Student not registered: "%s" (file %s). Skipping' % (student_id, zip_file))
+                logging.warning('Student not registered: "%s" (file %s). Skipping' % (student_id, zip_file))
                 return
 
             # next get the submission date (encoded in filename)
             try:
-                print(match.group(2))
                 submission_time = iso8601.parse_date(match.group(2)).astimezone(self.TIMEZONE)
             except iso8601.iso8601.ParseError:
                 if not ignore_file_name_format:
-                    print('Team zip file "%s" name has invalid date format. Skipping' % zip_file)
+                    logging.warning('Team zip file "%s" name has invalid date format. Skipping' % zip_file)
                     return
         else:
             if not ignore_file_name_format:
-                print('Submission zip file "%s" does not correspond to any team. Skipping' % zip_file)
+                logging.warning('Submission zip file "%s" does not correspond to any team. Skipping' % zip_file)
                 return
             team_name = os.path.basename(zip_file)[:-4]
 
@@ -591,7 +594,7 @@ class ContestRunner:
                 # couple of controls
                 team_name = row[team_col].replace('/', 'NOT_FUNNY').replace(' ', '_')
                 if team_name == 'staff_team':
-                    print('staff_team is a reserved team name. Skipping.')
+                    logging.warning('staff_team is a reserved team name. Skipping.')
                     continue
 
                 if not student_id or not team_name:
