@@ -25,6 +25,10 @@ import tarfile
 import commands
 from itertools import combinations
 
+
+# logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG, datefmt='%a, %d %b %Y %H:%M:%S')
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO, datefmt='%a, %d %b %Y %H:%M:%S')
+
 try:
     import iso8601
 except:
@@ -68,14 +72,6 @@ from ssh_helper import RunCommand
 # Load settings either from config.json or from the command line
 
 def load_settings():
-    CONFIG_PATH = 'config.json'
-
-    if os.path.exists(CONFIG_PATH):
-        with open(CONFIG_PATH, 'r') as f:
-            settings = json.load(f)
-    else:
-        settings = {}
-
     parser = argparse.ArgumentParser(
         description='This script is to run a tournament between teams of agents for the Pacman package developed by '
                     'John DeNero (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu) at UC Berkeley.\n'
@@ -87,11 +83,18 @@ def load_settings():
                     'if they have to be updated.')
 
     parser.add_argument(
+        '--config-file',
+        help='configuration file to use',
+        default='config.json'
+    )
+    parser.add_argument(
         '--organizer',
-        help='name of the organizer of the contest',
+        default = "My Uni",
+        help='name of the organizer of the contest'
     )
     parser.add_argument(
         '--host',
+        default = 'localhost',
         help='ssh host'
     )
     parser.add_argument(
@@ -100,21 +103,23 @@ def load_settings():
     )
     parser.add_argument(
         '--output-path',
-        help='output directory',
-        default='www'
+        default='www',
+        help='output directory'
     )
     parser.add_argument(
         '--teams-root',
-        help='directory containing the zip files of the teams',
-        default='teams'
+        default='teams',
+        help='directory containing the zip files of the teams'
     )
     parser.add_argument(
         '--include-staff-team',
+        default=False,
         help='if passed, the staff team will be included (it should sit in a directory called staff_name)',
         action='store_true'
     )
     parser.add_argument(
         '--compress-logs',
+        default=False,
         help='if passed, the logs will be compressed in a tar.gz file; otherwise, they will just be archived in a tar file',
         action='store_true'
     )
@@ -133,36 +138,57 @@ def load_settings():
         help='if passed, students without a team are still allowed to participate',
         action='store_true'
     )
+    parser.add_argument(
+        '--build-config-file',
+        default = False,
+        help='if passed, config.json file will be generated with current options',
+        action = 'store_true'
+    )
     args = parser.parse_args()
 
-    if args.organizer:
-        settings['organizer'] = args.organizer
-    if args.organizer:
-        settings['host'] = args.host
-    if args.organizer:
-        settings['user'] = args.user
-    if args.compress_logs:
-        settings['compress_logs'] = args.compress_logs
-    if args.include_staff_team:
-        settings['include_staff_team'] = args.include_staff_team
-    if args.teams_root:
-        settings['teams_root'] = args.teams_root
-    if args.max_steps:
-        settings['max_steps'] = args.max_steps
-    if args.team_names_file:
-        settings['team_names_file'] = args.team_names_file
-    if args.allow_non_registered_students:
-        settings['allow_non_registered_students'] = args.allow_non_registered_students
+
+    # First get the options from the configuration file if available
+    if not args.config_file is None:
+        if os.path.exists(args.config_file):
+            with open(args.config_file, 'r') as f:
+                settings = json.load(f)
+                logging.debug('Configuration file loaded')
+        else:
+            logging.error('Configuration file selected not available')
+    else:
+        settings = {}
+
+    # if given, set the parameters as per command line options (may override config file)
+    settings['organizer'] = args.organizer
+    settings['host'] = args.host
+    settings['user'] = args.user
+    settings['compress_logs'] = args.compress_logs
+    settings['include_staff_team'] = args.include_staff_team
+    settings['teams_root'] = args.teams_root
+    settings['max_steps'] = args.max_steps
+    settings['team_names_file'] = args.team_names_file
+    settings['allow_non_registered_students'] = args.allow_non_registered_students
+
+    #  user must be given
+    if settings['user'] is None:
+        logging.error('No username specified to run the system in server %s' % settings['host'])
+        sys.exit(1)
+    else:
+        logging.info('Script will ran with this configuration: %s' % settings)
 
 
+    # TODO: maybe this is not necessary anmore as everything is set already above by defaut (except user)
     missing_parameters = {'organizer'} - set(settings.keys())
     if missing_parameters:
         print('Missing parameters: %s. Aborting.' % list(sorted(missing_parameters)))
         parser.print_help()
         sys.exit(1)
 
-    with open(CONFIG_PATH, 'w') as f:
-        json.dump(settings, f, sort_keys=True, indent=4, separators=(',', ': '))
+    # dump current config files into configuration file if requested to do so
+    if args.build_config_file:
+        logging.info('Dumping current optins to file %s' % args.config_file)
+        with open(args.config_file, 'w') as f:
+            json.dump(settings, f, sort_keys=True, indent=4, separators=(',', ': '))
 
     return settings
 
@@ -178,7 +204,7 @@ class ContestRunner:
     RESULTS_DIR = 'results'
     WWW_DIR = 'www'
     TIMEZONE = timezone('Australia/Melbourne')
-    TEAMS_FILENAME_PATTERN = re.compile(r'^(s\d+)-(.+)\.zip$')    # s???????-<extra>.zip
+    SUBMISSION_FILENAME_PATTERN = re.compile(r'^(s\d+)_(.+)?\.zip$')    # s???????[_datetime].zip
 
     def __init__(self, teams_root, include_staff_team, organizer, compress_logs, max_steps, team_names_file,
                  allow_non_registered_students, host=None, user=None):
@@ -423,10 +449,12 @@ class ContestRunner:
         submission_zip_file = zipfile.ZipFile(zip_file)
 
         # Get team name from submission: if in self.team_names mapping, then use mapping; otherwise use filename
-        match = re.match(self.TEAMS_FILENAME_PATTERN, os.path.basename(zip_file))
+        match = re.match(self.SUBMISSION_FILENAME_PATTERN, os.path.basename(zip_file))
         submission_time = None
         if match:
             student_id = match.group(1)
+
+            # first get the team of this submission
             if student_id in self.team_names:
                 team_name = self.team_names[student_id]
             elif allow_non_registered_students:
@@ -435,8 +463,9 @@ class ContestRunner:
                 print('Student not registered: "%s" (file %s). Skipping' % (student_id, zip_file))
                 return
 
-
+            # next get the submission date (encoded in filename)
             try:
+                print(match.group(2))
                 submission_time = iso8601.parse_date(match.group(2)).astimezone(self.TIMEZONE)
             except iso8601.iso8601.ParseError:
                 if not ignore_file_name_format:
@@ -444,10 +473,12 @@ class ContestRunner:
                     return
         else:
             if not ignore_file_name_format:
-                print('Team zip file "%s" name has invalid name. Skipping' % zip_file)
+                print('Submission zip file "%s" does not correspond to any team. Skipping' % zip_file)
                 return
             team_name = os.path.basename(zip_file)[:-4]
 
+
+        # This submission will be temporarly expanded into team_destination_dir
         team_destination_dir = os.path.join(destination, team_name)
         desired_file = 'team.py'
 
@@ -571,6 +602,7 @@ class ContestRunner:
 
 if __name__ == '__main__':
     settings = load_settings()
+    print(str(settings))
     runner = ContestRunner(**settings)
     runner.run_contest()
     runner.update_www()
