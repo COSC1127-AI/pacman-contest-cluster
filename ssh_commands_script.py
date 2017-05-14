@@ -93,12 +93,12 @@ def load_settings():
     )
     parser.add_argument(
         '--organizer',
-        default = "My Uni",
+        default="My Uni",
         help='name of the organizer of the contest'
     )
     parser.add_argument(
         '--host',
-        default = 'localhost',
+        default='localhost',
         help='ssh host'
     )
     parser.add_argument(
@@ -145,7 +145,7 @@ def load_settings():
     )
     parser.add_argument(
         '--build-config-file',
-        default = False,
+        default=False,
         help='if passed, config.json file will be generated with current options',
         action = 'store_true'
     )
@@ -605,7 +605,6 @@ class ContestRunner:
 
 if __name__ == '__main__':
     settings = load_settings()
-    print(str(settings))
     runner = ContestRunner(**settings)
     runner.run_contest()
     runner.update_www()
