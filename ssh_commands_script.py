@@ -483,7 +483,7 @@ class ContestRunner:
 
         # This submission will be temporarly expanded into team_destination_dir
         team_destination_dir = os.path.join(destination, team_name)
-        desired_file = 'team.py'
+        desired_file = 'myTeam.py'
 
         if team_name not in self.submission_times:
             submission_zip_file.extractall(team_destination_dir)
