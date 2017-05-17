@@ -160,6 +160,7 @@ def load_settings():
                 logging.debug('Configuration file loaded')
         else:
             logging.error('Configuration file selected not available')
+            settings = {}
     else:
         settings = {}
 
