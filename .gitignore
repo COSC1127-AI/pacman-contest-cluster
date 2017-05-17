@@ -100,3 +100,5 @@ contest2016/
 local/
 scp.pyc
 staffteam/
+test*
+google-assignment-submission.git
