@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from __future__ import print_function
 import paramiko
 from scp import SCPClient
 
@@ -18,7 +19,7 @@ class RunCommand:
         if args:
             self.hosts.append(args.split(','))
         else:
-            print "usage: host "
+            print("usage: host ")
 
     def do_connect(self):
         """
@@ -42,13 +43,13 @@ class RunCommand:
         """
         if command:
             for host, conn in zip(self.hosts, self.connections):
-                print 'host: %s: %s' % (host[0], command)
+                print('host: %s: %s' % (host[0], command))
                 stdin, stdout, stderr = conn.exec_command(command)
                 stdin.close()
                 for line in stdout.read().split("\n"):
-                    print 'host: %s: %s' % (host[0], line)
+                    print('host: %s: %s' % (host[0], line))
         else:
-            print "usage: run "
+            print("usage: run ")
 
     def do_close(self):
         """
@@ -66,7 +67,7 @@ class RunCommand:
         for host, conn in zip(self.hosts, self.connections):
             scp = SCPClient(conn.get_transport())
             scp.get(filename)
-            print 'get %s file from host: %s:' % (filename, host[0])
+            print('get %s file from host: %s:' % (filename, host[0]))
 
     def do_put(self, filename, destination):
         """
@@ -77,4 +78,4 @@ class RunCommand:
         for host, conn in zip(self.hosts, self.connections):
             scp = SCPClient(conn.get_transport())
             scp.put(filename, destination)
-            print 'put %s file from host: %s:' % (filename, host[0])
+            print('put %s file from host: %s:' % (filename, host[0]))
