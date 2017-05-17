@@ -1,3 +1,17 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+"""
+ClusterManager manages a set of remote workers and distributes a list of jobs using a greedy policy (jobs are assigned,
+in order, to the first free worker. Transfers and communications are done over SSH.
+The manager creates a temporary environment for each job, and can copy files to and from such environment (via relative
+paths) or anywhere else (via absolute paths).
+
+Extreme care is recommended to both commands and file paths passed: this script performs no checks whatsoever - it's on
+you!
+
+"""
+
 from collections import namedtuple
 import sys
 from Queue import Queue
@@ -39,7 +53,7 @@ if missing_packages:
 # Import class from helper module
 
 Host = namedtuple('Host', ['no_cpu', 'hostname', 'username', 'password', 'key_filename'], verbose=False)
-Job = namedtuple('Job', ['command', 'required_files', 'return_files'], verbose=False)
+Job = namedtuple('Job', ['command', 'required_files', 'return_files', 'id'], verbose=False)
 TransferableFile = namedtuple('TransferableFile', ['local_path', 'remote_path'], verbose=False)
 
 class ClusterManager:
@@ -48,18 +62,27 @@ class ClusterManager:
         self.jobs = jobs  # type: 'List[Job]'
         self.workers = []  # type: 'List[SSHClient]'
         self.pool = Queue()  # type: 'Queue[SSHClient]'
-        for host in self.hosts:
-            for i in range(host.no_cpu):
-                worker = SSHClient()
-                worker.load_system_host_keys()
-                worker.set_missing_host_key_policy(AutoAddPolicy())
-                worker.connect(hostname=host.hostname, username=host.username, password=host.password, key_filename=host.key_filename)
-                self.workers.append(worker)
-                self.pool.put(worker)
+
+        tot_workers = sum(host.no_cpu for host in hosts)
+        self.workers = Parallel(tot_workers, backend='threading')(delayed(create_worker)(host) for host in self.hosts for _ in range(host.no_cpu))
+        for worker in self.workers:
+            self.pool.put(worker)
 
     def start(self):
         results = Parallel(self.pool.qsize(), backend='threading')(delayed(run_job)(self.pool, job) for job in self.jobs)
         return results
+
+    def start_single_threaded(self):
+        results = [run_job(self.pool, job) for job in self.jobs]
+        return results
+
+def create_worker(host):
+    worker = SSHClient()
+    worker.load_system_host_keys()
+    worker.set_missing_host_key_policy(AutoAddPolicy())
+    worker.connect(hostname=host.hostname, username=host.username, password=host.password, key_filename=host.key_filename)
+    return worker
+
 
 def run_job(pool, job):
     worker = pool.get()
@@ -77,7 +100,7 @@ def run_job(pool, job):
 
         # run job
         actual_command = """cd %s ; sh -c '%s'""" % (dest_dir, job.command)
-        _, ssh_stdout, _ = worker.exec_command(actual_command)  # Non-blocking call
+        _, ssh_stdout, ssh_stderr = worker.exec_command(actual_command)  # Non-blocking call
         exit_code = ssh_stdout.channel.recv_exit_status()  # Blocking call
 
         # retrieve results
@@ -87,7 +110,7 @@ def run_job(pool, job):
         # clean
         worker.exec_command('rm -rf %s' % dest_dir)
 
-        return exit_code, ssh_stdout.read()
+        return job.id, exit_code, ssh_stdout.read(), ssh_stderr.read()
 
     finally:
         pool.put(worker)
@@ -105,8 +128,10 @@ if __name__ == '__main__':
       - copy the file back to the directory of this script
     """
     hosts = [
-        Host(no_cpu=2, hostname='localhost', username=getuser(), password=getpass(), key_filename=None) # prompt for password (for password authentication or if private key is password protected)
-        # Host(no_cpu=2, hostname='localhost', username=getuser()', password=None, key_filename=None) # use this if no pass is necessary (for private key authentication)
+        # prompt for password (for password authentication or if private key is password protected)
+        Host(no_cpu=2, hostname='localhost', username=getuser(), password=getpass(), key_filename=None)
+        # use this if no pass is necessary (for private key authentication)
+        # Host(no_cpu=2, hostname='localhost', username=getuser(), password=None, key_filename=None)
     ]
     jobs = []
     for i in range(10):
@@ -117,7 +142,7 @@ if __name__ == '__main__':
         req_file = TransferableFile(local_path='cluster_manager.py', remote_path=test_file)
         ret_file = TransferableFile(local_path=test_file, remote_path=test_file)
 
-        jobs.append(Job(command=command, required_files=[req_file], return_files=[ret_file]))
+        jobs.append(Job(command=command, required_files=[req_file], return_files=[ret_file], id=None))
 
     cm = ClusterManager(hosts=hosts, jobs=jobs)
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
