@@ -108,7 +108,7 @@ def load_settings():
     parser.add_argument(
         '--output-path',
         default='www',
-        help='output directory'
+        help='output directory to store the results'
     )
     parser.add_argument(
         '--teams-root',
@@ -168,6 +168,7 @@ def load_settings():
     settings['organizer'] = args.organizer
     settings['host'] = args.host
     settings['user'] = args.user
+    settings['output_path'] = args.output_path
     settings['compress_logs'] = args.compress_logs
     settings['include_staff_team'] = args.include_staff_team
     settings['teams_root'] = args.teams_root
@@ -181,7 +182,6 @@ def load_settings():
         sys.exit(1)
     else:
         logging.info('Script will ran with this configuration: %s' % settings)
-
 
     # TODO: maybe this is not necessary anmore as everything is set already above by defaut (except user)
     missing_parameters = {'organizer'} - set(settings.keys())
@@ -212,7 +212,7 @@ class ContestRunner:
     TIMEZONE = timezone('Australia/Melbourne')
     SUBMISSION_FILENAME_PATTERN = re.compile(r'^(s\d+)_(.+)?\.zip$')    # s???????[_datetime].zip
 
-    def __init__(self, teams_root, include_staff_team, organizer, compress_logs, max_steps, team_names_file,
+    def __init__(self, teams_root, output_path, include_staff_team, organizer, compress_logs, max_steps, team_names_file,
                  allow_non_registered_students, host=None, user=None):
 
         self.run = RunCommand()
@@ -226,7 +226,8 @@ class ContestRunner:
         self.contest_run_id = datetime.datetime.now().isoformat()
 
         # path that contains files that make-up a html navigable web folder
-        self.www_path = self.WWW_DIR
+        # self.www_path = self.WWW_DIR
+        self.www_path = output_path
 
         # just used in html as a readable string
         self.organizer = organizer
@@ -237,7 +238,7 @@ class ContestRunner:
         # name and full path of the directory where the results of this execution will be stored
         self.results_dir_name = 'results_{run_id}'.format(run_id=self.contest_run_id)
         self.results_dir_full_path = os.path.join(self.RESULTS_DIR, self.results_dir_name)
-        self.www_dir_full_path = os.path.join(self.WWW_DIR, self.results_dir_name)
+        self.www_dir_full_path = os.path.join(self.www_path, self.results_dir_name)
 
 
         if not os.path.exists(self.CONTEST_ZIP_FILE):
@@ -514,14 +515,19 @@ class ContestRunner:
         log_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.log'.format(
             layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
         # results/results_<run_id>/{red_team_name}_vs_{blue_team_name}_{layout}.log
+        os.listdir('.')
         with open(os.path.join(self.results_dir_full_path, log_file_name), 'w') as f:
             print(output, file=f)
 
         if exit_code == 0:
-            print(' Successful. Output in {output_file}.'.format(output_file=log_file_name))
+            video_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.mv'.format(
+                layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
+            os.rename(self.ENV_DIR+'/replay-0', video_file_name)
+            print(' Successful. Log in {output_file}.'.format(output_file=log_file_name))
         else:
             print(' Failed. Output in {output_file}.'.format(output_file=log_file_name))
     
+
         score, winner, loser, bug = self._parse_result(output, red_team_name, blue_team_name)
 
 
