@@ -1,8 +1,0 @@
-{
-    "compress_logs": true,
-    "host": "localhost",
-    "include_staff_team": true,
-    "organizer": "RMIT",
-    "teams_root": "teams",
-    "user": "ssardina"
-}
