@@ -118,13 +118,11 @@ def load_settings():
     )
     parser.add_argument(
         '--include-staff-team',
-        default=False,
         help='if passed, the staff team will be included (it should sit in a directory called staff_name)',
         action='store_true'
     )
     parser.add_argument(
         '--compress-logs',
-        default=False,
         help='if passed, the logs will be compressed in a tar.gz file; otherwise, they will just be archived in a tar file',
         action='store_true'
     )
@@ -145,7 +143,6 @@ def load_settings():
     )
     parser.add_argument(
         '--build-config-file',
-        default=False,
         help='if passed, config.json file will be generated with current options',
         action = 'store_true'
     )
@@ -192,7 +189,7 @@ def load_settings():
 
     # dump current config files into configuration file if requested to do so
     if args.build_config_file:
-        logging.info('Dumping current optins to file %s' % args.config_file)
+        logging.info('Dumping current options to file %s' % args.config_file)
         with open(args.config_file, 'w') as f:
             json.dump(settings, f, sort_keys=True, indent=4, separators=(',', ': '))
 
@@ -520,12 +517,9 @@ class ContestRunner:
             print(output, file=f)
 
         if exit_code == 0:
-            video_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.mv'.format(
-                layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
-            os.rename(self.ENV_DIR+'/replay-0', video_file_name)
             print(' Successful. Log in {output_file}.'.format(output_file=log_file_name))
         else:
-            print(' Failed. Output in {output_file}.'.format(output_file=log_file_name))
+            print(' Failed. Log in {output_file}.'.format(output_file=log_file_name))
     
 
         score, winner, loser, bug = self._parse_result(output, red_team_name, blue_team_name)
@@ -542,11 +536,10 @@ class ContestRunner:
         replay_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.replay'.format(
             layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
 
-        replays = glob.glob('replay*')
+        replays = glob.glob(os.path.join(self.ENV_DIR, 'replay*'))
         if replays:
-            shutil.move(os.path.join(self.ENV_DIR, replays[0]),
-        # results/results_<run_id>/{red_team_name}_vs_{blue_team_name}_{layout}.replay
-                    os.path.join(self.results_dir_full_path, replay_file_name))
+            # results/results_<run_id>/{red_team_name}_vs_{blue_team_name}_{layout}.replay
+            shutil.move(replays[0], os.path.join(self.results_dir_full_path, replay_file_name))
         if not bug:
             self.games.append((red_team_name, blue_team_name, layout, score, winner))
         else:
