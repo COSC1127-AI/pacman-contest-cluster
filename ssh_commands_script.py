@@ -1,4 +1,16 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+"""
+This script is to run a tournament between teams of agents for the Pacman package developed by
+John DeNero (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu) at UC Berkeley.
+
+After running the tournament, the script generates a report in HTML. The report is, optionally,
+uploaded to a specified server via scp.
+                    
+The script was developed for RMIT COSC1125/1127 AI course in 2017 (A/Prof. Sebastian Sardina),
+and is based on an original script from Dr. Nir Lipovetzky.
+"""
 
 #  ----------------------------------------------------------------------------------------------------------------------
 # Import future stuff (syntax equivalent to Python 3)
@@ -24,27 +36,27 @@ import tarfile
 # noinspection PyCompatibility
 import commands
 from itertools import combinations
+from cluster_manager import ClusterManager, Job, Host, TransferableFile
 
 
 # logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG, datefmt='%a, %d %b %Y %H:%M:%S')
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO, datefmt='%a, %d %b %Y %H:%M:%S')
 
-try:
-    import iso8601
-except:
-    print('Package iso8601 is not installed. Please, run `pip install iso8601`')
-    sys.exit(1)
-
-try:
-    from pytz import timezone
-except:
-    print('Package pytz is not installed. Please, run `pip install pytz`')
-    sys.exit(1)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Verify all necessary packages are present
 
 missing_packages = []
+try:
+    import iso8601
+except:
+    missing_packages.append('iso8601')
+
+try:
+    from pytz import timezone
+except:
+    missing_packages.append('pytz')
+
 try:
     # Used to prompt the password without echoing
     from getpass import getpass
@@ -93,12 +105,10 @@ def load_settings():
     )
     parser.add_argument(
         '--organizer',
-        default="My Uni",
         help='name of the organizer of the contest'
     )
     parser.add_argument(
         '--host',
-        default='localhost',
         help='ssh host'
     )
     parser.add_argument(
@@ -107,12 +117,10 @@ def load_settings():
     )
     parser.add_argument(
         '--output-path',
-        default='www',
-        help='output directory to store the results'
+        help='output directory'
     )
     parser.add_argument(
         '--teams-root',
-        default='teams',
         help='directory containing the zip files of the teams. Files have to be of the form s<student no>_TIMESTAMP.zip;'
              ' for example s9999999_2017-05-13T20:32:43.342000+10:00.zip'
     )
@@ -134,7 +142,6 @@ def load_settings():
     parser.add_argument(
         '--team-names-file',
         help='the path of the csv that contains (at least) two columns headed "STUDENT_ID" and "TEAM_NAME", used to match submissions with teams',
-        default='team_names.csv'
     )
     parser.add_argument(
         '--allow-non-registered-students',
@@ -143,6 +150,7 @@ def load_settings():
     )
     parser.add_argument(
         '--build-config-file',
+        default=False,
         help='if passed, config.json file will be generated with current options',
         action = 'store_true'
     )
@@ -162,25 +170,29 @@ def load_settings():
         settings = {}
 
     # if given, set the parameters as per command line options (may override config file)
-    settings['organizer'] = args.organizer
-    settings['host'] = args.host
-    settings['user'] = args.user
-    settings['output_path'] = args.output_path
-    settings['compress_logs'] = args.compress_logs
-    settings['include_staff_team'] = args.include_staff_team
-    settings['teams_root'] = args.teams_root
-    settings['max_steps'] = args.max_steps
-    settings['team_names_file'] = args.team_names_file
+    if args.organizer:
+        settings['organizer'] = args.organizer
+    if args.host:
+        settings['host'] = args.host
+    if args.user:
+        settings['user'] = args.user
+    if args.compress_logs:
+        settings['compress_logs'] = args.compress_logs
+    if args.include_staff_team:
+        settings['include_staff_team'] = args.include_staff_team
+    if args.teams_root:
+        settings['teams_root'] = args.teams_root
+    if args.output_path:
+        settings['output_path'] = args.output_path
+    if args.max_steps:
+        settings['max_steps'] = args.max_steps
+    if args.team_names_file:
+        settings['team_names_file'] = args.team_names_file
     settings['allow_non_registered_students'] = args.allow_non_registered_students
 
-    #  user must be given
-    if settings['user'] is None:
-        logging.error('No username specified to run the system in server %s' % settings['host'])
-        sys.exit(1)
-    else:
-        logging.info('Script will ran with this configuration: %s' % settings)
+    logging.info('Script will run with this configuration: %s' % settings)
 
-    # TODO: maybe this is not necessary anmore as everything is set already above by defaut (except user)
+
     missing_parameters = {'organizer'} - set(settings.keys())
     if missing_parameters:
         logging.error('Missing parameters: %s. Aborting.' % list(sorted(missing_parameters)))
@@ -189,7 +201,7 @@ def load_settings():
 
     # dump current config files into configuration file if requested to do so
     if args.build_config_file:
-        logging.info('Dumping current options to file %s' % args.config_file)
+        logging.info('Dumping current optins to file %s' % args.config_file)
         with open(args.config_file, 'w') as f:
             json.dump(settings, f, sort_keys=True, indent=4, separators=(',', ': '))
 
@@ -208,6 +220,7 @@ class ContestRunner:
     WWW_DIR = 'www'
     TIMEZONE = timezone('Australia/Melbourne')
     SUBMISSION_FILENAME_PATTERN = re.compile(r'^(s\d+)_(.+)?\.zip$')    # s???????[_datetime].zip
+    ENV_ZIP_READY = 'contest_and_teams.zip'
 
     def __init__(self, teams_root, output_path, include_staff_team, organizer, compress_logs, max_steps, team_names_file,
                  allow_non_registered_students, host=None, user=None):
@@ -273,12 +286,13 @@ class ContestRunner:
                 sys.exit(1)
             self._setup_team(self.STAFF_TEAM_ZIP_FILE, teams_dir, ignore_file_name_format=True)
 
+        # zip directory for transfer to remote workers
+        shutil.make_archive(self.ENV_ZIP_READY[:-4], 'zip', self.ENV_DIR)
 
         self.ladder = {n: [] for n, _ in self.teams}
         self.games = []
         self.errors = {n: 0 for n, _ in self.teams}
         self.team_stats = {n: 0 for n, _ in self.teams}
-
 
 
     def _close(self):
@@ -480,7 +494,7 @@ class ContestRunner:
             team_name = os.path.basename(zip_file)[:-4]
 
 
-        # This submission will be temporarly expanded into team_destination_dir
+        # This submission will be temporarily expanded into team_destination_dir
         team_destination_dir = os.path.join(destination, team_name)
         desired_file = 'myTeam.py'
 
@@ -494,25 +508,23 @@ class ContestRunner:
             submission_zip_file.extractall(team_destination_dir)
             self.submission_times[team_name] = submission_time
 
-    
-    
-    def _run_match(self, red_team, blue_team, layout):
 
+    def _generate_command(self, red_team, blue_team, layout):
         (red_team_name, red_team_agent_factory) = red_team
         (blue_team_name, blue_team_agent_factory) = blue_team
-        print('Running game %s vs %s (layout: %s).' % (red_team_name, blue_team_name, layout), end='')
-        sys.stdout.flush()
-
         command = 'python capture.py -r {red_team_agent_factory} -b {blue_team_agent_factory} -l {layout} -i {steps} -q --record'.format(
                 red_team_agent_factory=red_team_agent_factory, blue_team_agent_factory=blue_team_agent_factory,
                 layout=layout, steps=self.max_steps)
-        logging.info(command)
-        exit_code, output = commands.getstatusoutput('cd %s && %s' % (self.ENV_DIR, command))
+        return command
+
+
+    def _analyse_output(self, red_team, blue_team, layout, exit_code, output):
+        (red_team_name, red_team_agent_factory) = red_team
+        (blue_team_name, blue_team_agent_factory) = blue_team
 
         log_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.log'.format(
             layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
         # results/results_<run_id>/{red_team_name}_vs_{blue_team_name}_{layout}.log
-        os.listdir('.')
         with open(os.path.join(self.results_dir_full_path, log_file_name), 'w') as f:
             print(output, file=f)
 
@@ -544,6 +556,17 @@ class ContestRunner:
             self.games.append((red_team_name, blue_team_name, layout, score, winner))
         else:
             self.games.append((red_team_name, blue_team_name, layout, 9999, winner))
+    
+    
+    def _run_match(self, red_team, blue_team, layout):
+        red_team_name, _ = red_team
+        blue_team_name, _ = blue_team
+        print('Running game %s vs %s (layout: %s).' % (red_team_name, blue_team_name, layout), end='')
+        sys.stdout.flush()
+        command = self._generate_command(red_team, blue_team, layout)
+        logging.info(command)
+        exit_code, output = commands.getstatusoutput('cd %s && %s' % (self.ENV_DIR, command))
+        self._analyse_output(red_team, blue_team, layout, exit_code, output)
 
 
     def run_contest(self):
@@ -553,6 +576,35 @@ class ContestRunner:
         for red_team, blue_team in combinations(self.teams, r=2):
             for layout in self.layouts:
                 self._run_match(red_team, blue_team, layout)
+
+
+    def _generate_job(self, red_team, blue_team, layout):
+        game_command = self._generate_command(red_team, blue_team, layout)
+        deflate_command = 'unzip %s -d %s ; chmod +x -R *' % (self.ENV_ZIP_READY, self.ENV_DIR)
+        command = '%s ; cd %s ; %s ' % (deflate_command, self.ENV_DIR, game_command)
+        req_file = TransferableFile(local_path=self.ENV_ZIP_READY, remote_path=self.ENV_ZIP_READY)
+        return Job(command=command, required_files=[req_file], return_files=[], id=(red_team, blue_team, layout))
+
+
+    def _analyse_all_outputs(self, results):
+        for (red_team, blue_team, layout), exit_code, output, error in results:
+            self._analyse_output(red_team, blue_team, layout, exit_code, output + error)
+
+
+    def run_contest_remotely(self, hosts):
+
+        os.makedirs(self.results_dir_full_path)
+
+        jobs = []
+        for red_team, blue_team in combinations(self.teams, r=2):
+            for layout in self.layouts:
+                jobs.append(self._generate_job(red_team, blue_team, layout))
+
+        cm = ClusterManager(hosts, jobs)
+        results = cm.start()
+        self._analyse_all_outputs(results)
+
+
 
 
     def _calculate_team_stats(self):
@@ -603,8 +655,23 @@ class ContestRunner:
         return team_names
 
 
+
 if __name__ == '__main__':
     settings = load_settings()
     runner = ContestRunner(**settings)
-    runner.run_contest()
+
+    # runner.run_contest()
+
+    # from getpass import getuser
+
+    # prompt for password (for password authentication or if private key is password protected)
+    # hosts = [Host(no_cpu=2, hostname='localhost', username=getuser(), password=getpass(), key_filename=None)]
+    # use this if no pass is necessary (for private key authentication)
+    # hosts = [Host(no_cpu=2, hostname='localhost', username=getuser(), password=None, key_filename=None)]
+
+    with open('my_workers.txt', 'r') as f:
+        hostnames = [(int(line.split('@')[0].strip()), line.split('@')[1].strip(), line.split('@')[2].strip()) for line in f.readlines()]
+    hosts = [Host(no_cpu=no_cpu, hostname=hostname, username=user, password=None, key_filename='id_seba') for no_cpu, user, hostname in hostnames]
+    runner.run_contest_remotely(hosts)
+
     runner.update_www()
