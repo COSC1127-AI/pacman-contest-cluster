@@ -578,11 +578,15 @@ class ContestRunner:
 
 
     def _generate_job(self, red_team, blue_team, layout):
+        red_team_name, _ = red_team
+        blue_team_name, _ = blue_team
         game_command = self._generate_command(red_team, blue_team, layout)
-        deflate_command = 'unzip %s -d %s ; chmod +x -R *' % (self.ENV_ZIP_READY, self.ENV_DIR)
-        command = '%s ; cd %s ; %s ' % (deflate_command, self.ENV_DIR, game_command)
+        deflate_command = 'unzip {zip_file} -d {contest_dir} ; chmod +x -R *'.format(zip_file=self.ENV_ZIP_READY, contest_dir=self.ENV_DIR)
+        command = '{deflate_command} ; cd {contest_dir} ; {game_command} ; touch {replay_filename}'.format(deflate_command=deflate_command, contest_dir=self.ENV_DIR, game_command=game_command, replay_filename='replay-0')
         req_file = TransferableFile(local_path=self.ENV_ZIP_READY, remote_path=self.ENV_ZIP_READY)
-        return Job(command=command, required_files=[req_file], return_files=[], id=(red_team, blue_team, layout))
+        replay_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.replay'.format(layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
+        ret_file = TransferableFile(local_path=os.path.join(self.results_dir_full_path, replay_file_name), remote_path=os.path.join(self.ENV_DIR, 'replay-0'))
+        return Job(command=command, required_files=[req_file], return_files=[ret_file], id=(red_team, blue_team, layout))
 
 
     def _analyse_all_outputs(self, results):
