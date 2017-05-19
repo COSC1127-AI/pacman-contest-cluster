@@ -150,7 +150,6 @@ def load_settings():
     )
     parser.add_argument(
         '--build-config-file',
-        default=False,
         help='if passed, config.json file will be generated with current options',
         action = 'store_true'
     )
