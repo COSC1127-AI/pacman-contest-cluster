@@ -201,7 +201,7 @@ def load_settings():
 
     # dump current config files into configuration file if requested to do so
     if args.build_config_file:
-        logging.info('Dumping current optins to file %s' % args.config_file)
+        logging.info('Dumping current options to file %s' % args.config_file)
         with open(args.config_file, 'w') as f:
             json.dump(settings, f, sort_keys=True, indent=4, separators=(',', ': '))
 
