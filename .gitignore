@@ -103,3 +103,12 @@ staffteam/
 test*
 google-assignment-submission.git
 config.json
+www/*
+!/www/README.txt
+teams/*
+!/teams/README.txt
+AI17_team_names.csv
+AI17_team_registrations.csv
+AI17_teams/
+contest_and_teams.zip
+my_workers.txt
