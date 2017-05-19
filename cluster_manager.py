@@ -17,6 +17,7 @@ import sys
 from Queue import Queue
 import random
 import os
+from thread_safe_file import ThreadSafeFile
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Verify all necessary packages are present
@@ -56,6 +57,8 @@ Host = namedtuple('Host', ['no_cpu', 'hostname', 'username', 'password', 'key_fi
 Job = namedtuple('Job', ['command', 'required_files', 'return_files', 'id'], verbose=False)
 TransferableFile = namedtuple('TransferableFile', ['local_path', 'remote_path'], verbose=False)
 
+stdout = ThreadSafeFile(sys.stdout)
+
 class ClusterManager:
     def __init__(self, hosts, jobs):
         self.hosts = hosts  # type: 'List[Host]'
@@ -87,33 +90,36 @@ def create_worker(host):
 def run_job(pool, job):
     worker = pool.get()
     try:
-        print('Executing command: %s' % job.command)
-
-        # create remote env
-        instance_id = ''.join(random.choice('0123456789abcdef') for _ in range(30))
-        dest_dir = '/tmp/cluster_instance_%s' % instance_id
-        sftp = worker.open_sftp()
-        sftp.mkdir(dest_dir)
-        sftp.chdir(dest_dir)
-        for tf in job.required_files:
-            sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
-
-        # run job
-        actual_command = """cd %s ; sh -c '%s'""" % (dest_dir, job.command)
-        _, ssh_stdout, ssh_stderr = worker.exec_command(actual_command)  # Non-blocking call
-        exit_code = ssh_stdout.channel.recv_exit_status()  # Blocking call
-
-        # retrieve results
-        for tf in job.return_files:
-            sftp.get(localpath=tf.local_path, remotepath=tf.remote_path)
-
-        # clean
-        worker.exec_command('rm -rf %s' % dest_dir)
-
-        return job.id, exit_code, ssh_stdout.read(), ssh_stderr.read()
-
+        run_job_on_worker(worker, job)
     finally:
         pool.put(worker)
+
+def run_job_on_worker(worker, job):
+    stdout.write('Executing command: %s' % job.command)
+    stdout.write('\n')
+
+    # create remote env
+    instance_id = ''.join(random.choice('0123456789abcdef') for _ in range(30))
+    dest_dir = '/tmp/cluster_instance_%s' % instance_id
+    sftp = worker.open_sftp()
+    sftp.mkdir(dest_dir)
+    sftp.chdir(dest_dir)
+    for tf in job.required_files:
+        sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
+
+    # run job
+    actual_command = """cd %s ; sh -c '%s'""" % (dest_dir, job.command)
+    _, ssh_stdout, ssh_stderr = worker.exec_command(actual_command, get_pty=True)  # Non-blocking call
+    exit_code = ssh_stdout.channel.recv_exit_status()  # Blocking call
+
+    # retrieve results
+    for tf in job.return_files:
+        sftp.get(localpath=tf.local_path, remotepath=tf.remote_path)
+
+    # clean
+    worker.exec_command('rm -rf %s' % dest_dir)
+
+    return job.id, exit_code, ssh_stdout.read(), ssh_stderr.read()
 
 
 if __name__ == '__main__':
