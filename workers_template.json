@@ -1,0 +1,7 @@
+{
+  "workers": [
+    {"no_cpu": 2, "hostname": "1.2.3.4", "username": "nir", "password": null, "private_key_file": "~/.ssh/id_nir"}, // private key authentication if private key is plain
+    {"no_cpu": 1, "hostname": "1.2.3.5", "username": "seba", "password": "unguessable", "private_key_file": "id_seba"}, // private key authentication if private key is password protected
+    {"no_cpu": 4, "hostname": "1.2.3.6", "username": "marco", "password": "more_unguessable", "private_key_file": null} // password authentication
+  ]
+}
