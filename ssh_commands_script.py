@@ -76,11 +76,6 @@ if missing_packages:
     sys.exit(1)
 
 # ----------------------------------------------------------------------------------------------------------------------
-# Import class from helper module
-
-from ssh_helper import RunCommand
-
-# ----------------------------------------------------------------------------------------------------------------------
 # Load settings either from config.json or from the command line
 
 def load_settings():
@@ -108,16 +103,12 @@ def load_settings():
         help='name of the organizer of the contest'
     )
     parser.add_argument(
-        '--host',
-        help='ssh host'
-    )
-    parser.add_argument(
-        '--user',
-        help='username'
-    )
-    parser.add_argument(
         '--output-path',
         help='output directory'
+    )
+    parser.add_argument(
+        '--workers-file-path',
+        help='json file with workers details'
     )
     parser.add_argument(
         '--teams-root',
@@ -171,10 +162,6 @@ def load_settings():
     # if given, set the parameters as per command line options (may override config file)
     if args.organizer:
         settings['organizer'] = args.organizer
-    if args.host:
-        settings['host'] = args.host
-    if args.user:
-        settings['user'] = args.user
     if args.compress_logs:
         settings['compress_logs'] = args.compress_logs
     if args.include_staff_team:
@@ -187,6 +174,8 @@ def load_settings():
         settings['max_steps'] = args.max_steps
     if args.team_names_file:
         settings['team_names_file'] = args.team_names_file
+    if args.workers_file_path:
+        settings['workers_file_path'] = args.workers_file_path
     settings['allow_non_registered_students'] = args.allow_non_registered_students
 
     logging.info('Script will run with this configuration: %s' % settings)
@@ -222,12 +211,7 @@ class ContestRunner:
     ENV_ZIP_READY = 'contest_and_teams.zip'
 
     def __init__(self, teams_root, output_path, include_staff_team, organizer, compress_logs, max_steps, team_names_file,
-                 allow_non_registered_students, host=None, user=None):
-
-        self.run = RunCommand()
-        if host is not None:
-            self.run.do_add_host("%s,%s,%s" % (host, user, getpass()))
-            self.run.do_connect()
+                 allow_non_registered_students):
 
         self.max_steps = max_steps
 
@@ -295,7 +279,7 @@ class ContestRunner:
 
 
     def _close(self):
-        self.run.do_close()
+        pass
 
 
     def _generate_run_html(self):
@@ -661,9 +645,6 @@ class ContestRunner:
 
 if __name__ == '__main__':
     settings = load_settings()
-    runner = ContestRunner(**settings)
-
-    # runner.run_contest()
 
     # from getpass import getuser
 
@@ -672,9 +653,15 @@ if __name__ == '__main__':
     # use this if no pass is necessary (for private key authentication)
     # hosts = [Host(no_cpu=2, hostname='localhost', username=getuser(), password=None, key_filename=None)]
 
-    with open('my_workers.txt', 'r') as f:
-        hostnames = [(int(line.split('@')[0].strip()), line.split('@')[1].strip(), line.split('@')[2].strip()) for line in f.readlines()]
-    hosts = [Host(no_cpu=no_cpu, hostname=hostname, username=user, password=None, key_filename='id_seba') for no_cpu, user, hostname in hostnames]
+    with open(settings['workers_file_path'], 'r') as f:
+        workers_details = json.load(f)['workers']
+    hosts = [Host(no_cpu=w['no_cpu'], hostname=w['hostname'], username=w['username'], password=w['password'], key_filename=w['private_key_file']) for w in workers_details]
+
+    del settings['workers_file_path']
+    runner = ContestRunner(**settings)
+
+    # runner.run_contest()
+
     runner.run_contest_remotely(hosts)
 
     runner.update_www()
