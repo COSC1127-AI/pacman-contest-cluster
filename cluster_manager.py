@@ -90,7 +90,7 @@ def create_worker(host):
 def run_job(pool, job):
     worker = pool.get()
     try:
-        run_job_on_worker(worker, job)
+        return run_job_on_worker(worker, job)
     finally:
         pool.put(worker)
 
