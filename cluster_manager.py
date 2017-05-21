@@ -113,9 +113,6 @@ def run_job(pool, job):
         pool.put(worker)
 
 def run_job_on_worker(worker, job):
-    stdout.write('Executing command in host %s: %s' % (worker.host, job.command))
-    stdout.write('\n')
-
     # create remote env
     instance_id = ''.join(random.choice('0123456789abcdef') for _ in range(30))
     dest_dir = '/tmp/cluster_instance_%s' % instance_id
@@ -124,6 +121,10 @@ def run_job_on_worker(worker, job):
     sftp.chdir(dest_dir)
     for tf in job.required_files:
         sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
+
+    # worker.host was stored when worker was created
+    stdout.write('ABOUT TO EXECUTE command in host %s dir %s: %s' % (worker.host, job.command, dest_dir))
+    stdout.write('\n')
 
     # run job
     actual_command = """cd %s ; sh -c '%s'""" % (dest_dir, job.command)
@@ -136,6 +137,9 @@ def run_job_on_worker(worker, job):
 
     # clean
     worker.exec_command('rm -rf %s' % dest_dir)
+
+    stdout.write('FINISHED EXECUTING command in host %s dir %s: %s' % (worker.host, job.command, dest_dir))
+    stdout.write('\n')
 
     return job.id, exit_code, ssh_stdout.read(), ssh_stderr.read()
 
