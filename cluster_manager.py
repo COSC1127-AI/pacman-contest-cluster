@@ -68,8 +68,9 @@ class ClusterManager:
         self.workers = []  # type: 'List[SSHClient]'
         self.pool = Queue()  # type: 'Queue[SSHClient]'
 
-        tot_workers = sum(host.no_cpu for host in hosts)
-        self.workers = Parallel(tot_workers, backend='threading')(delayed(create_worker)(host) for host in self.hosts for _ in range(host.no_cpu))
+        total_no_workers = sum(host.no_cpu for host in hosts)
+        # https: // pythonhosted.org / joblib / generated / joblib.Parallel.html
+        self.workers = Parallel(total_no_workers, backend='threading')(delayed(create_worker)(host) for host in self.hosts for _ in range(host.no_cpu))
         for worker in self.workers:
             self.pool.put(worker)
 
@@ -96,6 +97,7 @@ def create_worker(host):
 
     worker = SSHClient()
     worker.load_system_host_keys()
+    worker.host = host.hostname  # store the host for later reference (e.g., logging)
     worker.set_missing_host_key_policy(AutoAddPolicy())
     # time.sleep(4)
     worker.connect(hostname=host.hostname, username=host.username, password=host.password, key_filename=host.key_filename, sock=proxy)
@@ -111,7 +113,7 @@ def run_job(pool, job):
         pool.put(worker)
 
 def run_job_on_worker(worker, job):
-    stdout.write('Executing command: %s' % job.command)
+    stdout.write('Executing command in host %s: %s' % (worker.host, job.command))
     stdout.write('\n')
 
     # create remote env
