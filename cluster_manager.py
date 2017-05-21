@@ -38,7 +38,9 @@ except:
 
 try:
     # Used to establish ssh connections
+    from paramiko.config import SSHConfig
     from paramiko.client import SSHClient
+    from paramiko.proxy import ProxyCommand
     from paramiko.sftp_client import SFTPClient
     from paramiko import AutoAddPolicy
 except:
@@ -80,11 +82,25 @@ class ClusterManager:
         return results
 
 def create_worker(host):
+    config = SSHConfig()
+    config.parse(open(os.path.expanduser('~/.ssh/config')))
+    if host.hostname is not None:
+        if 'proxycommand' in config.lookup(host.hostname):
+            proxy = ProxyCommand(config.lookup(host.hostname)['proxycommand'])
+        else:
+            proxy = None
+    else:
+        proxy = None
+
+    # proxy = paramiko.ProxyCommand("ssh -o StrictHostKeyChecking=no e62439@131.170.5.132 nc 118.138.239.241 22")
+
     worker = SSHClient()
     worker.load_system_host_keys()
     worker.set_missing_host_key_policy(AutoAddPolicy())
-    worker.connect(hostname=host.hostname, username=host.username, password=host.password, key_filename=host.key_filename)
+    # time.sleep(4)
+    worker.connect(hostname=host.hostname, username=host.username, password=host.password, key_filename=host.key_filename, sock=proxy)
     return worker
+
 
 
 def run_job(pool, job):
