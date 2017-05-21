@@ -123,12 +123,14 @@ def run_job_on_worker(worker, job):
         sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
 
     # worker.host was stored when worker was created
-    stdout.write('ABOUT TO EXECUTE command in host %s dir %s: %s' % (worker.host, job.command, dest_dir))
+    stdout.write('ABOUT TO EXECUTE command in host %s dir %s: %s' % (worker.host, dest_dir,  job.command))
     stdout.write('\n')
 
     # run job
     actual_command = """cd %s ; sh -c '%s'""" % (dest_dir, job.command)
     _, ssh_stdout, ssh_stderr = worker.exec_command(actual_command, get_pty=True)  # Non-blocking call
+    result_out = ssh_stdout.read()
+    result_err = ssh_stderr.read()
     exit_code = ssh_stdout.channel.recv_exit_status()  # Blocking call
 
     # retrieve results
@@ -141,7 +143,8 @@ def run_job_on_worker(worker, job):
     stdout.write('FINISHED EXECUTING command in host %s dir %s: %s' % (worker.host, job.command, dest_dir))
     stdout.write('\n')
 
-    return job.id, exit_code, ssh_stdout.read(), ssh_stderr.read()
+    return job.id, exit_code, result_out, result_err
+    # return job.id, exit_code, ssh_stdout.read(), ssh_stderr.read()
 
 
 if __name__ == '__main__':
