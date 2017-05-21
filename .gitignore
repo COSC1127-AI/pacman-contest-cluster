@@ -114,3 +114,6 @@ contest_and_teams.zip
 my_workers.txt
 id_seba
 /my_workers.json
+contest/
+AI17-contest
+*secrets*.json
