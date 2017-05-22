@@ -33,10 +33,12 @@ import logging
 import glob
 import csv
 import tarfile
+import random
 # noinspection PyCompatibility
 import commands
 from itertools import combinations
 from cluster_manager import ClusterManager, Job, Host, TransferableFile
+
 
 
 # logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG, datefmt='%a, %d %b %Y %H:%M:%S')
@@ -131,6 +133,11 @@ def load_settings():
         default=1200,
     )
     parser.add_argument(
+        '--no-layouts',
+        help='number of random layouts to use',
+        default=3,
+    )
+    parser.add_argument(
         '--team-names-file',
         help='the path of the csv that contains (at least) two columns headed "STUDENT_ID" and "TEAM_NAME", used to match submissions with teams',
     )
@@ -170,8 +177,10 @@ def load_settings():
         settings['teams_root'] = args.teams_root
     if args.output_path:
         settings['output_path'] = args.output_path
+    if args.no_layouts:
+        settings['no_layouts'] = int(args.no_layouts)
     if args.max_steps:
-        settings['max_steps'] = args.max_steps
+        settings['max_steps'] = int(args.max_steps)
     if args.team_names_file:
         settings['team_names_file'] = args.team_names_file
     if args.workers_file_path:
@@ -210,7 +219,7 @@ class ContestRunner:
     SUBMISSION_FILENAME_PATTERN = re.compile(r'^(s\d+)_(.+)?\.zip$')    # s???????[_datetime].zip
     ENV_ZIP_READY = 'contest_and_teams.zip'
 
-    def __init__(self, teams_root, output_path, include_staff_team, organizer, compress_logs, max_steps, team_names_file,
+    def __init__(self, teams_root, output_path, include_staff_team, organizer, compress_logs, max_steps, no_layouts, team_names_file,
                  allow_non_registered_students):
 
         self.max_steps = max_steps
@@ -244,7 +253,7 @@ class ContestRunner:
 
         # Setup Pacman CTF environment by extracting it from a clean zip file
         self.layouts = None
-        self._prepare_platform(self.CONTEST_ZIP_FILE, self.LAYOUTS_ZIP_FILE, self.ENV_DIR)
+        self._prepare_platform(self.CONTEST_ZIP_FILE, self.LAYOUTS_ZIP_FILE, self.ENV_DIR, no_layouts)
 
         # Setup all of the teams
         teams_dir = os.path.join(self.ENV_DIR, self.TEAMS_SUBDIR)
@@ -365,8 +374,15 @@ class ContestRunner:
                 bug = True
                 if line.find("Red agent crashed") != -1:
                     self.errors[red_team_name] += 1
+                    winner = blue_team_name
+                    loser = red_team_name
+                    score = 0
                 if line.find("Blue agent crashed") != -1:
                     self.errors[blue_team_name] += 1
+                    winner = red_team_name
+                    loser = blue_team_name
+                    score = 0
+
         return score, winner, loser, bug
     
     
@@ -380,6 +396,7 @@ class ContestRunner:
         elif len(self.teams) == 1:
             output += "Only one team participated, thus no match was run."
         else:
+            # First, print a table with the final standing
             output += "<tr><th>Team</th><th>Points</th><th>Win</th><th>Tie</th><th>Lost</th><th>FAILED</th><th>Score Balance</th></tr>"
             for key, (points, wins, draws, loses, errors, sum_score) in \
                     sorted(self.team_stats.items(), key=lambda (k, v): v[0], reverse=True):
@@ -387,6 +404,7 @@ class ContestRunner:
                 key, points, wins, draws, loses, errors, sum_score)
             output += "</table>"
 
+            # Second, print each game result
             output += "<br><br> <h2>Games</h2><br><a href=\"recorded_games_%s.tar\">DOWNLOAD RECORDED GAMES!</a><br><table border=\"1\">" % self.contest_run_id
             output += "<tr><th>Team1</th><th>Team2</th><th>Layout</th><th>Score</th><th>Winner</th></tr>"
             for (n1, n2, layout, score, winner) in self.games:
@@ -410,7 +428,7 @@ class ContestRunner:
         return output
     
     
-    def _prepare_platform(self, contest_zip_file_path, layouts_zip_file_path, destination):
+    def _prepare_platform(self, contest_zip_file_path, layouts_zip_file_path, destination, no_layouts=5):
         """
         Cleans the given destination directory and prepares a fresh setup to execute a Pacman CTF game within.
         Information on the layouts are saved in the member variable layouts.
@@ -427,8 +445,13 @@ class ContestRunner:
         contest_zip_file.extractall('.')
         layouts_zip_file = zipfile.ZipFile(layouts_zip_file_path)
         layouts_zip_file.extractall(os.path.join(self.ENV_DIR, 'layouts'))
-        self.layouts = [file_in_zip[:-4] for file_in_zip in layouts_zip_file.namelist()]
-    
+
+        layouts_available = [file_in_zip[:-4] for file_in_zip in layouts_zip_file.namelist()]
+        if no_layouts >= len(layouts_available):
+            self.layouts = layouts_available
+        else:
+            self.layouts = random.sample(layouts_available, no_layouts)
+
 
     def _setup_team(self, zip_file, destination, ignore_file_name_format=False, allow_non_registered_students=False):
         """
@@ -507,6 +530,7 @@ class ContestRunner:
         (red_team_name, red_team_agent_factory) = red_team
         (blue_team_name, blue_team_agent_factory) = blue_team
 
+        # dump the log of the game into file for the game: red vs blue in layout
         log_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.log'.format(
             layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
         # results/results_<run_id>/{red_team_name}_vs_{blue_team_name}_{layout}.log
@@ -521,15 +545,14 @@ class ContestRunner:
 
         score, winner, loser, bug = self._parse_result(output, red_team_name, blue_team_name)
 
+        if winner is None:
+            self.ladder[red_team_name].append(score)
+            self.ladder[blue_team_name].append(score)
+        else:
+            self.ladder[winner].append(score)
+            self.ladder[loser].append(-score)
 
-        if not bug:
-            if winner is None:
-                self.ladder[red_team_name].append(score)
-                self.ladder[blue_team_name].append(score)
-            else:
-                self.ladder[winner].append(score)
-                self.ladder[loser].append(-score)
-
+        #  Next handle replay file
         replay_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.replay'.format(
             layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
 
