@@ -290,6 +290,10 @@ class ContestRunner:
     def _close(self):
         pass
 
+    def clean_up(self):
+        shutil.rmtree(self.RESULTS_DIR)
+        shutil.rmtree(self.ENV_DIR)
+
 
     def _generate_run_html(self):
         """
@@ -310,8 +314,6 @@ class ContestRunner:
         with open(os.path.join(self.www_dir_full_path, 'results.html'), "w") as f:
             print(run_html, file=f)
 
-        shutil.rmtree(self.RESULTS_DIR)
-        shutil.rmtree(self.ENV_DIR)
 
 
     def _generate_main_html(self):
@@ -690,3 +692,5 @@ if __name__ == '__main__':
     runner.run_contest_remotely(hosts)
 
     runner.update_www()
+
+    runner.clean_up()
