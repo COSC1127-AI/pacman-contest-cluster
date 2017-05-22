@@ -84,14 +84,12 @@ class ClusterManager:
 
 def create_worker(host):
     config = SSHConfig()
-    config.parse(open(os.path.expanduser('~/.ssh/config')))
-    if host.hostname is not None:
-        if 'proxycommand' in config.lookup(host.hostname):
-            proxy = ProxyCommand(config.lookup(host.hostname)['proxycommand'])
-        else:
-            proxy = None
-    else:
-        proxy = None
+    proxy = None
+    if os.path.exists(os.path.expanduser('~/.ssh/config')):
+        config.parse(open(os.path.expanduser('~/.ssh/config')))
+        if host.hostname is not None and \
+            'proxycommand' in config.lookup(host.hostname):
+                proxy = ProxyCommand(config.lookup(host.hostname)['proxycommand'])
 
     # proxy = paramiko.ProxyCommand("ssh -o StrictHostKeyChecking=no e62439@131.170.5.132 nc 118.138.239.241 22")
 
