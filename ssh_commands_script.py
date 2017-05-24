@@ -292,7 +292,7 @@ class ContestRunner:
 
     def clean_up(self):
         shutil.rmtree(self.RESULTS_DIR)
-        shutil.rmtree(self.ENV_DIR)
+        # shutil.rmtree(self.ENV_DIR)
 
 
     def _generate_run_html(self):
@@ -378,12 +378,12 @@ class ContestRunner:
                     self.errors[red_team_name] += 1
                     winner = blue_team_name
                     loser = red_team_name
-                    score = 0
+                    score = 1
                 if line.find("Blue agent crashed") != -1:
                     self.errors[blue_team_name] += 1
                     winner = red_team_name
                     loser = blue_team_name
-                    score = 0
+                    score = 1
 
         return score, winner, loser, bug
     
