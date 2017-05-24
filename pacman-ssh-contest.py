@@ -133,7 +133,12 @@ def load_settings():
         default=1200,
     )
     parser.add_argument(
-        '--no-layouts',
+        '--no-fixed-layouts',
+        help='number of (random) layouts to use from a given fix set',
+        default=3,
+    )
+    parser.add_argument(
+        '--no-random-layouts',
         help='number of random layouts to use',
         default=3,
     )
@@ -177,8 +182,10 @@ def load_settings():
         settings['teams_root'] = args.teams_root
     if args.output_path:
         settings['output_path'] = args.output_path
-    if args.no_layouts:
-        settings['no_layouts'] = int(args.no_layouts)
+    if args.no_fixed_layouts:
+        settings['no_fixed_layouts'] = int(args.no_fixed_layouts)
+    if args.no_random_layouts:
+        settings['no_random_layouts'] = int(args.no_random_layouts)
     if args.max_steps:
         settings['max_steps'] = int(args.max_steps)
     if args.team_names_file:
@@ -219,8 +226,8 @@ class ContestRunner:
     SUBMISSION_FILENAME_PATTERN = re.compile(r'^(s\d+)_(.+)?\.zip$')    # s???????[_datetime].zip
     ENV_ZIP_READY = 'contest_and_teams.zip'
 
-    def __init__(self, teams_root, output_path, include_staff_team, organizer, compress_logs, max_steps, no_layouts, team_names_file,
-                 allow_non_registered_students):
+    def __init__(self, teams_root, output_path, include_staff_team, organizer, compress_logs, max_steps,
+                 no_fixed_layouts, no_random_layouts, team_names_file, allow_non_registered_students):
 
         self.max_steps = max_steps
 
@@ -253,7 +260,7 @@ class ContestRunner:
 
         # Setup Pacman CTF environment by extracting it from a clean zip file
         self.layouts = None
-        self._prepare_platform(self.CONTEST_ZIP_FILE, self.LAYOUTS_ZIP_FILE, self.ENV_DIR, no_layouts)
+        self._prepare_platform(self.CONTEST_ZIP_FILE, self.LAYOUTS_ZIP_FILE, self.ENV_DIR, no_fixed_layouts, no_random_layouts)
 
         # Setup all of the teams
         teams_dir = os.path.join(self.ENV_DIR, self.TEAMS_SUBDIR)
@@ -430,7 +437,7 @@ class ContestRunner:
         return output
     
     
-    def _prepare_platform(self, contest_zip_file_path, layouts_zip_file_path, destination, no_layouts=5):
+    def _prepare_platform(self, contest_zip_file_path, layouts_zip_file_path, destination, no_fixed_layouts=5, no_random_layouts=3):
         """
         Cleans the given destination directory and prepares a fresh setup to execute a Pacman CTF game within.
         Information on the layouts are saved in the member variable layouts.
@@ -448,12 +455,17 @@ class ContestRunner:
         layouts_zip_file = zipfile.ZipFile(layouts_zip_file_path)
         layouts_zip_file.extractall(os.path.join(self.ENV_DIR, 'layouts'))
 
+        # pick no_fixed_layouts layouts from the given set in the zip file
         layouts_available = [file_in_zip[:-4] for file_in_zip in layouts_zip_file.namelist()]
-        if no_layouts >= len(layouts_available):
+        if no_fixed_layouts >= len(layouts_available):
             self.layouts = layouts_available
         else:
-            self.layouts = random.sample(layouts_available, no_layouts)
+            self.layouts = random.sample(layouts_available, no_fixed_layouts)
 
+        # add a no_random_layouts random layouts
+        if no_random_layouts > 0:
+            list_random_layouts = ['RANDOM'+str(random.randint(1,999999)) for x in range(0,no_random_layouts)]
+            self.layouts = self.layouts + list_random_layouts
 
     def _setup_team(self, zip_file, destination, ignore_file_name_format=False, allow_non_registered_students=False):
         """
