@@ -8,8 +8,8 @@ John DeNero (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu) at UC
 After running the tournament, the script generates a report in HTML. The report is, optionally,
 uploaded to a specified server via scp.
                     
-The script was developed for RMIT COSC1125/1127 AI course in 2017 (A/Prof. Sebastian Sardina),
-and is based on an original script from Dr. Nir Lipovetzky.
+The script was developed for RMIT COSC1125/1127 AI course in Semester 1, 2017 by A/Prof. Sebastian Sardina and PhD
+student Marco Tamassia. The script is in turn based on an original script from Dr. Nir Lipovetzky.
 """
 
 #  ----------------------------------------------------------------------------------------------------------------------
