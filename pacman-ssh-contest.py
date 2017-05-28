@@ -81,6 +81,11 @@ if missing_packages:
 # Load settings either from config.json or from the command line
 
 def load_settings():
+    DEFAULT_MAX_STEPS = 1200
+    DEFAULT_FIXED_LAYOUTS = 3
+    DEFAULT_RANDOM_LAYOUTS = 4
+    DEFAULT_CONFIG_FILE = 'config.json'
+
     parser = argparse.ArgumentParser(
         description='This script is to run a tournament between teams of agents for the Pacman package developed by '
                     'John DeNero (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu) at UC Berkeley.\n'
@@ -97,8 +102,7 @@ def load_settings():
 
     parser.add_argument(
         '--config-file',
-        help='configuration file to use',
-        default='config.json'
+        help='configuration file to use (default: {default})'.format(default=DEFAULT_CONFIG_FILE),
     )
     parser.add_argument(
         '--organizer',
@@ -129,18 +133,16 @@ def load_settings():
     )
     parser.add_argument(
         '--max-steps',
-        help='the limit on the number of steps for each game (default: 1200)',
-        default=1200,
+        help='the limit on the number of steps for each game (default: {default})'.format(default=DEFAULT_MAX_STEPS),
     )
     parser.add_argument(
         '--no-fixed-layouts',
-        help='number of (random) layouts to use from a given fix set',
+        help='number of (random) layouts to use from a given fix set (default: {default})'.format(default=DEFAULT_FIXED_LAYOUTS),
         default=3,
     )
     parser.add_argument(
         '--no-random-layouts',
-        help='number of random layouts to use',
-        default=3,
+        help='number of random layouts to use (default: {default})'.format(default=DEFAULT_RANDOM_LAYOUTS),
     )
     parser.add_argument(
         '--team-names-file',
@@ -178,6 +180,8 @@ def load_settings():
         settings['compress_logs'] = args.compress_logs
     if args.include_staff_team:
         settings['include_staff_team'] = args.include_staff_team
+    elif 'include_staff_team' not in set(settings.keys()):
+        settings['include_staff_team'] = False
     if args.teams_root:
         settings['teams_root'] = args.teams_root
     if args.output_path:
@@ -188,6 +192,8 @@ def load_settings():
         settings['no_random_layouts'] = int(args.no_random_layouts)
     if args.max_steps:
         settings['max_steps'] = int(args.max_steps)
+    elif 'max_steps' not in set(settings.keys()):
+        settings['max_steps'] = DEFAULT_MAX_STEPS
     if args.team_names_file:
         settings['team_names_file'] = args.team_names_file
     if args.workers_file_path:
@@ -464,7 +470,7 @@ class ContestRunner:
 
         # add a no_random_layouts random layouts
         if no_random_layouts > 0:
-            list_random_layouts = ['RANDOM'+str(random.randint(1,999999)) for x in range(0,no_random_layouts)]
+            list_random_layouts = ['RANDOM'+str(random.randint(1,9999)) for x in range(0,no_random_layouts)]
             self.layouts = self.layouts + list_random_layouts
 
     def _setup_team(self, zip_file, destination, ignore_file_name_format=False, allow_non_registered_students=False):
