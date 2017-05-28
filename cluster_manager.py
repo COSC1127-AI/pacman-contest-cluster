@@ -129,7 +129,7 @@ def run_job_on_worker(worker, job):
     _, ssh_stdout, ssh_stderr = worker.exec_command(actual_command, get_pty=True)  # Non-blocking call
     result_out = ssh_stdout.read()
     result_err = ssh_stderr.read()
-    exit_code = ssh_stdout.channel.recv_exit_status()  # Blocking call
+    exit_code = ssh_stdout.channel.recv_exit_status()  # Blocking call but only after reading it all
 
     # retrieve results
     for tf in job.return_files:
