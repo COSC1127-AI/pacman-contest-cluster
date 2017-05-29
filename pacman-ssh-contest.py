@@ -365,20 +365,22 @@ class ContestRunner:
         winner = None
         loser = None
         bug = False
+        tied = False
 
-        if output.find("Traceback") != -1:
-            if output.find("redAgents = loadAgents") != -1:
+        if output.find("Traceback") != -1 or output.find("agent crashed") != -1:
+            bug = True
+            if output.find("Red agent crashed") != -1 or output.find("redAgents = loadAgents") != -1:
                 self.errors[red_team_name] += 1
                 winner = blue_team_name
                 loser = red_team_name
                 score = 1
-            elif output.find("Traceback") != -1 and output.find("blueAgents = loadAgents") != -1:
+            elif output.find("Blue agent crashed") != -1 or output.find("blueAgents = loadAgents") != -1:
                 self.errors[blue_team_name] += 1
                 winner = red_team_name
                 loser = blue_team_name
                 score = 1
             else:
-                print("Something went wrong in the contest script - there is a traceback but no clear winner!")
+                print("Something went wrong in the contest script - Traceback but no winner: %s vs %s" % (read_team_name, blue_team_name))
         else:
             for line in output.splitlines():
                 if line.find("wins by") != -1:
@@ -397,22 +399,15 @@ class ContestRunner:
                     score = abs(int(line.split('The Red team has returned at least ')[1].split(' ')[0]))
                     winner = red_team_name
                     loser = blue_team_name
-                elif line.find("Tie Game") != -1:
+                elif line.find("Tie Game") != -1 or line.find("Tie game") != -1:
                     winner = None
                     loser = None
-                elif line.find("agent crashed") != -1:
-                    bug = True
-                    if line.find("Red agent crashed") != -1:
-                        self.errors[red_team_name] += 1
-                        winner = blue_team_name
-                        loser = red_team_name
-                        score = 1
-                    if line.find("Blue agent crashed") != -1:
-                        self.errors[blue_team_name] += 1
-                        winner = red_team_name
-                        loser = blue_team_name
-                        score = 1
-
+                    tied = True
+            # signal strange case where script was unable to find outcome of game - should never happen!
+            if winner is None and loser is None and not tied:
+                print(output)
+                print("Something went wrong in the contest script - there is no traceback and no clear winner: %s vs %s" % (red_team_name, blue_team_name))
+                sys.exit(1)
 
         return score, winner, loser, bug
     
