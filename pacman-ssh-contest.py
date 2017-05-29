@@ -365,38 +365,54 @@ class ContestRunner:
         winner = None
         loser = None
         bug = False
-        for line in output.splitlines():
-            if line.find("wins by") != -1:
-                score = abs(int(line.split('wins by')[1].split('points')[0]))
-                if line.find('Red') != -1:
-                    winner = red_team_name
-                    loser = blue_team_name
-                elif line.find('Blue') != -1:
-                    winner = blue_team_name
-                    loser = red_team_name
-            if line.find("The Blue team has returned at least ") != -1:
-                score = abs(int(line.split('The Blue team has returned at least ')[1].split(' ')[0]))
+
+        if output.find("Traceback") != -1:
+            if output.find("redAgents = loadAgents") != -1:
+                self.errors[red_team_name] += 1
                 winner = blue_team_name
                 loser = red_team_name
-            elif line.find("The Red team has returned at least ") != -1:
-                score = abs(int(line.split('The Red team has returned at least ')[1].split(' ')[0]))
+                score = 1
+            elif output.find("Traceback") != -1 and output.find("blueAgents = loadAgents") != -1:
+                self.errors[blue_team_name] += 1
                 winner = red_team_name
                 loser = blue_team_name
-            elif line.find("Tie Game") != -1:
-                winner = None
-                loser = None
-            elif line.find("agent crashed") != -1:
-                bug = True
-                if line.find("Red agent crashed") != -1:
-                    self.errors[red_team_name] += 1
+                score = 1
+            else:
+                print("Something went wrong in the contest script - there is a traceback but no clear winner!")
+        else:
+            for line in output.splitlines():
+                if line.find("wins by") != -1:
+                    score = abs(int(line.split('wins by')[1].split('points')[0]))
+                    if line.find('Red') != -1:
+                        winner = red_team_name
+                        loser = blue_team_name
+                    elif line.find('Blue') != -1:
+                        winner = blue_team_name
+                        loser = red_team_name
+                if line.find("The Blue team has returned at least ") != -1:
+                    score = abs(int(line.split('The Blue team has returned at least ')[1].split(' ')[0]))
                     winner = blue_team_name
                     loser = red_team_name
-                    score = 1
-                if line.find("Blue agent crashed") != -1:
-                    self.errors[blue_team_name] += 1
+                elif line.find("The Red team has returned at least ") != -1:
+                    score = abs(int(line.split('The Red team has returned at least ')[1].split(' ')[0]))
                     winner = red_team_name
                     loser = blue_team_name
-                    score = 1
+                elif line.find("Tie Game") != -1:
+                    winner = None
+                    loser = None
+                elif line.find("agent crashed") != -1:
+                    bug = True
+                    if line.find("Red agent crashed") != -1:
+                        self.errors[red_team_name] += 1
+                        winner = blue_team_name
+                        loser = red_team_name
+                        score = 1
+                    if line.find("Blue agent crashed") != -1:
+                        self.errors[blue_team_name] += 1
+                        winner = red_team_name
+                        loser = blue_team_name
+                        score = 1
+
 
         return score, winner, loser, bug
     
