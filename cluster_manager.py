@@ -61,15 +61,23 @@ TransferableFile = namedtuple('TransferableFile', ['local_path', 'remote_path'],
 
 stdout = ThreadSafeFile(sys.stdout)
 
+# TODO: report how many jobs have been run from the total to have an idea how far we are
+no_finished_jobs = 0
+
+
 class ClusterManager:
     def __init__(self, hosts, jobs):
         self.hosts = hosts  # type: 'List[Host]'
         self.jobs = jobs  # type: 'List[Job]'
         self.workers = []  # type: 'List[SSHClient]'
         self.pool = Queue()  # type: 'Queue[SSHClient]'
+        self.no_finished_jobs = 0
 
         total_no_workers = sum(host.no_cpu for host in hosts)
         # https: // pythonhosted.org / joblib / generated / joblib.Parallel.html
+
+        print(" ###################### About to run %d jobs in %d hosts #####################" % (len(self.jobs), total_no_workers))
+
         self.workers = Parallel(total_no_workers, backend='threading')(delayed(create_worker)(host) for host in self.hosts for _ in range(host.no_cpu))
         for worker in self.workers:
             self.pool.put(worker)
@@ -95,9 +103,15 @@ def create_worker(host):
 
     worker = SSHClient()
     worker.load_system_host_keys()
-    worker.host = host.hostname  # store the host for later reference (e.g., logging)
     worker.set_missing_host_key_policy(AutoAddPolicy())
+
+    worker.host = host.hostname  # store all this for later reference (e.g., logging, reconnection)
+    worker.username = host.username
+    worker.password = host.password
+    worker.key_filename = host.key_filename
+
     # time.sleep(4)
+    # worker.connect(hostname=host.hostname, username=host.username, password=host.password, key_filename=host.key_filename, sock=proxy, timeout=3600)
     worker.connect(hostname=host.hostname, username=host.username, password=host.password, key_filename=host.key_filename, sock=proxy)
     return worker
 
@@ -109,6 +123,8 @@ def run_job(pool, job):
         return run_job_on_worker(worker, job)
     finally:
         pool.put(worker)
+        # no_finished_jobs += 1
+        # print("Number of jobs finished: %d" % self.no_finished_jobs)
 
 def run_job_on_worker(worker, job):
     # create remote env
@@ -131,16 +147,24 @@ def run_job_on_worker(worker, job):
     result_err = ssh_stderr.read()
     exit_code = ssh_stdout.channel.recv_exit_status()  # Blocking call but only after reading it all
 
-    # retrieve results
-    for tf in job.return_files:
-        sftp.get(localpath=tf.local_path, remotepath=tf.remote_path)
 
-    # clean
-    worker.exec_command('rm -rf %s' % dest_dir)
+    # retrieve reply file
+    try:
+        for tf in job.return_files:
+            sftp.get(localpath=tf.local_path, remotepath=tf.remote_path)
+        sftp.close()
+        # clean
+        worker.exec_command('rm -rf %s' % dest_dir)
 
-    stdout.write('FINISHED EXECUTING command in host %s dir %s: %s' % (worker.host, job.command, dest_dir))
-    stdout.write('\n')
+        stdout.write('FINISHED EXECUTING command in host %s dir %s: %s' % (worker.host, job.command, dest_dir))
+        stdout.write('\n')
+    except Exception as e:
+        stdout.write("\n \n ***************** ERROR copying replay remote file %s to local %s on %s: %s"
+                     % (tf.remote_path, tf.local_path, dest_dir, str(e)))
+        stdout.write("***************** RECONNECTING WORKER: %s \n\n" % worker.host)
+        worker.connect(hostname=worker.host, username=worker.username, password=worker.password, key_filename=worker.key_filename)
 
+    print("Finished cluster %s " % dest_dir)
     return job.id, exit_code, result_out, result_err
     # return job.id, exit_code, ssh_stdout.read(), ssh_stderr.read()
 
