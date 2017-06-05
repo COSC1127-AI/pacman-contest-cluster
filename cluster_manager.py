@@ -19,6 +19,10 @@ import random
 import os
 from thread_safe_file import ThreadSafeFile
 
+import logging
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO, datefmt='%a, %d %b %Y %H:%M:%S')
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Verify all necessary packages are present
 
@@ -59,9 +63,11 @@ Host = namedtuple('Host', ['no_cpu', 'hostname', 'username', 'password', 'key_fi
 Job = namedtuple('Job', ['command', 'required_files', 'return_files', 'id'], verbose=False)
 TransferableFile = namedtuple('TransferableFile', ['local_path', 'remote_path'], verbose=False)
 
+# TODO: I have replaced all stdout.write() for logging commands: is there any issue with threading?
 stdout = ThreadSafeFile(sys.stdout)
 
 # TODO: report how many jobs have been run from the total to have an idea how far we are
+no_total_jobs = 0
 no_finished_jobs = 0
 
 
@@ -71,12 +77,14 @@ class ClusterManager:
         self.jobs = jobs  # type: 'List[Job]'
         self.workers = []  # type: 'List[SSHClient]'
         self.pool = Queue()  # type: 'Queue[SSHClient]'
-        self.no_finished_jobs = 0
+        self.no_finished_jobs = 0   # TODO: not needed as we are using the global variable
 
         total_no_workers = sum(host.no_cpu for host in hosts)
         # https: // pythonhosted.org / joblib / generated / joblib.Parallel.html
 
-        print(" ###################### About to run %d jobs in %d hosts #####################" % (len(self.jobs), total_no_workers))
+        global no_total_jobs
+        no_total_jobs = len(self.jobs)
+        logging.info("ABOUT TO RUN %d jobs in %d hosts #####################" % (no_total_jobs, total_no_workers))
 
         self.workers = Parallel(total_no_workers, backend='threading')(delayed(create_worker)(host) for host in self.hosts for _ in range(host.no_cpu))
         for worker in self.workers:
@@ -118,13 +126,16 @@ def create_worker(host):
 
 
 def run_job(pool, job):
+    global no_finished_jobs
+    global no_total_jobs
+
     worker = pool.get()
     try:
         return run_job_on_worker(worker, job)
     finally:
         pool.put(worker)
-        # no_finished_jobs += 1
-        # print("Number of jobs finished: %d" % self.no_finished_jobs)
+        no_finished_jobs += 1
+        logging.info("Number of jobs finished so far: %d (out of %d)" % (no_finished_jobs, no_total_jobs))
 
 def run_job_on_worker(worker, job):
     # create remote env
@@ -137,8 +148,7 @@ def run_job_on_worker(worker, job):
         sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
 
     # worker.host was stored when worker was created
-    stdout.write('ABOUT TO EXECUTE command in host %s dir %s: %s' % (worker.host, dest_dir,  job.command))
-    stdout.write('\n')
+    logging.info('ABOUT TO EXECUTE command in host %s dir %s: %s \n' % (worker.host, dest_dir,  job.command))
 
     # run job
     actual_command = """cd %s ; sh -c '%s'""" % (dest_dir, job.command)
@@ -156,15 +166,13 @@ def run_job_on_worker(worker, job):
         # clean
         worker.exec_command('rm -rf %s' % dest_dir)
 
-        stdout.write('FINISHED EXECUTING command in host %s dir %s: %s' % (worker.host, job.command, dest_dir))
-        stdout.write('\n')
+        logging.info('FINISHED SUCCESSFULLY EXECUTING command in host %s dir %s: %s \n' % (worker.host, job.command, dest_dir))
     except Exception as e:
-        stdout.write("\n \n ***************** ERROR copying replay remote file %s to local %s on %s: %s"
+        logging.error("\n \n ERROR copying replay remote file %s to local %s on %s: %s"
                      % (tf.remote_path, tf.local_path, dest_dir, str(e)))
-        stdout.write("***************** RECONNECTING WORKER: %s \n\n" % worker.host)
+        logging.info("RECONNECTING BROKEN WORKER: %s \n\n" % worker.host)
         worker.connect(hostname=worker.host, username=worker.username, password=worker.password, key_filename=worker.key_filename)
 
-    print("Finished cluster %s " % dest_dir)
     return job.id, exit_code, result_out, result_err
     # return job.id, exit_code, ssh_stdout.read(), ssh_stderr.read()
 
