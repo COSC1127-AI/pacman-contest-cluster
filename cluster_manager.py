@@ -63,10 +63,10 @@ Host = namedtuple('Host', ['no_cpu', 'hostname', 'username', 'password', 'key_fi
 Job = namedtuple('Job', ['command', 'required_files', 'return_files', 'id'], verbose=False)
 TransferableFile = namedtuple('TransferableFile', ['local_path', 'remote_path'], verbose=False)
 
-# TODO: I have replaced all stdout.write() for logging commands: is there any issue with threading?
-stdout = ThreadSafeFile(sys.stdout)
+# NOT NEEDED ANYMORE AS WE USE LOGGING FACILITY WHICH IS THREAD SAFE: https://docs.python.org/3.6/library/logging.html#thread-safety
+# stdout = ThreadSafeFile(sys.stdout)
 
-# TODO: report how many jobs have been run from the total to have an idea how far we are
+# Keep track of the number of total jobs to run and number of jobs completed (for reporting)
 no_total_jobs = 0
 no_finished_jobs = 0
 
