@@ -221,7 +221,7 @@ def load_settings():
 
 class ContestRunner:
 
-    ENV_DIR = 'contest'
+    TMP_CONTEST_DIR = 'contest-tmp'
     CONTEST_ZIP_FILE = 'contest.zip'
     LAYOUTS_ZIP_FILE = 'layouts.zip'
     STAFF_TEAM_ZIP_FILE = 'staff_team.zip'
@@ -266,10 +266,10 @@ class ContestRunner:
 
         # Setup Pacman CTF environment by extracting it from a clean zip file
         self.layouts = None
-        self._prepare_platform(self.CONTEST_ZIP_FILE, self.LAYOUTS_ZIP_FILE, self.ENV_DIR, no_fixed_layouts, no_random_layouts)
+        self._prepare_platform(self.CONTEST_ZIP_FILE, self.LAYOUTS_ZIP_FILE, self.TMP_CONTEST_DIR, no_fixed_layouts, no_random_layouts)
 
         # Setup all of the teams
-        teams_dir = os.path.join(self.ENV_DIR, self.TEAMS_SUBDIR)
+        teams_dir = os.path.join(self.TMP_CONTEST_DIR, self.TEAMS_SUBDIR)
         if os.path.exists(teams_dir):
             shutil.rmtree(teams_dir)
         os.makedirs(teams_dir)
@@ -292,7 +292,7 @@ class ContestRunner:
             self._setup_team(self.STAFF_TEAM_ZIP_FILE, teams_dir, ignore_file_name_format=True)
 
         # zip directory for transfer to remote workers
-        shutil.make_archive(self.ENV_ZIP_READY[:-4], 'zip', self.ENV_DIR)
+        shutil.make_archive(self.ENV_ZIP_READY[:-4], 'zip', self.TMP_CONTEST_DIR)
 
         self.ladder = {n: [] for n, _ in self.teams}
         self.games = []
@@ -468,9 +468,9 @@ class ContestRunner:
             shutil.rmtree(destination)
         os.makedirs(destination)
         contest_zip_file = zipfile.ZipFile(contest_zip_file_path)
-        contest_zip_file.extractall('.')
+        contest_zip_file.extractall(os.path.join(self.TMP_CONTEST_DIR, '.'))
         layouts_zip_file = zipfile.ZipFile(layouts_zip_file_path)
-        layouts_zip_file.extractall(os.path.join(self.ENV_DIR, 'layouts'))
+        layouts_zip_file.extractall(os.path.join(self.TMP_CONTEST_DIR, 'layouts'))
 
         # pick no_fixed_layouts layouts from the given set in the zip file
         layouts_available = [file_in_zip[:-4] for file_in_zip in layouts_zip_file.namelist()]
@@ -587,7 +587,7 @@ class ContestRunner:
         replay_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.replay'.format(
             layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
 
-        replays = glob.glob(os.path.join(self.ENV_DIR, 'replay*'))
+        replays = glob.glob(os.path.join(self.TMP_CONTEST_DIR, 'replay*'))
         if replays:
             # results/results_<run_id>/{red_team_name}_vs_{blue_team_name}_{layout}.replay
             shutil.move(replays[0], os.path.join(self.results_dir_full_path, replay_file_name))
@@ -604,7 +604,7 @@ class ContestRunner:
         sys.stdout.flush()
         command = self._generate_command(red_team, blue_team, layout)
         logging.info(command)
-        exit_code, output = commands.getstatusoutput('cd %s && %s' % (self.ENV_DIR, command))
+        exit_code, output = commands.getstatusoutput('cd %s && %s' % (self.TMP_CONTEST_DIR, command))
         self._analyse_output(red_team, blue_team, layout, exit_code, output)
 
 
@@ -621,11 +621,12 @@ class ContestRunner:
         red_team_name, _ = red_team
         blue_team_name, _ = blue_team
         game_command = self._generate_command(red_team, blue_team, layout)
-        deflate_command = 'unzip {zip_file} -d {contest_dir} ; chmod +x -R *'.format(zip_file=self.ENV_ZIP_READY, contest_dir=self.ENV_DIR)
-        command = '{deflate_command} ; cd {contest_dir} ; {game_command} ; touch {replay_filename}'.format(deflate_command=deflate_command, contest_dir=self.ENV_DIR, game_command=game_command, replay_filename='replay-0')
+        deflate_command = 'unzip {zip_file} -d {contest_dir} ; chmod +x -R *'.format(zip_file=self.ENV_ZIP_READY, contest_dir=self.TMP_CONTEST_DIR)
+        command = '{deflate_command} ; cd {contest_dir} ; {game_command} ; touch {replay_filename}'.format(deflate_command=deflate_command, contest_dir=self.TMP_CONTEST_DIR, game_command=game_command, replay_filename='replay-0')
+        print(command)
         req_file = TransferableFile(local_path=self.ENV_ZIP_READY, remote_path=self.ENV_ZIP_READY)
         replay_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.replay'.format(layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
-        ret_file = TransferableFile(local_path=os.path.join(self.results_dir_full_path, replay_file_name), remote_path=os.path.join(self.ENV_DIR, 'replay-0'))
+        ret_file = TransferableFile(local_path=os.path.join(self.results_dir_full_path, replay_file_name), remote_path=os.path.join(self.TMP_CONTEST_DIR, 'replay-0'))
         return Job(command=command, required_files=[req_file], return_files=[ret_file], id=(red_team, blue_team, layout))
 
 
