@@ -143,6 +143,7 @@ def load_settings():
     parser.add_argument(
         '--no-random-layouts',
         help='number of random layouts to use (default: {default})'.format(default=DEFAULT_RANDOM_LAYOUTS),
+        default=3,
     )
     parser.add_argument(
         '--team-names-file',
@@ -623,7 +624,6 @@ class ContestRunner:
         game_command = self._generate_command(red_team, blue_team, layout)
         deflate_command = 'unzip {zip_file} -d {contest_dir} ; chmod +x -R *'.format(zip_file=self.ENV_ZIP_READY, contest_dir=self.TMP_CONTEST_DIR)
         command = '{deflate_command} ; cd {contest_dir} ; {game_command} ; touch {replay_filename}'.format(deflate_command=deflate_command, contest_dir=self.TMP_CONTEST_DIR, game_command=game_command, replay_filename='replay-0')
-        print(command)
         req_file = TransferableFile(local_path=self.ENV_ZIP_READY, remote_path=self.ENV_ZIP_READY)
         replay_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.replay'.format(layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
         ret_file = TransferableFile(local_path=os.path.join(self.results_dir_full_path, replay_file_name), remote_path=os.path.join(self.TMP_CONTEST_DIR, 'replay-0'))
