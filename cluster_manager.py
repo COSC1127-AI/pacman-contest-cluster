@@ -17,7 +17,6 @@ import sys
 from Queue import Queue
 import random
 import os
-from thread_safe_file import ThreadSafeFile
 
 import logging
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO, datefmt='%a, %d %b %Y %H:%M:%S')
@@ -45,7 +44,6 @@ try:
     from paramiko.config import SSHConfig
     from paramiko.client import SSHClient
     from paramiko.proxy import ProxyCommand
-    from paramiko.sftp_client import SFTPClient
     from paramiko import AutoAddPolicy
 except:
     missing_packages.append('paramiko')
@@ -63,8 +61,6 @@ Host = namedtuple('Host', ['no_cpu', 'hostname', 'username', 'password', 'key_fi
 Job = namedtuple('Job', ['command', 'required_files', 'return_files', 'id'], verbose=False)
 TransferableFile = namedtuple('TransferableFile', ['local_path', 'remote_path'], verbose=False)
 
-# NOT NEEDED ANYMORE AS WE USE LOGGING FACILITY WHICH IS THREAD SAFE: https://docs.python.org/3.6/library/logging.html#thread-safety
-# stdout = ThreadSafeFile(sys.stdout)
 
 # Keep track of the number of total jobs to run and number of jobs completed (for reporting)
 no_total_jobs = 0
@@ -77,7 +73,6 @@ class ClusterManager:
         self.jobs = jobs  # type: 'List[Job]'
         self.workers = []  # type: 'List[SSHClient]'
         self.pool = Queue()  # type: 'Queue[SSHClient]'
-        self.no_finished_jobs = 0   # TODO: not needed as we are using the global variable
 
         total_no_workers = sum(host.no_cpu for host in hosts)
         # https: // pythonhosted.org / joblib / generated / joblib.Parallel.html
@@ -122,7 +117,6 @@ def create_worker(host):
     # worker.connect(hostname=host.hostname, username=host.username, password=host.password, key_filename=host.key_filename, sock=proxy, timeout=3600)
     worker.connect(hostname=host.hostname, username=host.username, password=host.password, key_filename=host.key_filename, sock=proxy)
     return worker
-
 
 
 def run_job(pool, job):
@@ -174,7 +168,6 @@ def run_job_on_worker(worker, job):
         worker.connect(hostname=worker.host, username=worker.username, password=worker.password, key_filename=worker.key_filename)
 
     return job.id, exit_code, result_out, result_err
-    # return job.id, exit_code, ssh_stdout.read(), ssh_stderr.read()
 
 
 if __name__ == '__main__':
