@@ -381,7 +381,7 @@ class ContestRunner:
                 loser = blue_team_name
                 score = 1
             else:
-                print("Something went wrong in the contest script - Traceback but no winner: %s vs %s" % (read_team_name, blue_team_name))
+                print("Something went wrong in the contest script - Traceback but no winner: %s vs %s" % (red_team_name, blue_team_name))
         else:
             for line in output.splitlines():
                 if line.find("wins by") != -1:
@@ -454,7 +454,7 @@ class ContestRunner:
 
         return output
     
-    
+
     def _prepare_platform(self, contest_zip_file_path, layouts_zip_file_path, destination, no_fixed_layouts=5, no_random_layouts=3):
         """
         Cleans the given destination directory and prepares a fresh setup to execute a Pacman CTF game within.
@@ -482,17 +482,17 @@ class ContestRunner:
 
         # add a no_random_layouts random layouts
         if no_random_layouts > 0:
-            list_random_layouts = ['RANDOM'+str(random.randint(1,9999)) for x in range(0,no_random_layouts)]
-            self.layouts = self.layouts + list_random_layouts
+            list_random_layouts = ['RANDOM'+str(random.randint(1,9999)) for _ in range(0,no_random_layouts)]
+            self.layouts += list_random_layouts
 
-    def _setup_team(self, zip_file, destination, ignore_file_name_format=False, allow_non_registered_students=False):
+    def _setup_team(self, submission, destination, ignore_file_name_format=False, allow_non_registered_students=False):
         """
         Extracts team.py from the team submission zip file into a directory inside contest/teams
             If the zip file name is listed in team-name mapping, then name directory with team name
             otherwise name directory after the zip file.
         Information on the teams are saved in the member variable teams.
         
-        :param zip_file: the zip file of the team.
+        :param submission: the zip file of the team.
         :param destination: the directory where the team directory is to be created.
         :param ignore_file_name_format: if True, an invalid file name format does not cause the team to be ignored.
         In this case, if the file name truly is not respecting the format, the zip file name (minus the .zip part) is
@@ -502,10 +502,17 @@ class ContestRunner:
         name used is the student id).
         :raises KeyError if the zip file contains multiple copies of team.py, non of which is in the root.
         """
-        submission_zip_file = zipfile.ZipFile(zip_file)
+        if os.path.isdir:
+            submission_zip_file = None
+        else:
+            try:
+                submission_zip_file = zipfile.ZipFile(submission)
+            except zipfile.BadZipfile:
+                logging.warning('Submission is not a valid ZIP file nor a folder: %s. Skipping' % submission)
+                return
 
         # Get team name from submission: if in self.team_names mapping, then use mapping; otherwise use filename
-        match = re.match(self.SUBMISSION_FILENAME_PATTERN, os.path.basename(zip_file))
+        match = re.match(self.SUBMISSION_FILENAME_PATTERN, os.path.basename(submission))
         submission_time = None
         if match:
             student_id = match.group(1)
@@ -516,7 +523,7 @@ class ContestRunner:
             elif allow_non_registered_students:
                 team_name = student_id
             else:
-                logging.warning('Student not registered: "%s" (file %s). Skipping' % (student_id, zip_file))
+                logging.warning('Student not registered: "%s" (file %s). Skipping' % (student_id, submission))
                 return
 
             # next get the submission date (encoded in filename)
@@ -524,13 +531,14 @@ class ContestRunner:
                 submission_time = iso8601.parse_date(match.group(2)).astimezone(self.TIMEZONE)
             except iso8601.iso8601.ParseError:
                 if not ignore_file_name_format:
-                    logging.warning('Team zip file "%s" name has invalid date format. Skipping' % zip_file)
+                    logging.warning('Team zip file "%s" name has invalid date format. Skipping' % submission)
                     return
         else:
             if not ignore_file_name_format:
-                logging.warning('Submission zip file "%s" does not correspond to any team. Skipping' % zip_file)
+                logging.warning('Submission zip file "%s" does not correspond to any team. Skipping' % submission)
                 return
-            team_name = os.path.basename(zip_file)[:-4]
+            team_name = os.path.basename(submission)
+            team_name = team_name[:-4] if team_name.endswith(".zip") else team_name
 
 
         # This submission will be temporarily expanded into team_destination_dir
@@ -538,13 +546,19 @@ class ContestRunner:
         desired_file = 'myTeam.py'
 
         if team_name not in self.submission_times:
-            submission_zip_file.extractall(team_destination_dir)
+            if submission_zip_file is None:
+                shutil.copy(submission, team_destination_dir)
+            else:
+                submission_zip_file.extractall(team_destination_dir)
             agent_factory = os.path.join(self.TEAMS_SUBDIR, team_name, desired_file)
             self.teams.append((team_name, agent_factory))
             self.submission_times[team_name] = submission_time
         elif submission_time is not None and self.submission_times[team_name] < submission_time:
             shutil.rmtree(team_destination_dir)
-            submission_zip_file.extractall(team_destination_dir)
+            if submission_zip_file is None:
+                shutil.copy(submission, team_destination_dir)
+            else:
+                submission_zip_file.extractall(team_destination_dir)
             self.submission_times[team_name] = submission_time
 
 
