@@ -158,7 +158,7 @@ def run_job_on_worker(worker, job):
     exit_code = ssh_stdout.channel.recv_exit_status()  # Blocking call but only after reading it all
 
 
-    # retrieve reply file
+    # retrieve replay file
     try:
         for tf in job.return_files:
             sftp.get(localpath=tf.local_path, remotepath=tf.remote_path)
