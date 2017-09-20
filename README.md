@@ -66,7 +66,8 @@ Hence, user must provide:
 
 ## General description how the script works ##
 
-The mains components are:
+
+#### Main components: ####
 
 - pacman-ssh-contest.py: main script
 - cluster_manager.py: the script to manage clusters
