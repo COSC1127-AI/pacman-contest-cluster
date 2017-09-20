@@ -57,6 +57,20 @@ To see options available run:
 * The cluster to be used is specified with option --workers-file-path, to point to a .json file containing the workers
 available (including no of cores, IP, username, password, and private key file if needed)
 
+* Cluster should have all the Python and Unix packages to run the contest. For example, in the NeCTAR cluster I ran:
+
+    ````
+    sudo apt-get update
+    sudo apt-get install python-pip unzip
+    
+    pip install paramiko
+    pip install pytz
+    sudo pip install zip
+    sudo pip install future
+    ````
+
+
+
 Hence, user must provide:
 
 - private keys for cluster (if needed; specified in workers.json)
