@@ -59,7 +59,6 @@ available (including no of cores, IP, username, password, and private key file i
 
 * Cluster should have all the Python and Unix packages to run the contest. For example, in the NeCTAR cluster I ran:
 
-    ````
     sudo apt-get update
     sudo apt-get install python-pip unzip
     
@@ -67,7 +66,7 @@ available (including no of cores, IP, username, password, and private key file i
     pip install pytz
     sudo pip install zip
     sudo pip install future
-    ````
+    
     
 
 
