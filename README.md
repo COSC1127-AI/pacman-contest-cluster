@@ -29,9 +29,11 @@ To see options available run:
 * Generate HTML page with tournament results and list of replay files.
     * option --output-path
 * Handle latest submission by sorting via timestamp in file name.
+    * all members of a team can submit at any point
     * last submission per team is considered (if there are multiple)
-
-
+    * this is done by mapping individual submission to a team via --team-names-file and timestamp in zip submission file 
+    
+    
 ## PRE-REQUISITES ##
 
 * unzip & zip (to pack and unpack submissions and files for transfer)
@@ -61,6 +63,7 @@ Hence, user must provide:
 - Directory with set of zip submission files; see above (for option --teams)
 - workers.json: listing the cluster setting to be used (for option --workers-file-path)
 - TEAMS-STUDENT-MAPPING.csv: a csv mapping submissions to teams (for option --team-names-file)
+    - Main columns are: STUDENT_ID and TEAM_NAME
 
 
 
