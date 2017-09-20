@@ -6,7 +6,7 @@ Developed for RMIT COSC1125/1127 AI course in 2017 (lecturer A/Prof. Sebastian S
 
 CONTACT: Sebastian Sardina (ssardina@gmail.com)
 
-## 1 - Overview ##
+## OVERVIEW ##
 
 This system allows to run a full Pacman Conquer the Flag tournament among many teams using a cluster of machines. This means that it allows to run many games at the same time, depending how many total cpu cores are available.
 
@@ -32,7 +32,7 @@ To see options available run:
     * last submission per team is considered (if there are multiple)
 
 
-## 2 - Pre-requisites ##
+## PRE-REQUISITES ##
 
 * unzip & zip (to pack and unpack submissions and files for transfer)
 * Python >=2.7
@@ -64,7 +64,7 @@ Hence, user must provide:
 
 
 
-## 3 - General description how the script works ##
+## HOW THE SCRIPT WORKS ##
 
 
 ### Main components: ###
