@@ -67,7 +67,7 @@ Hence, user must provide:
 ## General description how the script works ##
 
 
-#### Main components: ####
+### Main components: ###
 
 - pacman-ssh-contest.py: main script
 - cluster_manager.py: the script to manage clusters
@@ -78,7 +78,7 @@ Hence, user must provide:
 - TEAMS-STUDENT-MAPPING.csv: example of a mapping file
 
 
-#### Overview of marking process: ####
+### Overview of marking process: ###
 
 1. The script authenticate to all workers.
 2. The script will _use contest.zip_, _layouts.zip_ (where some fixed layouts are stored) and a set of teams and:
@@ -92,7 +92,7 @@ Hence, user must provide:
     
 
 
-#### Example of a run: ####
+### Example of a run: ###
 
 ````
 python pacman-ssh-contest.py --compress-log --organizer RMIT \
