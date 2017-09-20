@@ -230,8 +230,10 @@ class ContestRunner:
     RESULTS_DIR = 'results'
     WWW_DIR = 'www'
     TIMEZONE = timezone('Australia/Melbourne')
-    SUBMISSION_FILENAME_PATTERN = re.compile(r'^(s\d+)_(.+)?\.zip$')    # s???????[_datetime].zip
     ENV_ZIP_READY = 'contest_and_teams.zip'
+    SUBMISSION_FILENAME_PATTERN = re.compile(r'^(s\d+)_(.+)?\.zip$')
+                                            # submissions file format: s???????[_datetime].zip
+                                            # datetime in ISO8601 format:  https: // en.wikipedia.org / wiki / ISO_8601
 
     def __init__(self, teams_root, output_path, include_staff_team, organizer, compress_logs, max_steps,
                  no_fixed_layouts, no_random_layouts, team_names_file, allow_non_registered_students):
@@ -269,15 +271,17 @@ class ContestRunner:
         self.layouts = None
         self._prepare_platform(self.CONTEST_ZIP_FILE, self.LAYOUTS_ZIP_FILE, self.TMP_CONTEST_DIR, no_fixed_layouts, no_random_layouts)
 
-        # Setup all of the teams
+        # Setup all of the TEAMS
         teams_dir = os.path.join(self.TMP_CONTEST_DIR, self.TEAMS_SUBDIR)
         if os.path.exists(teams_dir):
             shutil.rmtree(teams_dir)
         os.makedirs(teams_dir)
 
+
         # Get all team name mapping from mapping file
         self.team_names = self._load_teams(team_names_file)
-        # Setup all team directories under contest/team subdir for contest (copy content in .zip to team dirs)
+
+        # setup all team directories under contest/team subdir for contest (copy content in .zip to team dirs)
         self.teams = []
         self.submission_times = {}
         for submission_zip_file in os.listdir(teams_root):
@@ -492,8 +496,8 @@ class ContestRunner:
             otherwise name directory after the zip file.
         Information on the teams are saved in the member variable teams.
         
-        :param submission: the zip file of the team.
-        :param destination: the directory where the team directory is to be created.
+        :param submission: the zip file or directory of the team.
+        :param destination: the directory where the team directory is to be created and files copied.
         :param ignore_file_name_format: if True, an invalid file name format does not cause the team to be ignored.
         In this case, if the file name truly is not respecting the format, the zip file name (minus the .zip part) is
         used as team name. If this function is called twice with files having the same name (e.g., if they are in
@@ -502,7 +506,7 @@ class ContestRunner:
         name used is the student id).
         :raises KeyError if the zip file contains multiple copies of team.py, non of which is in the root.
         """
-        if os.path.isdir:
+        if os.path.isdir(submission):
             submission_zip_file = None
         else:
             try:
