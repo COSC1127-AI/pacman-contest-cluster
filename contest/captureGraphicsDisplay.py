@@ -549,8 +549,8 @@ class PacmanGraphics:
     foodImages = []
     color = FOOD_COLOR
     for xNum, x in enumerate(foodMatrix):
-      if self.capture and (xNum * 2) <= foodMatrix.width: color = TEAM_COLORS[0]
-      if self.capture and (xNum * 2) > foodMatrix.width: color = TEAM_COLORS[1]
+      if self.capture and (xNum * 2) < foodMatrix.width: color = TEAM_COLORS[0]
+      if self.capture and (xNum * 2) >= foodMatrix.width: color = TEAM_COLORS[1]
       imageRow = []
       foodImages.append(imageRow)
       for yNum, cell in enumerate(x):
