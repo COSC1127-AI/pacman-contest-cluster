@@ -92,7 +92,19 @@ Hence, user must provide:
 ### Overview of marking process: ###
 
 1. The script authenticate to all workers.
-2. The script will _use contest.zip_, _layouts.zip_ (where some fixed layouts are stored) and a set of teams and:
+2. Then the script will collect all the teams, as per _--teams-root_ option.
+    - Will collect each file with pattern s<student number>_<timestamp>.zip
+    - If student number is not registered in any team as per mapping given by _--team-names-file_ then the file is 
+    ignored (we do not know which team it corresponds) and the following message is issued:
+        ````
+        Sun, 24 Sep 2017 15:25:48 WARNING  Student not registered: "s123456" (file test-teams/s123456_2017-05-15). Skipping
+        ````
+    - If student is found in a team but submission has wrong timestamp, then it is also ignored as we cannot know if it 
+    is the latest submission for the team. A message is issued:
+        ````
+        Sun, 24 Sep 2017 15:25:48 WARNING  Team zip file "test-teams/s5433273" name has invalid date format. Skipping
+        ````
+3. The script will _use contest.zip_, _layouts.zip_ (where some fixed layouts are stored) and a set of teams and:
     1. create a temporary full contest dir _contest-tmp_
     2. zip it into _contest_and_teams.zip_ file
 3. For each game:
