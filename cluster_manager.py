@@ -13,46 +13,19 @@ you!
 """
 
 from collections import namedtuple
-import sys
 from Queue import Queue
 import random
 import os
+from joblib import Parallel, delayed
+from getpass import getpass, getuser
+from paramiko.config import SSHConfig
+from paramiko.client import SSHClient
+from paramiko.proxy import ProxyCommand
+from paramiko import AutoAddPolicy
 
 import logging
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO, datefmt='%a, %d %b %Y %H:%M:%S')
 
-
-# ----------------------------------------------------------------------------------------------------------------------
-# Verify all necessary packages are present
-
-missing_packages = []
-
-try:
-    # Used to prompt the password without echoing
-    from joblib import Parallel, delayed
-except:
-    missing_packages.append('joblib')
-
-try:
-    # Used to prompt the password without echoing
-    from getpass import getpass, getuser
-except:
-    missing_packages.append('getpass')
-
-try:
-    # Used to establish ssh connections
-    from paramiko.config import SSHConfig
-    from paramiko.client import SSHClient
-    from paramiko.proxy import ProxyCommand
-    from paramiko import AutoAddPolicy
-except:
-    missing_packages.append('paramiko')
-
-if missing_packages:
-    print('Some packages are missing. Please, run `pip install %s`' % ' '.join(missing_packages))
-    if 'paramiko' in missing_packages:
-        print('Note that you may need to install libssl-dev with `sudo apt-get install libssl-dev`')
-    sys.exit(1)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Import class from helper module
@@ -79,14 +52,18 @@ class ClusterManager:
 
         global no_total_jobs
         no_total_jobs = len(self.jobs)
-        logging.info("ABOUT TO RUN %d jobs in %d hosts #####################" % (no_total_jobs, total_no_workers))
+        logging.info("ABOUT TO RUN %d jobs in %d hosts (%d CPUs) #####################" % \
+                     (no_total_jobs, len(hosts), total_no_workers))
 
-        self.workers = Parallel(total_no_workers, backend='threading')(delayed(create_worker)(host) for host in self.hosts for _ in range(host.no_cpu))
+        self.workers = Parallel(total_no_workers, backend='threading')(delayed(create_worker)(host)
+                                                                       for host in self.hosts
+                                                                       for _ in range(host.no_cpu))
         for worker in self.workers:
             self.pool.put(worker)
 
     def start(self):
-        results = Parallel(self.pool.qsize(), backend='threading')(delayed(run_job)(self.pool, job) for job in self.jobs)
+        results = Parallel(self.pool.qsize(), backend='threading')(delayed(run_job)(self.pool, job)
+                                                                   for job in self.jobs)
         return results
 
     def start_single_threaded(self):
@@ -153,19 +130,19 @@ def run_job_on_worker(worker, job):
 
 
     # retrieve replay file
-    try:
-        for tf in job.return_files:
+    for tf in job.return_files:
+        try:
             sftp.get(localpath=tf.local_path, remotepath=tf.remote_path)
+        except Exception as e:
+            logging.error("\n \n ERROR copying replay remote file %s to local %s on %s: %s"
+                         % (tf.remote_path, tf.local_path, dest_dir, str(e)))
+            logging.info("RECONNECTING BROKEN WORKER: %s \n\n" % worker.host)
+            worker.connect(hostname=worker.host, username=worker.username, password=worker.password, key_filename=worker.key_filename)
         sftp.close()
         # clean
         worker.exec_command('rm -rf %s' % dest_dir)
 
         logging.info('FINISHED SUCCESSFULLY EXECUTING command in host %s dir %s: %s \n' % (worker.host, job.command, dest_dir))
-    except Exception as e:
-        logging.error("\n \n ERROR copying replay remote file %s to local %s on %s: %s"
-                     % (tf.remote_path, tf.local_path, dest_dir, str(e)))
-        logging.info("RECONNECTING BROKEN WORKER: %s \n\n" % worker.host)
-        worker.connect(hostname=worker.host, username=worker.username, password=worker.password, key_filename=worker.key_filename)
 
     return job.id, exit_code, result_out, result_err
 
