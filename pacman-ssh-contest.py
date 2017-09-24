@@ -38,44 +38,15 @@ import random
 import commands
 from itertools import combinations
 from cluster_manager import ClusterManager, Job, Host, TransferableFile
-
+import iso8601
+from pytz import timezone
+# from getpass import getpass
+# import paramiko
 
 
 # logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG, datefmt='%a, %d %b %Y %H:%M:%S')
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO, datefmt='%a, %d %b %Y %H:%M:%S')
 
-
-# ----------------------------------------------------------------------------------------------------------------------
-# Verify all necessary packages are present
-
-missing_packages = []
-try:
-    import iso8601
-except:
-    missing_packages.append('iso8601')
-
-try:
-    from pytz import timezone
-except:
-    missing_packages.append('pytz')
-
-try:
-    # Used to prompt the password without echoing
-    from getpass import getpass
-except:
-    missing_packages.append('getpass')
-
-try:
-    # Used to establish ssh connections
-    import paramiko
-except:
-    missing_packages.append('paramiko')
-
-if missing_packages:
-    print('Some packages are missing. Please, run `pip install %s`' % ' '.join(missing_packages))
-    if 'paramiko' in missing_packages:
-        print('Note that you may need to install libssl-dev with `sudo apt-get install libssl-dev`')
-    sys.exit(1)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Load settings either from config.json or from the command line
