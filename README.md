@@ -43,7 +43,6 @@ To see options available run:
     * iso8601
     * pytz
     * paramiko
-    * getpass
 
 
 * Each teams is a .zip file; they should all go in a directory (e.g., teams/)
@@ -62,11 +61,7 @@ available (including no of cores, IP, username, password, and private key file i
 ```
 sudo apt-get update
 sudo apt-get install python-pip unzip
-
-pip install paramiko
-pip install pytz
-sudo pip install zip
-sudo pip install future
+pip install -r requirements.txt
 ```
 
 
