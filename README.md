@@ -39,6 +39,12 @@ To see options available run:
 * In the cluster:
     * unzip & zip (to pack and unpack submissions and files for transfer)
     * Python >=2.7 with standard libraries.
+    * Set the sshd server to accept as many connections as you want to run concurrently. This is done by changing 
+    option MaxStartups in file /etc/ssh/sshd_config. By default sshd has up to 10 connections.
+    
+    For example, set "MaxStartups 20:30:60" to accept up to 20 simultanous connections.
+    
+    (See issue #22)
     
 * In the local machine dispatching jobs to the cluster:
     * unzip & zip (to pack and unpack submissions and files for transfer)
