@@ -36,13 +36,18 @@ To see options available run:
     
 ## PRE-REQUISITES ##
 
-* unzip & zip (to pack and unpack submissions and files for transfer)
-* Python >=2.7
-    * python-future
-    * future
-    * iso8601
-    * pytz
-    * paramiko
+In the cluster:
+    * unzip & zip (to pack and unpack submissions and files for transfer)
+    * Python >=2.7 with standard libraries.
+    
+In the local machine dispatching jobs to the cluster:
+    * unzip & zip (to pack and unpack submissions and files for transfer)
+    * Python >=2.7 with:
+        * python-future
+        * future
+        * iso8601
+        * pytz
+        * paramiko
 
 
 * Each teams is a .zip file; they should all go in a directory (e.g., teams/)
