@@ -177,7 +177,7 @@ def load_settings():
     if args.workers_file_path:
         settings['workers_file_path'] = args.workers_file_path
 
-    settings['ignore-file-name-format'] = args.ignore_file_name_format
+    settings['ignore_file_name_format'] = args.ignore_file_name_format
     settings['allow_non_registered_students'] = args.allow_non_registered_students
 
     logging.info('Script will run with this configuration: %s' % settings)

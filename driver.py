@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import json
 import sys
 import os
 import paramiko
@@ -62,11 +63,10 @@ class RunCommand():
             print 'put %s file from host: %s:' % (filename, host[0])
 
 
-def upload_files(run, year, month, day):
-
-    destination = "/run/user/1000/gvfs/smb-share\:server\=silo-hq1.eng.unimelb.edu.au\,share\=mywebpages/comp90054tournament"
+def upload_files(run, dest_www, year, month, day):
+    
     cwd = os.getcwd()        
-    os.system("cp -rf www/* %s/."%destination)
+    os.system("cp -rf www/* %s/."%dest_www)
     
     
     
@@ -76,11 +76,24 @@ if __name__ == '__main__':
     
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('--username',  help='username', nargs='?' )
-    parser.add_argument('--password',  help='password', nargs='?' )
+    parser.add_argument('--username',  help='username for --teams-server-url', nargs='?' )
+    parser.add_argument('--password',  help='password for --teams-server-url', nargs='?' )
+
+    parser.add_argument('--dest-www',  help='Destination folder to publish www data in a web server. (it is recommended to map a web-server folder using smb)', nargs='?' )        
+    parser.add_argument('--teams-server-folder',  help='folder containing all the teams submitted at the server specified at --teams-server-name', nargs='?' )
+    parser.add_argument('--teams-server-url',  help='server address containing the teams submitted', nargs='?' )
+    parser.add_argument('--tournament-cmd',  help='specify all the options to run pacman-ssh-contesy.py', nargs='?' )
+    
     parser.add_argument('--cron-script-folder',  help='specify the folder to the scripts in order to run cron', nargs='?' )
+
+    #parser.add_argument('--driver-settings-json',  help='Specify all settings above in driver-settings.json', nargs='?' )
+    
     args = vars(parser.parse_args())
 
+    #with open(args['driver_settings_json'], 'r') as f:
+    #    driver_details = json.load(f)['settings']
+
+    #print driver_details
 
 
     '''
@@ -92,15 +105,27 @@ if __name__ == '__main__':
     '''
     ' ADD HOSTS
     '''
-    if 'username' or 'password' not in args:
-        print "SPECIFY username and password: \n\tpython unimelb_dimefox_script.py --username xxxx --password xxxx "
+    if ('username' or 'password' or 'teams_server_url' or 'teams_server_folder') not in args:
+        print "SPECIFY all this parameters: \n\tpython unimelb_dimefox_script.py --username xxxx --password xxxx --team-server-url xxx --team-server-folder xxx --tournament-cmd xxx  \nType --help option for more info\n"
+        print args
+        
         sys.exit(1)
         
     username = args['username']
-    password = args['password']
+    password = args['password'] 
+
+    teams_server_url = args['teams_server_url']
+    teams_server_folder = args['teams_server_folder']
+    tournament_cmd = args['tournament_cmd']
+    
+    dest_www = 'dest-www'
+    if 'dest_www' in args:
+        dest_www = args['dest_www']
+
+    
 
 
-    run.do_add_host( "dimefox.eng.unimelb.edu.au,%s,%s"%(username,password) )
+    run.do_add_host( "%s,%s,%s"%(teams_server_url,username,password) )
 
         
     run.do_connect()
@@ -118,10 +143,8 @@ if __name__ == '__main__':
     ' tar submitted teams from server and download to local machine
     '''
     
-    run.do_run( "tar cvf teams%s_%s_%s.tar  /local/submit/submit/COMP90054/2/* "%(year,month,day) )
+    run.do_run( "tar cvf teams%s_%s_%s.tar  %s* "%(year,month,day,teams_server_folder) )
     run.do_get( "teams%s_%s_%s.tar"%(year,month,day) )    
-    os.system("rm -rf storage2/")
-    os.system("rm -rf local/")
     os.system("tar xvf teams%s_%s_%s.tar"%(year,month,day) )
     
     '''
@@ -142,13 +165,14 @@ if __name__ == '__main__':
     ' Run Competition Script
     '''
 
-    os.system("python pacman-ssh-contest.py --compress-log --organizer UNIMELB  --teams-root teams/  --output-path www/  --max-steps 1200  --include-staff-team --no-fixed-layouts 2 --no-random-layouts 2  --ignore-file-name-format   --workers-file-path workers-unimelb.json")
+    print "RUNNING: python pacman-ssh-contest.py %s"%(tournament_cmd)
+    os.system("python pacman-ssh-contest.py %s"%(tournament_cmd))
 
     
     '''
     ' upload files to server
     '''
     
-    upload_files(run, year, month, day)
+    upload_files(run, dest_www, year, month, day)
 
     run.do_close()
