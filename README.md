@@ -158,7 +158,7 @@ and introduce the following line into the *cronfile*
 # m h  dom mon dow   command
 
 01 00 * * * python unimelb_dimefox_script.py --username xxx --password xxx --cron-script-folder <folder_contest_scripts>
-````
+```
 
 Now your script will run every midnight at 00:01
 
