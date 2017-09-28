@@ -45,9 +45,9 @@ To see options available run:
     * paramiko
 
 
-* Each teams is a .zip file; they should all go in a directory (e.g., teams/)
+* Each team is a .zip file; they should all go in a directory (e.g., teams/)
     * the agent system is in the root of the zip file
-    * zip file should start with "s", continue with student number, then _, and then date in iso8601 format (https://en.wikipedia.org/wiki/ISO_8601), then .zip
+    * [optional to run with --team-names-file] zip file should start with "s", continue with student number, then _, and then date in iso8601 format (https://en.wikipedia.org/wiki/ISO_8601), then .zip
         * format stored regexp SUBMISSION_FILENAME_PATTERN: r'^(s\d+)_(.+)?\.zip$'
         * Examples of legal files:
             - s2736172_2017-05-13T21:32:43.342000+10:00.zip
