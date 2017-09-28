@@ -147,6 +147,28 @@ python pacman-ssh-contest.py --compress-log --organizer RMIT \
 
 ### Schedule competition to run at midnight ###
 
+If you want to automate the tournament, use the driver.py provided. It has the following options:
+
+```
+  --username [USERNAME]
+                        username for --teams-server-url
+  --password [PASSWORD]
+                        password for --teams-server-url
+  --dest-www [DEST_WWW]
+                        Destination folder to publish www data in a web
+                        server. (it is recommended to map a web-server folder
+                        using smb)
+  --teams-server-folder [TEAMS_SERVER_FOLDER]
+                        folder containing all the teams submitted at the
+                        server specified at --teams-server-name
+  --teams-server-url [TEAMS_SERVER_URL]
+                        server address containing the teams submitted
+  --tournament-cmd [TOURNAMENT_CMD]
+                        specify all the options to run pacman-ssh-contesy.py
+  --cron-script-folder [CRON_SCRIPT_FOLDER]
+                        specify the folder to the scripts in order to run cron
+```
+
 Run the following command:
 ```
 crontab -e
@@ -157,7 +179,7 @@ and introduce the following line into the *cronfile*
 # 
 # m h  dom mon dow   command
 
-01 00 * * * python unimelb_dimefox_script.py --username xxx --password xxx --cron-script-folder <folder_contest_scripts>
+01 00 * * * python driver.py --username xxx --password xxx --cron-script-folder ''  --dest-www '' --teams-server-folder '' --teams-server-url xxx --tournament-cmd ''
 ````
 
 Now your script will run every midnight at 00:01
