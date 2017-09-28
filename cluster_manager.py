@@ -23,6 +23,7 @@ from paramiko.client import SSHClient
 from paramiko.proxy import ProxyCommand
 from paramiko import AutoAddPolicy
 
+
 import logging
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO, datefmt='%a, %d %b %Y %H:%M:%S')
 
@@ -90,9 +91,12 @@ def create_worker(host):
     worker.password = host.password
     worker.key_filename = host.key_filename
 
-    # time.sleep(4)
+    #time.sleep(4)
     # worker.connect(hostname=host.hostname, username=host.username, password=host.password, key_filename=host.key_filename, sock=proxy, timeout=3600)
-    worker.connect(hostname=host.hostname, username=host.username, password=host.password, key_filename=host.key_filename, sock=proxy)
+    
+    worker.connect(hostname=host.hostname, username=host.username, password=host.password, key_filename=host.key_filename, sock=proxy )
+    
+
     return worker
 
 
@@ -111,7 +115,7 @@ def run_job(pool, job):
 def run_job_on_worker(worker, job):
     # create remote env
     instance_id = ''.join(random.choice('0123456789abcdef') for _ in range(30))
-    dest_dir = '/tmp/cluster_instance_%s' % instance_id
+    dest_dir = '/tmp/cluster_instance_%s' % instance_id    
     sftp = worker.open_sftp()
     sftp.mkdir(dest_dir)
     sftp.chdir(dest_dir)
