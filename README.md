@@ -13,25 +13,28 @@ This system allows to run a full Pacman Conquer the Flag tournament among many t
 The system takes the set of teams, set of workers in a cluster, and tournament configuration (which layouts and how many steps per game) and runs games for every pair of teams and layouts.
 
 To see options available run: 
-    _python pacman-ssh-contest.py --help_
-
+```
+python pacman-ssh-contest.py --help_
+```
 
 ### Features ###
 
 * Cluster support to run many games at the same time.
-    * option --workers-file-path <json file>
+    * option `--workers-file-path <json file>`
     * connection via ssh with tunneling support if needed.
 * Can use variable number of fixed layouts and randomly generated layouts.
-    * options --no-fixed-layouts and --no-random-layouts 
+    * options `--no-fixed-layouts` and `--no-random-layouts `
 * Flexible configuration via many command line options.
 * Map individual student submissions to teams.
-    * Via student-team mapping file; option --team-names-file
+    * Via student-team mapping file; option `--team-names-file`
+    * Mapping each filename.zip submission as teamname=filename; option `--ignore-file-name-format`
 * Generate HTML page with tournament results and list of replay files.
     * option --output-path
 * Handle latest submission by sorting via timestamp in file name.
     * all members of a team can submit at any point
     * last submission per team is considered (if there are multiple)
-    * this is done by mapping individual submission to a team via --team-names-file and timestamp in zip submission file 
+    * this is done by mapping individual submission to a team via --team-names-file and timestamp in zip submission file
+* Automate tournament using a `driver.py` script and `cron`
     
     
 ## PRE-REQUISITES ##
@@ -46,14 +49,14 @@ To see options available run:
 
 
 * Each team is a .zip file; they should all go in a directory (e.g., teams/)
-    * the agent system is in the root of the zip file
-    * [optional to run with --team-names-file] zip file should start with "s", continue with student number, then _, and then date in iso8601 format (https://en.wikipedia.org/wiki/ISO_8601), then .zip
-        * format stored regexp SUBMISSION_FILENAME_PATTERN: r'^(s\d+)_(.+)?\.zip$'
+    * The agent system is in the root of the zip file
+    * [optional to run with `--team-names-file`] zip file should start with "s", continue with student number, then _, and then date in iso8601 format (https://en.wikipedia.org/wiki/ISO_8601), then .zip
+        * Format stored regexp SUBMISSION_FILENAME_PATTERN: r'^(s\d+)_(.+)?\.zip$'
         * Examples of legal files:
             - s2736172_2017-05-13T21:32:43.342000+10:00.zip
             - s2736172_2017-05-13.zip
 
-* The cluster to be used is specified with option --workers-file-path, to point to a .json file containing the workers
+* The cluster to be used is specified with option `--workers-file-path`, to point to a .json file containing the workers
 available (including no of cores, IP, username, password, and private key file if needed)
 
 * Cluster should have all the Python and Unix packages to run the contest. For example, in the NeCTAR cluster I ran:
@@ -68,10 +71,10 @@ sudo pip install -U  paramiko
 
 Hence, user must provide:
 
-- private keys for cluster (if needed; specified in workers.json)
-- Directory with set of zip submission files; see above (for option --teams)
-- workers.json: listing the cluster setting to be used (for option --workers-file-path)
-- TEAMS-STUDENT-MAPPING.csv [optional]: a csv mapping submissions to teams (for option --team-names-file)
+- *private keys* for cluster (if needed; specified in workers.json)
+- Directory with set of zip submission files; see above (for option `--teams`)
+- `workers.json`: listing the cluster setting to be used (for option `--workers-file-path`)
+- TEAMS-STUDENT-MAPPING.csv [optional]: a csv mapping submissions to teams (for option `--team-names-file`)
     - Main columns are: STUDENT_ID and TEAM_NAME
     - If **no file provided**, teamnames are taken from the submitted zip files (this is the option used at unimelb)
 
@@ -82,14 +85,15 @@ Hence, user must provide:
 
 ### Main components: ###
 
-- unimelb_dimefox_script.py: downloads teams from submissions server, runs pacman-ssh-contest.py and upload results into the web.
-- pacman-ssh-contest.py: main script
-- cluster_manager.py: the script to manage clusters
-- contest.zip: the actual main contest infrastructure, based on that one from UC (with minor fixes, e.g., delay in replays)
-- layouts.zip: some interesting layouts that can be used (beyond the randomly generated ones)
-- staff_team_{basic,medium,top}.zip: the teams from staff, used for --include-staff-team option
-- contest/ subdir: developing place for contest.zip. The .zip file should contain all files in the root of the .zip
-- TEAMS-STUDENT-MAPPING.csv: example of a mapping file
+- `driver.py`: downloads teams from submissions server, runs `pacman-ssh-contest.py` and upload results into the web.
+- `pacman-ssh-contest.py`: main script
+- `cluster_manager.py`: the script to manage clusters
+- `contest.zip`: the actual main contest infrastructure, based on that one from UC (with minor fixes, e.g., delay in replays)
+- `layouts.zip`: some interesting layouts that can be used (beyond the randomly generated ones)
+- `staff_team_{basic,medium,top}.zip`: the teams from staff, used for `--include-staff-team` option. 
+	- Contact us to get access to staff_teams, and do not distribute. These teams are not shared with students as they are used for marking purposes.
+- `contest/` subdir: developing place for `contest.zip`. The .zip file should contain all files in the root of the .zip
+- `TEAMS-STUDENT-MAPPING.csv`: example of a mapping file
 
 
 ### Overview of marking process: ###
