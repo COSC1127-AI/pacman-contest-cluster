@@ -157,10 +157,19 @@ if __name__ == '__main__':
         for f in files:
             fullpath = os.path.join(root, f)
             if fullpath.split('/')[-1].find( ".zip" ) != -1 :
-                os.system("cp -rf %s teams/."%(fullpath))
-                print "cp -rf %s teams/."%(fullpath)
+                '''
+                ' Rename filenames with spaces
+                '''
+                fullpathclean = fullpath.replace(' ', '-')
+                if ' ' in fullpath:
+                    fullpathslash = fullpath.replace(' ', '\ ')
+                    os.system("mv %s %s"%(fullpathslash,fullpathclean))
+                    print "mv %s %s"%(fullpathslash,fullpathclean)
+                    
+                os.system("cp -rf %s teams/."%(fullpathclean))
+                print "cp -rf %s teams/."%(fullpathclean)
 
-
+    
     '''
     ' Run Competition Script
     '''
