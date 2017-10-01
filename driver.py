@@ -99,8 +99,10 @@ if __name__ == '__main__':
     '''
     ' TO RUN ON CRON
     '''
-    if 'cron-script-folder' in args:
-        os.chdir(args['cron-script-folder'])
+    if 'cron_script_folder' in args:
+        os.chdir(args['cron_script_folder'])
+        os.system('pwd')
+    
     
     '''
     ' ADD HOSTS
