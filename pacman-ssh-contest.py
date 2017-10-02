@@ -54,8 +54,9 @@ logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logg
 def load_settings():
     DEFAULT_MAX_STEPS = 1200
     DEFAULT_FIXED_LAYOUTS = 3
-    DEFAULT_RANDOM_LAYOUTS = 4
+    DEFAULT_RANDOM_LAYOUTS = 3
     DEFAULT_CONFIG_FILE = 'config.json'
+    DEFAULT_STAFF_TEAMS_DIR = ''
 
     parser = argparse.ArgumentParser(
         description='This script is to run a tournament between teams of agents for the Pacman package developed by '
@@ -98,6 +99,12 @@ def load_settings():
         action='store_true'
     )
     parser.add_argument(
+        '--staff-teams-dir',
+        help='directory containing the files for staff teams staff_team_basic.zip, staff_team_medium.zip, and staff_team_top.zip.   '
+             '(default: {default})'.format(default=DEFAULT_STAFF_TEAMS_DIR),
+        default=DEFAULT_STAFF_TEAMS_DIR
+    )
+    parser.add_argument(
         '--compress-logs',
         help='if passed, the logs will be compressed in a tar.gz file; otherwise, they will just be archived in a tar file',
         action='store_true'
@@ -105,16 +112,17 @@ def load_settings():
     parser.add_argument(
         '--max-steps',
         help='the limit on the number of steps for each game (default: {default})'.format(default=DEFAULT_MAX_STEPS),
+        default=DEFAULT_MAX_STEPS
     )
     parser.add_argument(
         '--no-fixed-layouts',
         help='number of (random) layouts to use from a given fix set (default: {default})'.format(default=DEFAULT_FIXED_LAYOUTS),
-        default=3,
+        default=DEFAULT_FIXED_LAYOUTS,
     )
     parser.add_argument(
         '--no-random-layouts',
         help='number of random layouts to use (default: {default})'.format(default=DEFAULT_RANDOM_LAYOUTS),
-        default=3,
+        default=DEFAULT_RANDOM_LAYOUTS,
     )
     parser.add_argument(
         '--team-names-file',
@@ -129,7 +137,7 @@ def load_settings():
     parser.add_argument(
         '--build-config-file',
         help='if passed, config.json file will be generated with current options',
-        action = 'store_true',
+        action='store_true',
     )
     parser.add_argument(
         '--ignore-file-name-format',
@@ -162,6 +170,8 @@ def load_settings():
         settings['include_staff_team'] = False
     if args.teams_root:
         settings['teams_root'] = args.teams_root
+    if args.staff_teams_dir:
+        settings['staff_teams_dir'] = args.staff_teams_dir
     if args.output_path:
         settings['output_path'] = args.output_path
     if args.no_fixed_layouts:
@@ -214,7 +224,7 @@ class ContestRunner:
                                             # submissions folder format: s???????[_datetime]
                                             # datetime in ISO8601 format:  https: // en.wikipedia.org / wiki / ISO_8601
 
-    def __init__(self, teams_root, output_path, include_staff_team, organizer, compress_logs, max_steps,
+    def __init__(self, teams_root, output_path, include_staff_team, staff_teams_dir, organizer, compress_logs, max_steps,
                  no_fixed_layouts, no_random_layouts, team_names_file, allow_non_registered_students, ignore_file_name_format):
 
         self.max_steps = max_steps
@@ -273,9 +283,9 @@ class ContestRunner:
 
         # Add the staff team, if necessary
         if include_staff_team:
-            for STAFF_TEAM in self.STAFF_TEAM_ZIP_FILE:
+            for STAFF_TEAM in [os.path.join(staff_teams_dir, staff_file) for staff_file in self.STAFF_TEAM_ZIP_FILE]:
                 if not os.path.exists(STAFF_TEAM):
-                    logging.error('File %s could not be found. Aborting.' % STAFF_TEAM)
+                    logging.error('Staff team file %s could not be found. Aborting.' % STAFF_TEAM)
                     sys.exit(1)
                 self._setup_team(STAFF_TEAM, teams_dir, ignore_file_name_format)
 
