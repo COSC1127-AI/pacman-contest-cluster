@@ -56,7 +56,7 @@ def load_settings():
     DEFAULT_FIXED_LAYOUTS = 3
     DEFAULT_RANDOM_LAYOUTS = 3
     DEFAULT_CONFIG_FILE = 'config.json'
-    DEFAULT_STAFF_TEAMS_DIR = './'
+    DEFAULT_STAFF_TEAMS_DIR = ''
 
     parser = argparse.ArgumentParser(
         description='This script is to run a tournament between teams of agents for the Pacman package developed by '
