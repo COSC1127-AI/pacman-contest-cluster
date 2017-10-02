@@ -865,6 +865,13 @@ def readCommand( argv ):
   blueAgents = loadAgents(False, options.blue, nokeyboard, blueArgs)
   args['agents'] = sum([list(el) for el in zip(redAgents, blueAgents)],[]) # list of agents
 
+  if None in blueAgents or None in redAgents:
+    if None in blueAgents:
+      print '\nBlue team failed to load!\n'
+    if None in redAgents:
+      print '\nRed team failed to load!\n'
+    raise Exception('No teams found!')
+  
   numKeyboardAgents = 0
   for index, val in enumerate([options.keys0, options.keys1, options.keys2, options.keys3]):
     if not val: continue
@@ -916,8 +923,13 @@ def loadAgents(isRed, factory, textgraphics, cmdLineArgs):
     if not factory.endswith(".py"):
       factory += ".py"
 
+    print factory
     module = imp.load_source('player' + str(int(isRed)), factory)
   except (NameError, ImportError):
+    print >>sys.stderr, 'Error: The team "' + factory + '" could not be loaded! '
+    traceback.print_exc()
+    return [None for i in range(2)]
+  except IOError:
     print >>sys.stderr, 'Error: The team "' + factory + '" could not be loaded! '
     traceback.print_exc()
     return [None for i in range(2)]
@@ -944,7 +956,7 @@ def loadAgents(isRed, factory, textgraphics, cmdLineArgs):
   indices = [2*i + indexAddend for i in range(2)]
   return createTeamFunc(indices[0], indices[1], isRed, **args)
 
-def replayGame( layout, agents, actions, display, length, redTeamName, blueTeamName, delay=0.03):
+def replayGame( layout, agents, actions, display, length, redTeamName, blueTeamName, delay=1):
     rules = CaptureRules()
     game = rules.newGame( layout, agents, display, length, False, False )
     state = game.state

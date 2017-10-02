@@ -89,7 +89,7 @@ def load_settings():
     )
     parser.add_argument(
         '--teams-root',
-        help='directory containing the zip files of the teams. Files have to be of the form s<student no>_TIMESTAMP.zip;'
+        help='directory containing the zip files of the teams. if ignore_file_name_format is False (default: False), then files have to be of the form s<student no>_TIMESTAMP.zip;'
              ' for example s9999999_2017-05-13T20:32:43.342000+10:00.zip'
     )
     parser.add_argument(
@@ -118,17 +118,23 @@ def load_settings():
     )
     parser.add_argument(
         '--team-names-file',
-        help='the path of the csv that contains (at least) two columns headed "STUDENT_ID" and "TEAM_NAME", used to match submissions with teams',
+        help='the path of the csv that contains (at least) two columns headed "STUDENT_ID" and "TEAM_NAME", used to match submissions with teams. If no file is specified, all zip files in team folder will be taken.',
+        default='None',
     )
     parser.add_argument(
         '--allow-non-registered-students',
         help='if passed, students without a team are still allowed to participate',
-        action='store_true'
+        action='store_true',
     )
     parser.add_argument(
         '--build-config-file',
         help='if passed, config.json file will be generated with current options',
-        action = 'store_true'
+        action = 'store_true',
+    )
+    parser.add_argument(
+        '--ignore-file-name-format',
+        help='if passed enforce format <student no>_TIMESTAMP.zip for teams will be ignored',
+        action='store_true',
     )
     args = parser.parse_args()
 
@@ -170,6 +176,8 @@ def load_settings():
         settings['team_names_file'] = args.team_names_file
     if args.workers_file_path:
         settings['workers_file_path'] = args.workers_file_path
+
+    settings['ignore_file_name_format'] = args.ignore_file_name_format
     settings['allow_non_registered_students'] = args.allow_non_registered_students
 
     logging.info('Script will run with this configuration: %s' % settings)
@@ -192,11 +200,11 @@ def load_settings():
 # ----------------------------------------------------------------------------------------------------------------------
 
 class ContestRunner:
-
+    ERROR_SCORE = 9999
     TMP_CONTEST_DIR = 'contest-tmp'
     CONTEST_ZIP_FILE = 'contest.zip'
     LAYOUTS_ZIP_FILE = 'layouts.zip'
-    STAFF_TEAM_ZIP_FILE = 'staff_team.zip'
+    STAFF_TEAM_ZIP_FILE = ['staff_team_basic.zip','staff_team_medium.zip','staff_team_top.zip']
     TEAMS_SUBDIR = 'teams'
     RESULTS_DIR = 'results'
     TIMEZONE = timezone('Australia/Melbourne')
@@ -207,12 +215,12 @@ class ContestRunner:
                                             # datetime in ISO8601 format:  https: // en.wikipedia.org / wiki / ISO_8601
 
     def __init__(self, teams_root, output_path, include_staff_team, organizer, compress_logs, max_steps,
-                 no_fixed_layouts, no_random_layouts, team_names_file, allow_non_registered_students):
+                 no_fixed_layouts, no_random_layouts, team_names_file, allow_non_registered_students, ignore_file_name_format):
 
         self.max_steps = max_steps
 
         # unique id for this execution of the contest; used to label logs
-        self.contest_run_id = datetime.datetime.now().isoformat()
+        self.contest_run_id = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
 
         # path that contains files that make-up a html navigable web folder
         self.www_path = output_path
@@ -248,8 +256,12 @@ class ContestRunner:
         os.makedirs(teams_dir)
 
 
-        # Get all team name mapping from mapping file
-        self.team_names = self._load_teams(team_names_file)
+        # Get all team name mapping from mapping file, If no file is specified, all zip files in team folder will be taken.
+        if team_names_file is 'None':
+            self.team_names = None
+        else:
+            self.team_names = self._load_teams(team_names_file)
+
 
         # setup all team directories under contest/team subdir for contest (copy content in .zip to team dirs)
         self.teams = []
@@ -257,14 +269,15 @@ class ContestRunner:
         for submission in os.listdir(teams_root):
             submission_path = os.path.join(teams_root, submission)
             if submission.endswith(".zip") or os.path.isdir(submission_path):
-                self._setup_team(submission_path, teams_dir, allow_non_registered_students=allow_non_registered_students)
+                self._setup_team(submission_path, teams_dir, ignore_file_name_format, allow_non_registered_students=allow_non_registered_students)
 
         # Add the staff team, if necessary
         if include_staff_team:
-            if not os.path.exists(self.STAFF_TEAM_ZIP_FILE):
-                logging.error('File %s could not be found. Aborting.' % self.STAFF_TEAM_ZIP_FILE)
-                sys.exit(1)
-            self._setup_team(self.STAFF_TEAM_ZIP_FILE, teams_dir, ignore_file_name_format=True)
+            for STAFF_TEAM in self.STAFF_TEAM_ZIP_FILE:
+                if not os.path.exists(STAFF_TEAM):
+                    logging.error('File %s could not be found. Aborting.' % STAFF_TEAM)
+                    sys.exit(1)
+                self._setup_team(STAFF_TEAM, teams_dir, ignore_file_name_format)
 
         # zip directory for transfer to remote workers
         shutil.make_archive(self.ENV_ZIP_READY[:-4], 'zip', self.TMP_CONTEST_DIR)
@@ -346,12 +359,19 @@ class ContestRunner:
 
         if output.find("Traceback") != -1 or output.find("agent crashed") != -1:
             bug = True
-            if output.find("Red agent crashed") != -1 or output.find("redAgents = loadAgents") != -1:
+            #if both teams fail to load, noone wins
+            if output.find("Red team failed to load!") != -1 and output.find("Blue team failed to load!") != -1:
+                self.errors[red_team_name] += 1
+                self.errors[blue_team_name] += 1
+                winner = None
+                loser = None
+                score = self.ERROR_SCORE              
+            elif output.find("Red agent crashed") != -1 or output.find("redAgents = loadAgents") != -1 or output.find("Red team failed to load!") != -1:
                 self.errors[red_team_name] += 1
                 winner = blue_team_name
                 loser = red_team_name
                 score = 1
-            elif output.find("Blue agent crashed") != -1 or output.find("blueAgents = loadAgents") != -1:
+            elif output.find("Blue agent crashed") != -1 or output.find("blueAgents = loadAgents") != -1 or output.find("Blue team failed to load!") :
                 self.errors[blue_team_name] += 1
                 winner = red_team_name
                 loser = blue_team_name
@@ -421,8 +441,13 @@ class ContestRunner:
                     output += "<b>%s</b>" % n2
                 else:
                     output += "%s" % n2
-                if score == 9999:
-                    output += "</td><td align=\"center\">%s</td><td align=\"center\" >--</td><td align=\"center\"><b>FAILED</b></td></tr>" % layout
+                if score == self.ERROR_SCORE:
+                    if winner == n1:
+                        output += "</td><td align=\"center\">%s</td><td align=\"center\" >--</td><td align=\"center\"><b>ONLY FAILED: %s</b></td></tr>" %(layout,n2)
+                    elif winner == n2:
+                        output += "</td><td align=\"center\">%s</td><td align=\"center\" >--</td><td align=\"center\"><b>ONLY FAILED: %s</b></td></tr>" %(layout,n1)
+                    else:
+                        output += "</td><td align=\"center\">%s</td><td align=\"center\" >--</td><td align=\"center\"><b>FAILED BOTH</b></td></tr>" % layout
                 else:
                     output += "</td><td align=\"center\">%s</td><td align=\"center\" >%d</td><td align=\"center\"><b>%s</b></td></tr>" % (layout, score, winner)
 
@@ -529,6 +554,7 @@ class ContestRunner:
             agent_factory = os.path.join(self.TEAMS_SUBDIR, team_name, desired_file)
             self.teams.append((team_name, agent_factory))
             self.submission_times[team_name] = submission_time
+            
         elif submission_time is not None and self.submission_times[team_name] < submission_time:
             shutil.rmtree(team_destination_dir)
             if submission_zip_file is None:
@@ -585,7 +611,7 @@ class ContestRunner:
         if not bug:
             self.games.append((red_team_name, blue_team_name, layout, score, winner))
         else:
-            self.games.append((red_team_name, blue_team_name, layout, 9999, winner))
+            self.games.append((red_team_name, blue_team_name, layout, self.ERROR_SCORE, winner))
     
     
     def _run_match(self, red_team, blue_team, layout):
@@ -617,6 +643,7 @@ class ContestRunner:
         req_file = TransferableFile(local_path=self.ENV_ZIP_READY, remote_path=self.ENV_ZIP_READY)
         replay_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.replay'.format(layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
         ret_file = TransferableFile(local_path=os.path.join(self.results_dir_full_path, replay_file_name), remote_path=os.path.join(self.TMP_CONTEST_DIR, 'replay-0'))
+
         return Job(command=command, required_files=[req_file], return_files=[ret_file], id=(red_team, blue_team, layout))
 
 
@@ -646,12 +673,13 @@ class ContestRunner:
         Compute ladder and create html with results. The html is saved in results_<run_id>/results.html.
         """
         for team, scores in iteritems(self.ladder):
-
             wins = 0
             draws = 0
             loses = 0
             sum_score = 0
             for s in scores:
+                if s == self.ERROR_SCORE:
+                    continue
                 if s > 0:
                     wins += 1
                 elif s == 0:
