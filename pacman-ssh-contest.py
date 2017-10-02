@@ -200,7 +200,7 @@ def load_settings():
 # ----------------------------------------------------------------------------------------------------------------------
 
 class ContestRunner:
-
+    ERROR_SCORE = 9999
     TMP_CONTEST_DIR = 'contest-tmp'
     CONTEST_ZIP_FILE = 'contest.zip'
     LAYOUTS_ZIP_FILE = 'layouts.zip'
@@ -359,12 +359,19 @@ class ContestRunner:
 
         if output.find("Traceback") != -1 or output.find("agent crashed") != -1:
             bug = True
-            if output.find("Red agent crashed") != -1 or output.find("redAgents = loadAgents") != -1:
+            #if both teams fail to load, noone wins
+            if output.find("Red team failed to load!") != -1 and output.find("Blue team failed to load!") != -1:
+                self.errors[red_team_name] += 1
+                self.errors[blue_team_name] += 1
+                winner = None
+                loser = None
+                score = self.ERROR_SCORE              
+            elif output.find("Red agent crashed") != -1 or output.find("redAgents = loadAgents") != -1 or output.find("Red team failed to load!") != -1:
                 self.errors[red_team_name] += 1
                 winner = blue_team_name
                 loser = red_team_name
                 score = 1
-            elif output.find("Blue agent crashed") != -1 or output.find("blueAgents = loadAgents") != -1:
+            elif output.find("Blue agent crashed") != -1 or output.find("blueAgents = loadAgents") != -1 or output.find("Blue team failed to load!") :
                 self.errors[blue_team_name] += 1
                 winner = red_team_name
                 loser = blue_team_name
@@ -434,8 +441,13 @@ class ContestRunner:
                     output += "<b>%s</b>" % n2
                 else:
                     output += "%s" % n2
-                if score == 9999:
-                    output += "</td><td align=\"center\">%s</td><td align=\"center\" >--</td><td align=\"center\"><b>FAILED</b></td></tr>" % layout
+                if score == self.ERROR_SCORE:
+                    if winner == n1:
+                        output += "</td><td align=\"center\">%s</td><td align=\"center\" >--</td><td align=\"center\"><b>ONLY FAILED: %s</b></td></tr>" %(layout,n2)
+                    elif winner == n2:
+                        output += "</td><td align=\"center\">%s</td><td align=\"center\" >--</td><td align=\"center\"><b>ONLY FAILED: %s</b></td></tr>" %(layout,n1)
+                    else:
+                        output += "</td><td align=\"center\">%s</td><td align=\"center\" >--</td><td align=\"center\"><b>FAILED BOTH</b></td></tr>" % layout
                 else:
                     output += "</td><td align=\"center\">%s</td><td align=\"center\" >%d</td><td align=\"center\"><b>%s</b></td></tr>" % (layout, score, winner)
 
@@ -599,7 +611,7 @@ class ContestRunner:
         if not bug:
             self.games.append((red_team_name, blue_team_name, layout, score, winner))
         else:
-            self.games.append((red_team_name, blue_team_name, layout, 9999, winner))
+            self.games.append((red_team_name, blue_team_name, layout, self.ERROR_SCORE, winner))
     
     
     def _run_match(self, red_team, blue_team, layout):
@@ -661,12 +673,13 @@ class ContestRunner:
         Compute ladder and create html with results. The html is saved in results_<run_id>/results.html.
         """
         for team, scores in iteritems(self.ladder):
-
             wins = 0
             draws = 0
             loses = 0
             sum_score = 0
             for s in scores:
+                if s == self.ERROR_SCORE:
+                    continue
                 if s > 0:
                     wins += 1
                 elif s == 0:
