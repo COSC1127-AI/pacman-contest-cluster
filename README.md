@@ -160,7 +160,7 @@ python pacman-ssh-contest.py --compress-log --organizer RMIT \
 ### Schedule competition to run at midnight ###
 
 
-If you want to automate the tournament, use the driver.py provided. It has the following options:
+If you want to automate the tournament, use the `driver.py` provided. It has the following options:
 
 ```
   --username [USERNAME]
@@ -182,13 +182,39 @@ If you want to automate the tournament, use the driver.py provided. It has the f
                         specify the folder to the scripts in order to run cron
 ```
 
-=======
+#### Test command to schedule ####
+
+We strongly recommend to test the command you want to schedule in **cron**
 
 Run the following command:
 ```
 crontab -e
 ```
-and introduce the following line into the *cronfile*
+
+and introduce the following line into **cronfile** (change *username* appropriately)
+
+```
+# For more information see the manual pages of crontab(5) and cron(8)
+# 
+# m h  dom mon dow   command
+
+* * * * *  /usr/bin/env > /home/username/cron-env
+```
+
+Now you can test the command you want to schedule by running
+```
+./run-as-cron /home/username/cron-env "<command>"
+```
+
+This will run you command with the same environment settings as cron jobs do. If the command succeeds, then you can set up your command now.
+
+#### Setting up cron ####
+
+Run the following command:
+```
+crontab -e
+```
+Remove the line you introduced before and introduce the following line:
 ```
 # For more information see the manual pages of crontab(5) and cron(8)
 # 
@@ -199,10 +225,4 @@ and introduce the following line into the *cronfile*
 
 Now your script will run every midnight at 00:01
 
-We strongly recommend to test the same command you introduced in *cronfile* by running
 
-```
-./run-as-cron /home/username/cron-env "<command>"
-```
-
-This will run you command with the same environment settings as cron jobs do.
