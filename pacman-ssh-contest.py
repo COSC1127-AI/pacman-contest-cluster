@@ -730,7 +730,7 @@ if __name__ == '__main__':
 
     with open(settings['workers_file_path'], 'r') as f:
         workers_details = json.load(f)['workers']
-    hosts = [Host(no_cpu=w['no_cpu'], hostname=w['hostname'], username=w['username'], password=w['password'], key_filename=w['private_key_file']) for w in workers_details]
+    hosts = [Host(no_cpu=w['no_cpu'], hostname=w['hostname'], username=w['username'], password=w['password'], key_filename=w['private_key_file'], key_password=w['key_password']) for w in workers_details]
 
     del settings['workers_file_path']
     runner = ContestRunner(**settings)
