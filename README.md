@@ -199,3 +199,10 @@ and introduce the following line into the *cronfile*
 
 Now your script will run every midnight at 00:01
 
+We strongly recommend to test the same command you introduced in *cronfile* by running
+
+```
+./run-as-cron /home/username/cron-env "<command>"
+```
+
+This will run you command with the same environment settings as cron jobs do.
