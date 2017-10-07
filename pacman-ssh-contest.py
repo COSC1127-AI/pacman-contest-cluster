@@ -420,11 +420,21 @@ class ContestRunner:
             output += "Only one team participated, thus no match was run."
         else:
             # First, print a table with the final standing
-            output += "<tr><th>Team</th><th>Points</th><th>Win</th><th>Tie</th><th>Lost</th><th>TOTAL</th><th>FAILED</th><th>Score Balance</th></tr>"
+            position = 1
+            output += "<tr><th>Position</th><th>Team</th><th>Points</th><th>Win</th><th>Tie</th><th>Lost</th><th>TOTAL</th><th>FAILED</th><th>Score Balance</th></tr>"
             for key, (points, wins, draws, loses, errors, sum_score) in \
                     sorted(self.team_stats.items(), key=lambda (k, v): v[0], reverse=True):
-                output += "<tr><td align=\"center\">%s</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\" >%d</td></tr>" % (
-                key, points, wins, draws, loses, wins + draws + loses, errors, sum_score)
+
+                if 'staff_team' in key:
+                    output += "<strong>"
+
+                    output += "<tr><td align=\"center\">%s</td><td align=\"center\">%s</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\" >%d</td></tr>" % (
+                    position, key, points, wins, draws, loses, wins + draws + loses, errors, sum_score)
+
+                if 'staff_team' in key:
+                    output += "</strong>"
+
+                position += 1
             output += "</table>"
 
             # Second, print each game result
