@@ -428,8 +428,7 @@ class ContestRunner:
                 if 'staff_team' in key:
                     output += "<strong>"
 
-                    output += "<tr><td align=\"center\">%s</td><td align=\"center\">%s</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\" >%d</td></tr>" % (
-                    position, key, points, wins, draws, loses, wins + draws + loses, errors, sum_score)
+                output += "<tr><td align=\"center\">%s</td><td align=\"center\">%s</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\" >%d</td></tr>" % (position, key, points, wins, draws, loses, wins + draws + loses, errors, sum_score)
 
                 if 'staff_team' in key:
                     output += "</strong>"
