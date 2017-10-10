@@ -40,6 +40,7 @@ from itertools import combinations
 from cluster_manager import ClusterManager, Job, Host, TransferableFile
 import iso8601
 from pytz import timezone
+import subprocess
 # from getpass import getpass
 # import paramiko
 
@@ -136,6 +137,12 @@ def load_settings():
         help='if passed enforce format <student no>_TIMESTAMP.zip for teams will be ignored',
         action='store_true',
     )
+    parser.add_argument(
+        '--upload-www-replays',
+        help='if passed it uploads recorded_games.tar into https://transfer.sh. This avoids filling up your personal www available space where data is uploaded',
+        action='store_true',
+    )
+    
     args = parser.parse_args()
 
 
@@ -178,6 +185,7 @@ def load_settings():
         settings['workers_file_path'] = args.workers_file_path
 
     settings['ignore_file_name_format'] = args.ignore_file_name_format
+    settings['upload_www_replays'] = args.upload_www_replays
     settings['allow_non_registered_students'] = args.allow_non_registered_students
 
     logging.info('Script will run with this configuration: %s' % settings)
@@ -215,7 +223,7 @@ class ContestRunner:
                                             # datetime in ISO8601 format:  https: // en.wikipedia.org / wiki / ISO_8601
 
     def __init__(self, teams_root, output_path, include_staff_team, organizer, compress_logs, max_steps,
-                 no_fixed_layouts, no_random_layouts, team_names_file, allow_non_registered_students, ignore_file_name_format):
+                 no_fixed_layouts, no_random_layouts, team_names_file, allow_non_registered_students, ignore_file_name_format, upload_www_replays):
 
         self.max_steps = max_steps
 
@@ -298,7 +306,7 @@ class ContestRunner:
 
 
 
-    def _generate_run_html(self):
+    def _generate_run_html(self, upload_www_replays=False ):
         """
         Generates the html with the results of this run. The html is saved in www/results_<run_id>/results.html.
         """
@@ -309,10 +317,20 @@ class ContestRunner:
 
         with tarfile.open(tar_full_path, 'w:gz' if self.compress_logs else 'w') as tar:
             tar.add(self.results_dir_full_path, arcname='/')
+    
 
+        #default local location if we don't use transfer.sh
+        transfer_url='recorded_games_%s.tar'%self.contest_run_id
+
+        #upload file into http://transfer.sh temporary file sharing service
+        if upload_www_replays is True:
+            transfer_cmd = 'curl --upload-file %s https://transfer.sh/recorded_games_%s.tar'%(tar_full_path,self.contest_run_id)
+            transfer_url = subprocess.check_output(transfer_cmd, shell=True)
+            subprocess.check_output('rm %s'%tar_full_path, shell=False)
+        
         # generate html for this run
         self._calculate_team_stats()
-        run_html = self._generate_output()
+        run_html = self._generate_output( transfer_url )
         # output --> www/results_<run_id>/results.html
         with open(os.path.join(self.www_dir_full_path, 'results.html'), "w") as f:
             print(run_html, file=f)
@@ -334,12 +352,12 @@ class ContestRunner:
             print(main_html, file=f)
 
 
-    def update_www(self):
+    def update_www(self, upload_www_replays=False ):
         """
         (Re)Generates the html for this run and updates the main html.
         :return: 
         """
-        self._generate_run_html()
+        self._generate_run_html( upload_www_replays )
         self._generate_main_html()
 
     
@@ -409,7 +427,7 @@ class ContestRunner:
         return score, winner, loser, bug
     
     
-    def _generate_output(self):
+    def _generate_output(self, transfer_url ):
         """
         Generates the output HTML of the report of the tournament and returns it.
         """
@@ -426,18 +444,15 @@ class ContestRunner:
                     sorted(self.team_stats.items(), key=lambda (k, v): v[0], reverse=True):
 
                 if 'staff_team' in key:
-                    output += "<strong>"
-
-                output += "<tr><td align=\"center\">%s</td><td align=\"center\">%s</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\" >%d</td></tr>" % (position, key, points, wins, draws, loses, wins + draws + loses, errors, sum_score)
-
-                if 'staff_team' in key:
-                    output += "</strong>"
+                    output += "<tr><td align=\"center\"><strong>%s</strong></td><td align=\"center\"><strong>%s</strong></td><td align=\"center\"><strong>%d</strong></td><td align=\"center\">%d</td><td align=\"center\" ><strong>%d</strong></td><td align=\"center\"><strong>%d</strong></td><td align=\"center\"><strong>%d</strong></td><td align=\"center\" ><strong>%d</strong></td><td align=\"center\" ><strong>%d</strong></td></tr>" % (position, key, points, wins, draws, loses, wins + draws + loses, errors, sum_score)
+                else:
+                    output += "<tr><td align=\"center\">%s</td><td align=\"center\">%s</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\" >%d</td></tr>" % (position, key, points, wins, draws, loses, wins + draws + loses, errors, sum_score)
 
                 position += 1
             output += "</table>"
 
             # Second, print each game result
-            output += "<br><br> <h2>Games</h2><br><a href=\"recorded_games_%s.tar\">DOWNLOAD RECORDED GAMES!</a><br><table border=\"1\">" % self.contest_run_id
+            output += "<br><br> <h2>Games</h2><br><a href=\"%s\">DOWNLOAD RECORDED GAMES!</a><br><table border=\"1\">" % transfer_url
             output += "<tr><th>Team1</th><th>Team2</th><th>Layout</th><th>Score</th><th>Winner</th></tr>"
             for (n1, n2, layout, score, winner) in self.games:
                 output += "<tr><td align=\"center\">"
@@ -748,6 +763,6 @@ if __name__ == '__main__':
 
     runner.run_contest_remotely(hosts)
 
-    runner.update_www()
+    runner.update_www( settings['upload_www_replays'] )
 
     runner.clean_up()

@@ -30,6 +30,7 @@ python pacman-ssh-contest.py --help_
     * Mapping each filename.zip submission as teamname=filename; option `--ignore-file-name-format`
 * Generate HTML page with tournament results and list of replay files.
     * option --output-path
+    * option --upload-www-replays, uploads tar file into https://transfer.sh to avoid filling your local www space
 * Handle latest submission by sorting via timestamp in file name.
     * all members of a team can submit at any point
     * last submission per team is considered (if there are multiple)
@@ -144,7 +145,7 @@ python pacman-ssh-contest.py --compress-log --organizer RMIT \
                         --no-random-layouts 5 \
                         --workers-file-path my_workers-nectar.json
 ````
-Collecting submitted files in teams, and using the zip filename as teamname:
+Collecting submitted files in teams, and using the zip filename as teamname, and uploading the replays file into a sharing file service instead of your local directory:
 ````
 python pacman-ssh-contest.py --compress-log --organizer RMIT \
                         --teams-root test-teams/ \ 
@@ -154,7 +155,8 @@ python pacman-ssh-contest.py --compress-log --organizer RMIT \
                         --no-fixed-layouts 3 \
                         --no-random-layouts 5 \
                         --ignore-file-name-format \
-                        --workers-file-path my_workers-nectar.json
+                        --workers-file-path my_workers-nectar.json \
+			--upload-www-replays
 ````
 
 ### Schedule competition to run at midnight ###
