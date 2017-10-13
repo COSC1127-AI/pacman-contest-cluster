@@ -100,7 +100,10 @@ Hence, user must provide:
 - `contest.zip`: the actual main contest infrastructure, based on that one from UC (with minor fixes, e.g., delay in replays)
 - `layouts.zip`: some interesting layouts that can be used (beyond the randomly generated ones)
 - `staff_team_{basic,medium,top}.zip`: the teams from staff, used for `--include-staff-team` option. 
-	- Contact us to get access to staff_teams, and do not distribute. These teams are not shared with students as they are used for marking purposes.
+    - You can point to the directory containing all three staff agents using `--staff-teams-dir` (default is current dir)
+	- You can use your own basic, medium, top agents, as long as they are named accordingly.  
+	- If you want to use our agents, contact us. These teams are not shared as they are used for marking purposes. So, if
+	    you get access to them, please do not distribute.
 - `contest/` subdir: developing place for `contest.zip`. The .zip file should contain all files in the root of the .zip
 - `TEAMS-STUDENT-MAPPING.csv`: example of a mapping file
 
@@ -159,7 +162,7 @@ python pacman-ssh-contest.py --compress-log --organizer RMIT \
 			--upload-www-replays
 ````
 
-### Schedule competition to run at midnight ###
+## SCHEDULE COMPETITION ##
 
 
 If you want to automate the tournament, use the `driver.py` provided. It has the following options:
