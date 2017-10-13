@@ -141,9 +141,13 @@ if __name__ == '__main__':
     month = today.month
     day = today.day
 
+    #This line makes sure that the we do not include old submissions
+    os.system("rm -rf .%s"%team_server_folder)
+
     '''
     ' tar submitted teams from server and download to local machine
     '''
+
     
     run.do_run( "tar cvf teams%s_%s_%s.tar  %s* "%(year,month,day,teams_server_folder) )
     run.do_get( "teams%s_%s_%s.tar"%(year,month,day) )    
@@ -152,7 +156,7 @@ if __name__ == '__main__':
     '''
     ' Retrieve all the zip files, copy them into teams folder
     '''
-    
+
     os.system("rm -rf teams/")
     os.system("mkdir teams")
     for root, dirs, files in os.walk("local"):
