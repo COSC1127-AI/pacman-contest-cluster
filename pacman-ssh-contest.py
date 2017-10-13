@@ -325,9 +325,15 @@ class ContestRunner:
         #upload file into http://transfer.sh temporary file sharing service
         if upload_www_replays is True:
             transfer_cmd = 'curl --upload-file %s https://transfer.sh/recorded_games_%s.tar'%(tar_full_path,self.contest_run_id)
-            transfer_url = subprocess.check_output(transfer_cmd, shell=True)
-            subprocess.check_output('rm %s'%tar_full_path, shell=False)
-        
+            try:
+                transfer_url = subprocess.check_output(transfer_cmd, shell=True)
+                print('rm %s'%tar_full_path)
+                os.system('rm %s'%tar_full_path)
+            except:
+                #If transfer failed, use the standard server
+                transfer_url='recorded_games_%s.tar'%self.contest_run_id
+
+                
         # generate html for this run
         self._calculate_team_stats()
         run_html = self._generate_output( transfer_url )
@@ -688,7 +694,6 @@ class ContestRunner:
         cm = ClusterManager(hosts, jobs)
         results = cm.start()
         self._analyse_all_outputs(results)
-
 
 
 
