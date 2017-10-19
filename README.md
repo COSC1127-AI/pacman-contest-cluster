@@ -87,7 +87,15 @@ Hence, user must provide:
     - Main columns are: STUDENT_ID and TEAM_NAME
     - If **no file provided**, teamnames are taken from the submitted zip files (this is the option used at unimelb)
 
+## OPTIONAL PACKAGES ##
 
+Many students benefit from the availability of **TensorFlow** and **scikit-learn**. To install theses tools execute the following commands in the environment where the contest will run:
+
+```
+sudo pip install tensorflow
+sudo pip install sklearn 
+sudo pip install scipy
+```
 
 ## HOW THE SCRIPT WORKS ##
 
