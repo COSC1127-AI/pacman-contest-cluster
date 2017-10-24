@@ -335,9 +335,11 @@ class ContestRunner:
         The html is saved in www/results.html.
         """
         # regenerate main html
-        main_html = "<html><body><h1>Results Pacman %s Tournament by Date</h1>" % self.organizer
+        main_html = """<html><head><title>Results for the tournament</title><link rel="stylesheet" type="text/css" href="style.css"/></head><body><h1>Results Pacman %s Tournament by Date</h1>""" % self.organizer
         for root, dirs, files in os.walk(self.www_path):
             for d in sorted(dirs):
+                if d.endswith('fonts'):
+                    continue
                 main_html += "<a href=\"%s/results.html\"> %s  </a> <br>" % (d, d)
         main_html += "<br></body></html>"
         with open(os.path.join(self.www_path, 'results.html'), "w") as f:
@@ -423,7 +425,12 @@ class ContestRunner:
         """
         Generates the output HTML of the report of the tournament and returns it.
         """
-        output = "<html><body><h1>Date Tournament %s </h1><br><table border=\"1\">" % self.contest_run_id
+
+        contest_zip_file = zipfile.ZipFile("fonts.zip")
+        contest_zip_file.extractall(self.www_path)
+        shutil.copy("style.css", self.www_path)
+
+        output = """<html><head><title>Results for the tournament round</title><link rel="stylesheet" type="text/css" href="../style.css"/></head><body><h1>Date Tournament %s </h1><br><table border=\"1\">""" % self.contest_run_id
         if len(self.teams) == 0:
             output += "No teams participated, thus no match was run."
         elif len(self.teams) == 1:
