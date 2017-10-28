@@ -56,7 +56,7 @@ def load_settings():
     DEFAULT_FIXED_LAYOUTS = 3
     DEFAULT_RANDOM_LAYOUTS = 3
     DEFAULT_CONFIG_FILE = 'config.json'
-    DEFAULT_STAFF_TEAMS_DIR = ''
+    DEFAULT_STAFF_TEAMS_DIR = './'
 
     parser = argparse.ArgumentParser(
         description='This script is to run a tournament between teams of agents for the Pacman package developed by '
@@ -90,8 +90,7 @@ def load_settings():
     )
     parser.add_argument(
         '--teams-root',
-        help='directory containing the zip files of the teams. if ignore_file_name_format is False (default: False), then files have to be of the form s<student no>_TIMESTAMP.zip;'
-             ' for example s9999999_2017-05-13T20:32:43.342000+10:00.zip'
+        help='directory containing the zip files or directories of the teams. See README for format on names.'
     )
     parser.add_argument(
         '--include-staff-team',
@@ -100,7 +99,7 @@ def load_settings():
     )
     parser.add_argument(
         '--staff-teams-dir',
-        help='directory containing the files for staff teams staff_team_basic.zip, staff_team_medium.zip, and staff_team_top.zip.   '
+        help='directory containing the files staff_team_basic.zip, staff_team_medium.zip, and staff_team_top.zip.   '
              '(default: {default})'.format(default=DEFAULT_STAFF_TEAMS_DIR),
         default=DEFAULT_STAFF_TEAMS_DIR
     )
@@ -126,22 +125,18 @@ def load_settings():
     )
     parser.add_argument(
         '--team-names-file',
-        help='the path of the csv that contains (at least) two columns headed "STUDENT_ID" and "TEAM_NAME", used to match submissions with teams. If no file is specified, all zip files in team folder will be taken.',
-        default='None',
+        help='the path of the csv that contains (at least) two columns headed "STUDENT_ID" and "TEAM_NAME", used to match'
+             ' submissions with teams. If passed, files/dirs have to be of a certain format <student no>_TIMESTAMP.zip'
+             ' If no file is specified, team file/dir will be used as name and all will be included.'
     )
     parser.add_argument(
         '--allow-non-registered-students',
-        help='if passed, students without a team are still allowed to participate',
+        help='if passed and --team-names-file is given, students without a team are still allowed to participate',
         action='store_true',
     )
     parser.add_argument(
         '--build-config-file',
         help='if passed, config.json file will be generated with current options',
-        action='store_true',
-    )
-    parser.add_argument(
-        '--ignore-file-name-format',
-        help='if passed enforce format <student no>_TIMESTAMP.zip for teams will be ignored',
         action='store_true',
     )
     args = parser.parse_args()
@@ -184,10 +179,13 @@ def load_settings():
         settings['max_steps'] = DEFAULT_MAX_STEPS
     if args.team_names_file:
         settings['team_names_file'] = args.team_names_file
+        settings['ignore_file_name_format'] = False
+    else:
+        settings['ignore_file_name_format'] = True
+        settings['team_names_file'] = 'None'
     if args.workers_file_path:
         settings['workers_file_path'] = args.workers_file_path
 
-    settings['ignore_file_name_format'] = args.ignore_file_name_format
     settings['allow_non_registered_students'] = args.allow_non_registered_students
 
     logging.info('Script will run with this configuration: %s' % settings)
