@@ -56,13 +56,23 @@ python pacman-ssh-contest.py --help_
        * pytz
        * paramiko
 
-* Each team is a .zip file; they should all go in a directory (e.g., teams/)
-    * The agent system is in the root of the zip file
-    * [optional to run with `--team-names-file`] zip file should start with "s", continue with student number, then _, and then date in iso8601 format (https://en.wikipedia.org/wiki/ISO_8601), then .zip
-        * Format stored regexp SUBMISSION_FILENAME_PATTERN: r'^(s\d+)_(.+)?\.zip$'
-        * Examples of legal files:
-            - s2736172_2017-05-13T21:32:43.342000+10:00.zip
-            - s2736172_2017-05-13.zip
+* Each submission is a .zip file or a directory; they should all go in a directory (e.g., teams/)
+    * The agent system is in the root of the team zip file or team directory.
+    * The name convention of a submission file/dir will depend on `--team-names-file` option.
+    
+* If option `--team-names-file` is passed, then submission file/dir names will be treated as student number and will be
+mapped to team names using mapping .csv file provided. Otherwise submission file/dir name will be used as team name. 
+    * zip/dir should start with "s", continue with student number, then _, and then date in iso8601 format 
+        (https://en.wikipedia.org/wiki/ISO_8601), then .zip
+    * Format stored regexp SUBMISSION_FILENAME_PATTERN: r'^(s\d+)_(.+)?\.zip$'
+    * Examples of legal team zip files:
+        - s2736172_2017-05-13T21:32:43.342000+10:00
+        - s2736172_2017-05-13.zip
+    * Examples of team directories:
+        - Destructor_Pacman-05-13T21:32:43.342000+10:00
+        - WeWillWin-05-13
+    * The student number will be mapped to a team and the timestamp will be used to pick the latest team submission.
+
 
 * The cluster to be used is specified with option `--workers-file-path`, to point to a .json file containing the workers
 available (including no of cores, IP, username, password, and private key file if needed)
