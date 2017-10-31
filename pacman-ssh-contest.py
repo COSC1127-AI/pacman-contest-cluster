@@ -325,7 +325,7 @@ class ContestRunner:
         with open(os.path.join(self.www_dir_full_path, 'results.html'), "w") as f:
             print(run_html, file=f)
         with open(os.path.join(self.www_dir_full_path, 'results_%s.json' % self.contest_run_id), "w") as f:
-            json.dump(self.games, f)
+            json.dump((self.games, self.team_stats), f)
 
 
 
@@ -430,7 +430,9 @@ class ContestRunner:
         contest_zip_file.extractall(self.www_path)
         shutil.copy("style.css", self.www_path)
 
-        output = """<html><head><title>Results for the tournament round</title><link rel="stylesheet" type="text/css" href="../style.css"/></head><body><h1>Date Tournament %s </h1><br><table border=\"1\">""" % self.contest_run_id
+        output = """<html><head><title>Results for the tournament round</title>"""
+        output += """<link rel="stylesheet" type="text/css" href="../style.css"/></head>"""
+        output += """<body><h1>Date Tournament %s </h1><br><table border=\"1\">""" % self.contest_run_id
         if len(self.teams) == 0:
             output += "No teams participated, thus no match was run."
         elif len(self.teams) == 1:
