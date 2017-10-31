@@ -676,6 +676,7 @@ class ContestRunner:
             for layout in self.layouts:
                 jobs.append(self._generate_job(red_team, blue_team, layout))
 
+        # create cluster with hots and jobs and run it by starting it, and then analyze output results
         cm = ClusterManager(hosts, jobs)
         results = cm.start()
         self._analyse_all_outputs(results)

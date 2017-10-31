@@ -15,6 +15,7 @@ you!
 from collections import namedtuple
 from Queue import Queue
 import random
+from time import sleep
 import os
 from joblib import Parallel, delayed
 from getpass import getpass, getuser
@@ -39,6 +40,7 @@ TransferableFile = namedtuple('TransferableFile', ['local_path', 'remote_path'],
 # Keep track of the number of total jobs to run and number of jobs completed (for reporting)
 no_total_jobs = 0
 no_finished_jobs = 0
+no_failed_jobs = 0
 
 
 class ClusterManager:
@@ -48,6 +50,7 @@ class ClusterManager:
         self.workers = []  # type: 'List[SSHClient]'
         self.pool = Queue()  # type: 'Queue[SSHClient]'
 
+
         total_no_workers = sum(host.no_cpu for host in hosts)
         # https: // pythonhosted.org / joblib / generated / joblib.Parallel.html
 
@@ -56,9 +59,11 @@ class ClusterManager:
         logging.info("ABOUT TO RUN %d jobs in %d hosts (%d CPUs) #####################" % \
                      (no_total_jobs, len(hosts), total_no_workers))
 
+        # Authenticate all workers
         self.workers = Parallel(total_no_workers, backend='threading')(delayed(create_worker)(host)
                                                                        for host in self.hosts
                                                                        for _ in range(host.no_cpu))
+        # Put all workers in pool
         for worker in self.workers:
             self.pool.put(worker)
 
@@ -93,34 +98,84 @@ def create_worker(host):
 
     #time.sleep(4)
     # worker.connect(hostname=host.hostname, username=host.username, password=host.password, key_filename=host.key_filename, sock=proxy, timeout=3600)
-    
+
     worker.connect(hostname=host.hostname, username=host.username, password=host.password, key_filename=host.key_filename, sock=proxy )
-    
 
     return worker
 
 
 def run_job(pool, job):
     global no_finished_jobs
+    global no_failed_jobs
     global no_total_jobs
 
     worker = pool.get()
+
+    tries = 3
+    for i in range(tries):
+        try:
+            # time.sleep(randint(1, 10))
+            result_job_on_worker = run_job_on_worker(worker, job)
+        except Exception as e:
+            print(str(e))
+            logging.error("A job has FAILED to execute (will retry): (%s, %s)" % (str(job.id), str(e)))
+            worker.connect(hostname=worker.host, username=worker.username, password=worker.password,
+                           key_filename=worker.key_filename)
+            if i < tries - 1:  # i is zero indexed
+                continue
+            else:
+                no_failed_jobs += 1
+                logging.error("I am giving up on job %s" %str(job.id))
+                raise
+        break
+    no_finished_jobs += 1
+    logging.info("Number of jobs COMPLETED so far: (%d successful, %d failed) of %d total games" % (no_finished_jobs, no_failed_jobs, no_total_jobs))
+
+    pool.put(worker)
+    return result_job_on_worker
+
+
+
     try:
-        return run_job_on_worker(worker, job)
-    finally:
+        # result_job_on_worker is (job_id, exit_code, result_out, result_err)
+        result_job_on_worker = run_job_on_worker(worker, job)
+    except Exception as e:
+        logging.error("A job has FAILED to execute: (%s,%s)" % (str(job.id), str(e)))
+    else:
         pool.put(worker)
         no_finished_jobs += 1
-        logging.info("Number of jobs finished so far: %d (out of %d)" % (no_finished_jobs, no_total_jobs))
+        logging.info("Number of jobs SUCCESSFULLY finished so far: %d (out of %d)" % (no_finished_jobs, no_total_jobs))
+    finally:
+        pool.put(worker)
+        return result_job_on_worker
+
+
+def byte_count(xfer, to_be_xfer):
+    res = (xfer // to_be_xfer)
+    print(xfer / to_be_xfer)
+    print('Complete percent: %.2f - (%d, %d, %d)' % (res, xfer, to_be_xfer, res))
 
 def run_job_on_worker(worker, job):
+
     # create remote env
+    logging.info('ABOUT TO COPY job %s\n' % str(job.id))
     instance_id = ''.join(random.choice('0123456789abcdef') for _ in range(30))
-    dest_dir = '/tmp/cluster_instance_%s' % instance_id    
-    sftp = worker.open_sftp()
-    sftp.mkdir(dest_dir)
-    sftp.chdir(dest_dir)
-    for tf in job.required_files:
-        sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
+    dest_dir = '/tmp/cluster_instance_%s' % instance_id
+    try:
+        sftp = worker.open_sftp()
+        sftp.mkdir(dest_dir)
+        sftp.chdir(dest_dir)
+
+        for tf in job.required_files:
+            # sftp.put(localpath=tf.local_path, remotepath=tf.remote_path, callback=byte_count)
+            sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
+    except Exception as e:
+            print("=======================")
+            print("EXCEPCTION CUANDO COPIABAMOS: " + str(e))
+            print("======> " + str(e))
+            print("=======================")
+    else:
+            print("Anduvo este!!!")
 
     # worker.host was stored when worker was created
     logging.info('ABOUT TO EXECUTE command in host %s dir %s: %s \n' % (worker.host, dest_dir,  job.command))
