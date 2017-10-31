@@ -324,6 +324,8 @@ class ContestRunner:
         # output --> www/results_<run_id>/results.html
         with open(os.path.join(self.www_dir_full_path, 'results.html'), "w") as f:
             print(run_html, file=f)
+        with open(os.path.join(self.www_dir_full_path, 'results_%s.json' % self.contest_run_id), "w") as f:
+            json.dump((self.games, self.team_stats), f)
 
 
 
@@ -369,7 +371,7 @@ class ContestRunner:
 
         if output.find("Traceback") != -1 or output.find("agent crashed") != -1:
             bug = True
-            #if both teams fail to load, noone wins
+            #if both teams fail to load, no one wins
             if output.find("Red team failed to load!") != -1 and output.find("Blue team failed to load!") != -1:
                 self.errors[red_team_name] += 1
                 self.errors[blue_team_name] += 1
@@ -428,7 +430,9 @@ class ContestRunner:
         contest_zip_file.extractall(self.www_path)
         shutil.copy("style.css", self.www_path)
 
-        output = """<html><head><title>Results for the tournament round</title><link rel="stylesheet" type="text/css" href="../style.css"/></head><body><h1>Date Tournament %s </h1><br><table border=\"1\">""" % self.contest_run_id
+        output = """<html><head><title>Results for the tournament round</title>"""
+        output += """<link rel="stylesheet" type="text/css" href="../style.css"/></head>"""
+        output += """<body><h1>Date Tournament %s </h1><br><table border=\"1\">""" % self.contest_run_id
         if len(self.teams) == 0:
             output += "No teams participated, thus no match was run."
         elif len(self.teams) == 1:
@@ -443,7 +447,10 @@ class ContestRunner:
             output += "</table>"
 
             # Second, print each game result
-            output += "<br><br> <h2>Games</h2><br><a href=\"recorded_games_%s.tar\">DOWNLOAD RECORDED GAMES!</a><br><table border=\"1\">" % self.contest_run_id
+            output += "<br/><br/><h2>Games</h2><br/>"
+            output += "<a href=\"recorded_games_%s.tar\">DOWNLOAD RECORDED GAMES</a><br/>" % self.contest_run_id
+            output += "<a href=\"results_%s.json\">DOWNLOAD RESULTS</a><br/>" % self.contest_run_id
+            output += "<table border=\"1\">"
             output += "<tr><th>Team1</th><th>Team2</th><th>Layout</th><th>Score</th><th>Winner</th></tr>"
             for (n1, n2, layout, score, winner) in self.games:
                 output += "<tr><td align=\"center\">"
