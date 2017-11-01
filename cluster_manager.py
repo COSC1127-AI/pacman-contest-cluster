@@ -42,6 +42,8 @@ no_total_jobs = 0
 no_finished_jobs = 0
 no_failed_jobs = 0
 
+CORE_PACKAGE_DIR = '/tmp/pacman_files'
+
 
 class ClusterManager:
     def __init__(self, hosts, jobs):
@@ -59,10 +61,16 @@ class ClusterManager:
         logging.info("ABOUT TO RUN %d jobs in %d hosts (%d CPUs) #####################" % \
                      (no_total_jobs, len(hosts), total_no_workers))
 
-        # Authenticate all workers
+        # Firsts, authenticate abd build all workers (each Hostname + core gives a worker)
         self.workers = Parallel(total_no_workers, backend='threading')(delayed(create_worker)(host)
                                                                        for host in self.hosts
                                                                        for _ in range(host.no_cpu))
+
+        # Second, transfer the required core files to each hostname (there will be much less than workers, one per IP)
+        Parallel(len(self.hosts), backend='threading')(
+            delayed(transfer_core_package)(host.hostname, self.workers, jobs[0].required_files)
+            for host in self.hosts)
+
         # Put all workers in pool
         for worker in self.workers:
             self.pool.put(worker)
@@ -71,6 +79,7 @@ class ClusterManager:
         results = Parallel(self.pool.qsize(), backend='threading')(delayed(run_job)(self.pool, job)
                                                                    for job in self.jobs)
         return results
+
 
     def start_single_threaded(self):
         results = [run_job(self.pool, job) for job in self.jobs]
@@ -104,6 +113,27 @@ def create_worker(host):
     return worker
 
 
+def transfer_core_package(hostname, workers, required_files):
+    dest_dir = '/tmp/pacman_files'
+
+    # TODO: ugly handling of the case where the dir exists by passing the exception?
+    # Find a worker for this hostname and transfer the required files to des_dir
+    for worker in workers:
+        if worker.host == hostname:
+            sftp = worker.open_sftp()
+            try:
+                sftp.mkdir(dest_dir)
+            except Exception as e:
+                pass # if it exists, continue
+            sftp.chdir(dest_dir)
+            for tf in required_files:
+                sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
+            sftp.close()
+            logging.info("CORE PACKAGE TRANSFERED TO HOST %s\n" %hostname)
+            break
+    return
+
+
 def run_job(pool, job):
     global no_finished_jobs
     global no_failed_jobs
@@ -115,7 +145,7 @@ def run_job(pool, job):
     for i in range(tries):
         try:
             # time.sleep(randint(1, 10))
-            result_job_on_worker = run_job_on_worker(worker, job)
+            result_job_on_worker = run_job_on_worker2(worker, job)
         except Exception as e:
             print(str(e))
             logging.error("A job has FAILED to execute (will retry): (%s, %s)" % (str(job.id), str(e)))
@@ -150,14 +180,60 @@ def run_job(pool, job):
         return result_job_on_worker
 
 
-def byte_count(xfer, to_be_xfer):
-    res = (xfer // to_be_xfer)
-    print(xfer / to_be_xfer)
-    print('Complete percent: %.2f - (%d, %d, %d)' % (res, xfer, to_be_xfer, res))
+def report_progress_bytes_transfered(xfer, to_be_xfer, data):
+    remains_per = 0.000
+    remains_per = (xfer / to_be_xfer)*100
+    print('Complete percent for job %s: %.2f%% - (%d bytes transfered out of %d)' % (data, remains_per, xfer, to_be_xfer))
+
+
+
+
+def run_job_on_worker2(worker, job):
+
+    # create remote env
+    logging.info('ABOUT TO COPY job %s\n' % str(job.id))
+    instance_id = ''.join(random.choice('0123456789abcdef') for _ in range(30))
+    dest_dir = '/tmp/cluster_instance_%s' % instance_id
+    sftp = worker.open_sftp()
+    sftp.mkdir(dest_dir)
+    sftp.chdir(dest_dir)
+
+    worker.exec_command('cp -a %s/* %s' % (CORE_PACKAGE_DIR, dest_dir))
+
+    # worker.host was stored when worker was created
+    logging.info('ABOUT TO EXECUTE command in host %s dir %s: %s \n' % (worker.host, dest_dir,  job.command))
+
+    # run job
+    actual_command = """cd %s ; sh -c '%s'""" % (dest_dir, job.command)
+    _, ssh_stdout, ssh_stderr = worker.exec_command(actual_command, get_pty=True)  # Non-blocking call
+    result_out = ssh_stdout.read()
+    result_err = ssh_stderr.read()
+    exit_code = ssh_stdout.channel.recv_exit_status()  # Blocking call but only after reading it all
+
+
+    # retrieve replay file
+    for tf in job.return_files:
+        try:
+            sftp.get(localpath=tf.local_path, remotepath=tf.remote_path)
+        except Exception as e:
+            logging.error("\n \n ERROR copying replay remote file %s to local %s on %s: %s"
+                         % (tf.remote_path, tf.local_path, dest_dir, str(e)))
+            logging.info("RECONNECTING BROKEN WORKER: %s \n\n" % worker.host)
+            worker.connect(hostname=worker.host, username=worker.username, password=worker.password, key_filename=worker.key_filename)
+        sftp.close()
+        # clean
+        worker.exec_command('rm -rf %s' % dest_dir)
+
+        logging.info('FINISHED SUCCESSFULLY EXECUTING command in host %s dir %s: %s \n' % (worker.host, job.command, dest_dir))
+
+    return job.id, exit_code, result_out, result_err
+
+
 
 def run_job_on_worker(worker, job):
 
     # create remote env
+    print(worker)
     logging.info('ABOUT TO COPY job %s\n' % str(job.id))
     instance_id = ''.join(random.choice('0123456789abcdef') for _ in range(30))
     dest_dir = '/tmp/cluster_instance_%s' % instance_id
@@ -166,8 +242,10 @@ def run_job_on_worker(worker, job):
         sftp.mkdir(dest_dir)
         sftp.chdir(dest_dir)
 
+        print(job.required_files)
         for tf in job.required_files:
-            # sftp.put(localpath=tf.local_path, remotepath=tf.remote_path, callback=byte_count)
+            # sftp.put(localpath=tf.local_path, remotepath=tf.remote_path,
+            #          callback=lambda x, y: report_progress_bytes_transfered(x, y, str(job.id)))
             sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
     except Exception as e:
             print("=======================")
