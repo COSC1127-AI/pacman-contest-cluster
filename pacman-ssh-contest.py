@@ -302,7 +302,7 @@ class ContestRunner:
     def clean_up(self):
         shutil.rmtree(self.RESULTS_DIR)
         shutil.rmtree(self.TMP_CONTEST_DIR)
-        os.remove(self.ENV_ZIP_READY)
+        # os.remove(self.ENV_ZIP_READY)
 
 
 
@@ -389,7 +389,7 @@ class ContestRunner:
                 loser = blue_team_name
                 score = 1
             else:
-                print("Something went wrong in the contest script - Traceback but no winner: %s vs %s" % (red_team_name, blue_team_name))
+                logging.error("Something went wrong in the contest script - Traceback but no winner: %s vs %s" % (red_team_name, blue_team_name))
         else:
             for line in output.splitlines():
                 if line.find("wins by") != -1:
@@ -414,8 +414,8 @@ class ContestRunner:
                     tied = True
             # signal strange case where script was unable to find outcome of game - should never happen!
             if winner is None and loser is None and not tied:
+                logging.error("Something went wrong in the contest script - there is no traceback and no clear winner: %s vs %s" % (red_team_name, blue_team_name))
                 print(output)
-                print("Something went wrong in the contest script - there is no traceback and no clear winner: %s vs %s" % (red_team_name, blue_team_name))
                 sys.exit(1)
 
         return score, winner, loser, bug
@@ -676,6 +676,7 @@ class ContestRunner:
 
     def run_contest_remotely(self, hosts):
 
+
         os.makedirs(self.results_dir_full_path)
 
         jobs = []
@@ -683,6 +684,7 @@ class ContestRunner:
             for layout in self.layouts:
                 jobs.append(self._generate_job(red_team, blue_team, layout))
 
+        # create cluster with hots and jobs and run it by starting it, and then analyze output results
         cm = ClusterManager(hosts, jobs)
         results = cm.start()
         self._analyse_all_outputs(results)
