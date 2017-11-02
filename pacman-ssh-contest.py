@@ -705,6 +705,7 @@ class ContestRunner:
 
     def run_contest_remotely(self, hosts):
 
+
         os.makedirs(self.results_dir_full_path)
 
         jobs = []

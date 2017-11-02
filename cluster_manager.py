@@ -15,6 +15,7 @@ you!
 from collections import namedtuple
 from Queue import Queue
 import random
+from time import sleep
 import os
 from joblib import Parallel, delayed
 from getpass import getpass, getuser
@@ -24,9 +25,7 @@ from paramiko.rsakey import RSAKey
 from paramiko.proxy import ProxyCommand
 from paramiko import AutoAddPolicy
 
-
 import logging
-logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO, datefmt='%a, %d %b %Y %H:%M:%S')
 
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO,
                     datefmt='%a, %d %b %Y %H:%M:%S')
@@ -37,7 +36,6 @@ logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logg
 Host = namedtuple('Host', ['no_cpu', 'hostname', 'username', 'password', 'key_filename', 'key_password'], verbose=False)
 Job = namedtuple('Job', ['command', 'required_files', 'return_files', 'id'], verbose=False)
 TransferableFile = namedtuple('TransferableFile', ['local_path', 'remote_path'], verbose=False)
-
 
 # Keep track of the number of total jobs to run and number of jobs completed (for reporting)
 no_total_jobs = 0
@@ -109,7 +107,7 @@ def create_worker(host):
     else:
         worker.pkey = None
 
-    #time.sleep(4)
+    # time.sleep(4)
     # worker.connect(hostname=host.hostname, username=host.username, password=host.password, key_filename=host.key_filename, sock=proxy, timeout=3600)
     
     worker.connect(hostname=host.hostname, username=host.username, password=host.password, pkey=worker.pkey, sock=proxy )
