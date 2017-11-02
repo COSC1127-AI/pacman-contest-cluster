@@ -28,6 +28,8 @@ from paramiko import AutoAddPolicy
 import logging
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO, datefmt='%a, %d %b %Y %H:%M:%S')
 
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO,
+                    datefmt='%a, %d %b %Y %H:%M:%S')
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Import class from helper module
@@ -40,6 +42,9 @@ TransferableFile = namedtuple('TransferableFile', ['local_path', 'remote_path'],
 # Keep track of the number of total jobs to run and number of jobs completed (for reporting)
 no_total_jobs = 0
 no_finished_jobs = 0
+no_failed_jobs = 0
+
+CORE_PACKAGE_DIR = '/tmp/pacman_files'
 
 
 class ClusterManager:
@@ -57,9 +62,17 @@ class ClusterManager:
         logging.info("ABOUT TO RUN %d jobs in %d hosts (%d CPUs) #####################" % \
                      (no_total_jobs, len(hosts), total_no_workers))
 
+        # Firsts, authenticate abd build all workers (each Hostname + core gives a worker)
         self.workers = Parallel(total_no_workers, backend='threading')(delayed(create_worker)(host)
                                                                        for host in self.hosts
                                                                        for _ in range(host.no_cpu))
+
+        # Second, transfer the required core files to each hostname (there will be much less than workers, one per IP)
+        Parallel(len(self.hosts), backend='threading')(
+            delayed(transfer_core_package)(host.hostname, self.workers, jobs[0].required_files)
+            for host in self.hosts)
+
+        # Put all workers in pool
         for worker in self.workers:
             self.pool.put(worker)
 
@@ -72,14 +85,15 @@ class ClusterManager:
         results = [run_job(self.pool, job) for job in self.jobs]
         return results
 
+
 def create_worker(host):
     config = SSHConfig()
     proxy = None
     if os.path.exists(os.path.expanduser('~/.ssh/config')):
         config.parse(open(os.path.expanduser('~/.ssh/config')))
         if host.hostname is not None and \
-            'proxycommand' in config.lookup(host.hostname):
-                proxy = ProxyCommand(config.lookup(host.hostname)['proxycommand'])
+                        'proxycommand' in config.lookup(host.hostname):
+            proxy = ProxyCommand(config.lookup(host.hostname)['proxycommand'])
 
     # proxy = paramiko.ProxyCommand("ssh -o StrictHostKeyChecking=no e62439@131.170.5.132 nc 118.138.239.241 22")
 
@@ -90,7 +104,10 @@ def create_worker(host):
     worker.host = host.hostname  # store all this for later reference (e.g., logging, reconnection)
     worker.username = host.username
     worker.password = host.password
-    worker.pkey = RSAKey.from_private_key_file( host.key_filename, host.key_password )
+    if not host.key_filename is None:
+        worker.pkey = RSAKey.from_private_key_file( host.key_filename, host.key_password )
+    else:
+        worker.pkey = None
 
     #time.sleep(4)
     # worker.connect(hostname=host.hostname, username=host.username, password=host.password, key_filename=host.key_filename, sock=proxy, timeout=3600)
@@ -101,31 +118,90 @@ def create_worker(host):
     return worker
 
 
+def transfer_core_package(hostname, workers, required_files):
+    dest_dir = '/tmp/pacman_files'
+
+    # TODO: ugly handling of the case where the dir exists by passing the exception?
+    # Find a worker for this hostname and transfer the required files to des_dir
+    for worker in workers:
+        if worker.host == hostname:
+            sftp = worker.open_sftp()
+            try:
+                sftp.mkdir(dest_dir)
+            except Exception as e:
+                pass  # if it exists, continue
+            sftp.chdir(dest_dir)
+            for tf in required_files:
+                sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
+            sftp.close()
+            logging.info("CORE PACKAGE TRANSFERED TO HOST %s\n" % hostname)
+            break
+    return
+
+
 def run_job(pool, job):
     global no_finished_jobs
+    global no_failed_jobs
     global no_total_jobs
 
     worker = pool.get()
-    try:
-        return run_job_on_worker(worker, job)
-    finally:
-        pool.put(worker)
-        no_finished_jobs += 1
-        logging.info("Number of jobs finished so far: %d (out of %d)" % (no_finished_jobs, no_total_jobs))
+
+    tries = 3
+    for i in range(tries):
+        try:
+            # time.sleep(randint(1, 10))
+            result_job_on_worker = run_job_on_worker(worker, job)
+        # TODO: this captures any error that may happen when doing the job in the worker. Is it enough?
+        except Exception as e:
+            logging.error("The following job FAILED to execute (will retry): %s" % str(job.id))
+            worker.connect(hostname=worker.host, username=worker.username, password=worker.password,
+                           key_filename=worker.key_filename)
+            if i < tries - 1:  # i is zero indexed
+                continue
+            else:
+                no_failed_jobs += 1
+                logging.error("I am giving up on job %s" % str(job.id))
+                raise
+        break
+    no_finished_jobs += 1
+    logging.info("Number of jobs COMPLETED so far: (%d successful, %d failed) of %d total games" % (
+        no_finished_jobs, no_failed_jobs, no_total_jobs))
+
+    pool.put(worker)
+    return result_job_on_worker
+
+
+def report_progress_bytes_transfered(xfer, to_be_xfer, data):
+    remains_per = 0.000
+    remains_per = (xfer / to_be_xfer) * 100
+    print(
+        'Complete percent for job %s: %.2f%% - (%d bytes transfered out of %d)' % (data, remains_per, xfer, to_be_xfer))
+
+
+def report_match(job):
+    return job.id[0][0] + " vs " + job.id[1][0] + " in map " + job.id[2]
+
 
 def run_job_on_worker(worker, job):
     # create remote env
     instance_id = ''.join(random.choice('0123456789abcdef') for _ in range(30))
-    dest_dir = '/tmp/cluster_instance_%s' % instance_id    
+    dest_dir = '/tmp/cluster_instance_%s' % instance_id
+
+    logging.info('ABOUT TO PLAY GAME in host %s (%s): %s' % (worker.host, dest_dir, report_match(job)))
     sftp = worker.open_sftp()
     sftp.mkdir(dest_dir)
     sftp.chdir(dest_dir)
-    for tf in job.required_files:
-        sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
+    # copy core package into the temporary dir for this particular job
+    worker.exec_command('cp -a %s/* %s' % (CORE_PACKAGE_DIR, dest_dir))
+    logging.debug('GAME PREPARED AND COPIED in host %s (%s): %s' % (worker.host, dest_dir, report_match(job)))
 
-    # worker.host was stored when worker was created
-    logging.info('ABOUT TO EXECUTE command in host %s dir %s: %s \n' % (worker.host, dest_dir,  job.command))
+    # Old alternative: transfer core package to the host via sftp
+    # for tf in job.required_files:
+    #     # sftp.put(localpath=tf.local_path, remotepath=tf.remote_path,
+    #     #          callback=lambda x, y: report_progress_bytes_transfered(x, y, str(job.id)))
+    #     sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
 
+    logging.debug('ABOUT TO EXECUTE command in host %s dir %s: %s' % (worker.host, dest_dir, job.command))
     # run job
     actual_command = """cd %s ; sh -c '%s'""" % (dest_dir, job.command)
     _, ssh_stdout, ssh_stderr = worker.exec_command(actual_command, get_pty=True)  # Non-blocking call
@@ -133,21 +209,19 @@ def run_job_on_worker(worker, job):
     result_err = ssh_stderr.read()
     exit_code = ssh_stdout.channel.recv_exit_status()  # Blocking call but only after reading it all
 
-
-    # retrieve replay file
+    logging.debug(
+        'END OF GAME in host %s (%s) - START COPYING BACK RESULT: %s' % (worker.host, dest_dir, report_match(job)))
+    # Retrieve replay file
     for tf in job.return_files:
-        try:
-            sftp.get(localpath=tf.local_path, remotepath=tf.remote_path)
-        except Exception as e:
-            logging.error("\n \n ERROR copying replay remote file %s to local %s on %s: %s"
-                         % (tf.remote_path, tf.local_path, dest_dir, str(e)))
-            logging.info("RECONNECTING BROKEN WORKER: %s \n\n" % worker.host)
-            worker.connect(hostname=worker.host, username=worker.username, password=worker.password, key_filename=worker.key_filename)
-        sftp.close()
-        # clean
-        worker.exec_command('rm -rf %s' % dest_dir)
+        sftp.get(localpath=tf.local_path, remotepath=tf.remote_path)
+    sftp.close()
 
-        logging.info('FINISHED SUCCESSFULLY EXECUTING command in host %s dir %s: %s \n' % (worker.host, job.command, dest_dir))
+    # clean temporary directory for game
+    worker.exec_command('rm -rf %s' % dest_dir)
+
+    logging.info('FINISHED GAME in host %s (%s): %s' % (worker.host, dest_dir, report_match(job)))
+    logging.debug(
+        'FINISHED SUCCESSFULLY EXECUTING command in host %s dir %s: %s' % (worker.host, dest_dir, job.command))
 
     return job.id, exit_code, result_out, result_err
 
@@ -174,7 +248,8 @@ if __name__ == '__main__':
         instance_id = ''.join(random.choice('0123456789abcdef') for _ in range(30))
         test_file = "%s.txt" % instance_id
 
-        command = "sleep 1; cat %s | head -1 > a.txt ; cat a.txt > %s ; ls -l >> %s ; echo ciao >> %s" % (test_file, test_file, test_file, test_file)
+        command = "sleep 1; cat %s | head -1 > a.txt ; cat a.txt > %s ; ls -l >> %s ; echo ciao >> %s" % (
+            test_file, test_file, test_file, test_file)
         req_file = TransferableFile(local_path='cluster_manager.py', remote_path=test_file)
         ret_file = TransferableFile(local_path=test_file, remote_path=test_file)
 

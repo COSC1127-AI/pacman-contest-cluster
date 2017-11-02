@@ -57,7 +57,7 @@ def load_settings():
     DEFAULT_FIXED_LAYOUTS = 3
     DEFAULT_RANDOM_LAYOUTS = 3
     DEFAULT_CONFIG_FILE = 'config.json'
-    DEFAULT_STAFF_TEAMS_DIR = ''
+    DEFAULT_STAFF_TEAMS_DIR = './'
 
     parser = argparse.ArgumentParser(
         description='This script is to run a tournament between teams of agents for the Pacman package developed by '
@@ -91,8 +91,7 @@ def load_settings():
     )
     parser.add_argument(
         '--teams-root',
-        help='directory containing the zip files of the teams. if ignore_file_name_format is False (default: False), then files have to be of the form s<student no>_TIMESTAMP.zip;'
-             ' for example s9999999_2017-05-13T20:32:43.342000+10:00.zip'
+        help='directory containing the zip files or directories of the teams. See README for format on names.'
     )
     parser.add_argument(
         '--include-staff-team',
@@ -101,7 +100,7 @@ def load_settings():
     )
     parser.add_argument(
         '--staff-teams-dir',
-        help='directory containing the files for staff teams staff_team_basic.zip, staff_team_medium.zip, and staff_team_top.zip.   '
+        help='directory containing the files staff_team_basic.zip, staff_team_medium.zip, and staff_team_top.zip.   '
              '(default: {default})'.format(default=DEFAULT_STAFF_TEAMS_DIR),
         default=DEFAULT_STAFF_TEAMS_DIR
     )
@@ -127,12 +126,13 @@ def load_settings():
     )
     parser.add_argument(
         '--team-names-file',
-        help='the path of the csv that contains (at least) two columns headed "STUDENT_ID" and "TEAM_NAME", used to match submissions with teams. If no file is specified, all zip files in team folder will be taken.',
-        default='None',
+        help='the path of the csv that contains (at least) two columns headed "STUDENT_ID" and "TEAM_NAME", used to match'
+             ' submissions with teams. If passed, files/dirs have to be of a certain format <student no>_TIMESTAMP.zip'
+             ' If no file is specified, team file/dir will be used as name and all will be included.'
     )
     parser.add_argument(
         '--allow-non-registered-students',
-        help='if passed, students without a team are still allowed to participate',
+        help='if passed and --team-names-file is given, students without a team are still allowed to participate',
         action='store_true',
     )
     parser.add_argument(
@@ -141,16 +141,11 @@ def load_settings():
         action='store_true',
     )
     parser.add_argument(
-        '--ignore-file-name-format',
-        help='if passed enforce format <student no>_TIMESTAMP.zip for teams will be ignored',
-        action='store_true',
-    )
-    parser.add_argument(
         '--upload-www-replays',
         help='if passed it uploads recorded_games.tar into https://transfer.sh. This avoids filling up your personal www available space where data is uploaded',
         action='store_true',
     )
-    
+
     args = parser.parse_args()
 
 
@@ -191,10 +186,13 @@ def load_settings():
         settings['max_steps'] = DEFAULT_MAX_STEPS
     if args.team_names_file:
         settings['team_names_file'] = args.team_names_file
+        settings['ignore_file_name_format'] = False
+    else:
+        settings['ignore_file_name_format'] = True
+        settings['team_names_file'] = 'None'
     if args.workers_file_path:
         settings['workers_file_path'] = args.workers_file_path
 
-    settings['ignore_file_name_format'] = args.ignore_file_name_format
     settings['upload_www_replays'] = args.upload_www_replays
     settings['allow_non_registered_students'] = args.allow_non_registered_students
 
@@ -235,7 +233,6 @@ class ContestRunner:
 
     def __init__(self, teams_root, output_path, include_staff_team, staff_teams_dir, organizer, compress_logs, max_steps,
                  no_fixed_layouts, no_random_layouts, team_names_file, allow_non_registered_students, ignore_file_name_format, upload_www_replays):
-
 
         self.max_steps = max_steps
 
@@ -314,7 +311,7 @@ class ContestRunner:
     def clean_up(self):
         shutil.rmtree(self.RESULTS_DIR)
         shutil.rmtree(self.TMP_CONTEST_DIR)
-        os.remove(self.ENV_ZIP_READY)
+        # os.remove(self.ENV_ZIP_READY)
 
 
 
@@ -329,29 +326,34 @@ class ContestRunner:
 
         with tarfile.open(tar_full_path, 'w:gz' if self.compress_logs else 'w') as tar:
             tar.add(self.results_dir_full_path, arcname='/')
-    
+
 
         #default local location if we don't use transfer.sh
-        transfer_url='recorded_games_%s.tar'%self.contest_run_id
+        transfer_url = 'recorded_games_%s.tar' % self.contest_run_id
 
         #upload file into http://transfer.sh temporary file sharing service
         if upload_www_replays is True:
-            transfer_cmd = 'curl --upload-file %s https://transfer.sh/recorded_games_%s.tar'%(tar_full_path,self.contest_run_id)
+            logging.info("Transferring recorded games to transfer.sh service....")
+            transfer_cmd = 'curl --upload-file %s https://transfer.sh/recorded_games_%s.tar' % (
+            tar_full_path, self.contest_run_id)
             try:
                 transfer_url = subprocess.check_output(transfer_cmd, shell=True)
-                print('rm %s'%tar_full_path)
-                os.system('rm %s'%tar_full_path)
-            except:
-                #If transfer failed, use the standard server
-                transfer_url='recorded_games_%s.tar'%self.contest_run_id
+                print('rm %s' % tar_full_path)
+                os.system('rm %s' % tar_full_path)
+            except Exception as e:
+                # If transfer failed, use the standard server
+                logging.error("Transfer-url failed, using local copy to store games. Exception: %s" %str(e))
+                transfer_url = 'recorded_games_%s.tar' % self.contest_run_id
 
-                
+
         # generate html for this run
         self._calculate_team_stats()
         run_html = self._generate_output( transfer_url )
         # output --> www/results_<run_id>/results.html
         with open(os.path.join(self.www_dir_full_path, 'results.html'), "w") as f:
             print(run_html, file=f)
+        with open(os.path.join(self.www_dir_full_path, 'results_%s.json' % self.contest_run_id), "w") as f:
+            json.dump((self.games, self.team_stats), f)
 
 
 
@@ -361,9 +363,11 @@ class ContestRunner:
         The html is saved in www/results.html.
         """
         # regenerate main html
-        main_html = "<html><body><h1>Results Pacman %s Tournament by Date</h1>" % self.organizer
+        main_html = """<html><head><title>Results for the tournament</title><link rel="stylesheet" type="text/css" href="style.css"/></head><body><h1>Results Pacman %s Tournament by Date</h1>""" % self.organizer
         for root, dirs, files in os.walk(self.www_path):
             for d in sorted(dirs):
+                if d.endswith('fonts'):
+                    continue
                 main_html += "<a href=\"%s/results.html\"> %s  </a> <br>" % (d, d)
         main_html += "<br></body></html>"
         with open(os.path.join(self.www_path, 'results.html'), "w") as f:
@@ -378,7 +382,7 @@ class ContestRunner:
         self._generate_run_html( upload_www_replays )
         self._generate_main_html()
 
-    
+
     def _parse_result(self, output, red_team_name, blue_team_name):
         """
         Parses the result log of a match.
@@ -395,13 +399,13 @@ class ContestRunner:
 
         if output.find("Traceback") != -1 or output.find("agent crashed") != -1:
             bug = True
-            #if both teams fail to load, noone wins
+            #if both teams fail to load, no one wins
             if output.find("Red team failed to load!") != -1 and output.find("Blue team failed to load!") != -1:
                 self.errors[red_team_name] += 1
                 self.errors[blue_team_name] += 1
                 winner = None
                 loser = None
-                score = self.ERROR_SCORE              
+                score = self.ERROR_SCORE
             elif output.find("Red agent crashed") != -1 or output.find("redAgents = loadAgents") != -1 or output.find("Red team failed to load!") != -1:
                 self.errors[red_team_name] += 1
                 winner = blue_team_name
@@ -413,7 +417,7 @@ class ContestRunner:
                 loser = blue_team_name
                 score = 1
             else:
-                print("Something went wrong in the contest script - Traceback but no winner: %s vs %s" % (red_team_name, blue_team_name))
+                logging.error("Something went wrong in the contest script - Traceback but no winner: %s vs %s" % (red_team_name, blue_team_name))
         else:
             for line in output.splitlines():
                 if line.find("wins by") != -1:
@@ -438,39 +442,44 @@ class ContestRunner:
                     tied = True
             # signal strange case where script was unable to find outcome of game - should never happen!
             if winner is None and loser is None and not tied:
+                logging.error("Something went wrong in the contest script - there is no traceback and no clear winner: %s vs %s" % (red_team_name, blue_team_name))
                 print(output)
-                print("Something went wrong in the contest script - there is no traceback and no clear winner: %s vs %s" % (red_team_name, blue_team_name))
                 sys.exit(1)
 
         return score, winner, loser, bug
-    
-    
-    def _generate_output(self, transfer_url ):
+
+
+    def _generate_output(self, transfer_url):
         """
         Generates the output HTML of the report of the tournament and returns it.
         """
-        output = "<html><body><h1>Date Tournament %s </h1><br><table border=\"1\">" % self.contest_run_id
+
+        contest_zip_file = zipfile.ZipFile("fonts.zip")
+        contest_zip_file.extractall(self.www_path)
+        shutil.copy("style.css", self.www_path)
+
+        output = """<html><head><title>Results for the tournament round</title>"""
+        output += """<link rel="stylesheet" type="text/css" href="../style.css"/></head>"""
+        output += """<body><h1>Date Tournament %s </h1><br><table border=\"1\">""" % self.contest_run_id
         if len(self.teams) == 0:
             output += "No teams participated, thus no match was run."
         elif len(self.teams) == 1:
             output += "Only one team participated, thus no match was run."
         else:
             # First, print a table with the final standing
-            position = 1
-            output += "<tr><th>Position</th><th>Team</th><th>Points</th><th>Win</th><th>Tie</th><th>Lost</th><th>TOTAL</th><th>FAILED</th><th>Score Balance</th></tr>"
+            output += "<tr><th>Team</th><th>Points</th><th>Win</th><th>Tie</th><th>Lost</th><th>TOTAL</th><th>FAILED</th><th>Score Balance</th></tr>"
             for key, (points, wins, draws, loses, errors, sum_score) in \
                     sorted(self.team_stats.items(), key=lambda (k, v): v[0], reverse=True):
-
-                if 'staff_team' in key:
-                    output += "<tr><td align=\"center\"><strong>%s</strong></td><td align=\"center\"><strong>%s</strong></td><td align=\"center\"><strong>%d</strong></td><td align=\"center\">%d</td><td align=\"center\" ><strong>%d</strong></td><td align=\"center\"><strong>%d</strong></td><td align=\"center\"><strong>%d</strong></td><td align=\"center\" ><strong>%d</strong></td><td align=\"center\" ><strong>%d</strong></td></tr>" % (position, key, points, wins, draws, loses, wins + draws + loses, errors, sum_score)
-                else:
-                    output += "<tr><td align=\"center\">%s</td><td align=\"center\">%s</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\" >%d</td></tr>" % (position, key, points, wins, draws, loses, wins + draws + loses, errors, sum_score)
-
-                position += 1
+                output += "<tr><td align=\"center\">%s</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\">%d</td><td align=\"center\">%d</td><td align=\"center\" >%d</td><td align=\"center\" >%d</td></tr>" % (
+                key, points, wins, draws, loses, wins + draws + loses, errors, sum_score)
             output += "</table>"
 
             # Second, print each game result
-            output += "<br><br> <h2>Games</h2><br><a href=\"%s\">DOWNLOAD RECORDED GAMES!</a><br><table border=\"1\">" % transfer_url
+            output += "<br/><br/><h2>Games</h2><br/>"
+            # output += "<a href=\"recorded_games_%s.tar\">DOWNLOAD RECORDED GAMES</a><br/>" % self.contest_run_id
+            output += "<a href=\"%s\">DOWNLOAD RECORDED GAMES</a><br/>" % transfer_url
+            output += "<a href=\"results_%s.json\">DOWNLOAD RESULTS</a><br/>" % self.contest_run_id
+            output += "<table border=\"1\">"
             output += "<tr><th>Team1</th><th>Team2</th><th>Layout</th><th>Score</th><th>Winner</th></tr>"
             for (n1, n2, layout, score, winner) in self.games:
                 output += "<tr><td align=\"center\">"
@@ -496,7 +505,7 @@ class ContestRunner:
         output += "</table></body></html>"
 
         return output
-    
+
 
     def _prepare_platform(self, contest_zip_file_path, layouts_zip_file_path, destination, no_fixed_layouts=5, no_random_layouts=3):
         """
@@ -596,7 +605,7 @@ class ContestRunner:
             agent_factory = os.path.join(self.TEAMS_SUBDIR, team_name, desired_file)
             self.teams.append((team_name, agent_factory))
             self.submission_times[team_name] = submission_time
-            
+
         elif submission_time is not None and self.submission_times[team_name] < submission_time:
             shutil.rmtree(team_destination_dir)
             if submission_zip_file is None:
@@ -631,7 +640,7 @@ class ContestRunner:
             print(' Successful. Log in {output_file}.'.format(output_file=os.path.join(self.results_dir_full_path, log_file_name)))
         else:
             print(' Failed. Log in {output_file}.'.format(output_file=log_file_name))
-    
+
 
         score, winner, loser, bug = self._parse_result(output, red_team_name, blue_team_name)
 
@@ -654,8 +663,8 @@ class ContestRunner:
             self.games.append((red_team_name, blue_team_name, layout, score, winner))
         else:
             self.games.append((red_team_name, blue_team_name, layout, self.ERROR_SCORE, winner))
-    
-    
+
+
     def _run_match(self, red_team, blue_team, layout):
         red_team_name, _ = red_team
         blue_team_name, _ = blue_team
@@ -703,9 +712,11 @@ class ContestRunner:
             for layout in self.layouts:
                 jobs.append(self._generate_job(red_team, blue_team, layout))
 
+        # create cluster with hots and jobs and run it by starting it, and then analyze output results
         cm = ClusterManager(hosts, jobs)
         results = cm.start()
         self._analyse_all_outputs(results)
+
 
 
 
@@ -771,6 +782,7 @@ if __name__ == '__main__':
 
     with open(settings['workers_file_path'], 'r') as f:
         workers_details = json.load(f)['workers']
+    print(workers_details)
     hosts = [Host(no_cpu=w['no_cpu'], hostname=w['hostname'], username=w['username'], password=w['password'], key_filename=w['private_key_file'], key_password=w['key_password']) for w in workers_details]
 
     del settings['workers_file_path']
