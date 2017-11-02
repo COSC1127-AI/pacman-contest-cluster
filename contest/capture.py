@@ -850,6 +850,9 @@ def readCommand( argv ):
     recorded = cPickle.load(open(options.replay))
     recorded['display'] = args['display']
     recorded['delay'] = options.delay
+    recorded['redTeamName'] = options.red
+    recorded['blueTeamName'] = options.blue
+
     replayGame(**recorded)
     sys.exit(0)
 
@@ -973,6 +976,12 @@ def replayGame( layout, agents, actions, display, length, redTeamName, blueTeamN
       rules.process(state, game)
       time.sleep(delay)
 
+    print("END")
+    try:
+      wait = input("PRESS ENTER TO CONTINUE")
+    except:
+      print("END")
+
     display.finish()
 
 def runGames( layouts, agents, display, length, numGames, record, numTraining, redTeamName, blueTeamName, muteAgents=False, catchExceptions=False ):
@@ -1040,5 +1049,7 @@ if __name__ == '__main__':
   games = runGames(**options)
 
   save_score(games[0])
+
+  
   # import cProfile
   # cProfile.run('runGames( **options )', 'profile')

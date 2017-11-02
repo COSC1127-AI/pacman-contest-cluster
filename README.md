@@ -30,6 +30,7 @@ python pacman-ssh-contest.py --help_
     * Mapping each filename.zip submission as teamname=filename; option `--ignore-file-name-format`
 * Generate HTML page with tournament results and list of replay files.
     * option --output-path
+    * option --upload-www-replays, uploads tar file into https://transfer.sh to avoid filling your local www space
 * Handle latest submission by sorting via timestamp in file name.
     * all members of a team can submit at any point
     * last submission per team is considered (if there are multiple)
@@ -96,7 +97,15 @@ Hence, user must provide:
     - Main columns are: STUDENT_ID and TEAM_NAME
     - If **no file provided**, teamnames are taken from the submitted zip files (this is the option used at unimelb)
 
+## OPTIONAL PACKAGES ##
 
+Many students benefit from the availability of **TensorFlow** and **scikit-learn**. To install theses tools execute the following commands in the environment where the contest will run:
+
+```
+sudo pip install tensorflow
+sudo pip install sklearn 
+sudo pip install scipy
+```
 
 ## HOW THE SCRIPT WORKS ##
 
@@ -157,7 +166,7 @@ python pacman-ssh-contest.py --compress-log --organizer RMIT \
                         --no-random-layouts 5 \
                         --workers-file-path my_workers-nectar.json
 ````
-Collecting submitted files in teams, and using the zip filename as teamname:
+Collecting submitted files in teams, and using the zip filename as teamname, and uploading the replays file into a sharing file service instead of your local directory:
 ````
 python pacman-ssh-contest.py --compress-log --organizer RMIT \
                         --teams-root test-teams/ \ 
@@ -167,13 +176,14 @@ python pacman-ssh-contest.py --compress-log --organizer RMIT \
                         --no-fixed-layouts 3 \
                         --no-random-layouts 5 \
                         --ignore-file-name-format \
-                        --workers-file-path my_workers-nectar.json
+                        --workers-file-path my_workers-nectar.json \
+			--upload-www-replays
 ````
 
 ## SCHEDULE COMPETITION ##
 
 
-If you want to automate the tournament, use the driver.py provided. It has the following options:
+If you want to automate the tournament, use the `driver.py` provided. It has the following options:
 
 ```
   --username [USERNAME]
@@ -195,13 +205,39 @@ If you want to automate the tournament, use the driver.py provided. It has the f
                         specify the folder to the scripts in order to run cron
 ```
 
-=======
+#### Test command to schedule ####
+
+We strongly recommend to test the command you want to schedule in **cron**
 
 Run the following command:
 ```
 crontab -e
 ```
-and introduce the following line into the *cronfile*
+
+and introduce the following line into **cronfile** (change *username* appropriately)
+
+```
+# For more information see the manual pages of crontab(5) and cron(8)
+# 
+# m h  dom mon dow   command
+
+* * * * *  /usr/bin/env > /home/username/cron-env
+```
+
+Now you can test the command you want to schedule by running
+```
+./run-as-cron /home/username/cron-env "<command>"
+```
+
+This will run you command with the same environment settings as cron jobs do. If the command succeeds, then you can set up your command now.
+
+#### Setting up cron ####
+
+Run the following command:
+```
+crontab -e
+```
+Remove the line you introduced before and introduce the following line:
 ```
 # For more information see the manual pages of crontab(5) and cron(8)
 # 
@@ -211,4 +247,5 @@ and introduce the following line into the *cronfile*
 ```
 
 Now your script will run every midnight at 00:01
+
 

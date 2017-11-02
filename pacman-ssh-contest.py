@@ -40,6 +40,7 @@ from itertools import combinations
 from cluster_manager import ClusterManager, Job, Host, TransferableFile
 import iso8601
 from pytz import timezone
+import subprocess
 # from getpass import getpass
 # import paramiko
 
@@ -139,6 +140,12 @@ def load_settings():
         help='if passed, config.json file will be generated with current options',
         action='store_true',
     )
+    parser.add_argument(
+        '--upload-www-replays',
+        help='if passed it uploads recorded_games.tar into https://transfer.sh. This avoids filling up your personal www available space where data is uploaded',
+        action='store_true',
+    )
+
     args = parser.parse_args()
 
 
@@ -186,6 +193,7 @@ def load_settings():
     if args.workers_file_path:
         settings['workers_file_path'] = args.workers_file_path
 
+    settings['upload_www_replays'] = args.upload_www_replays
     settings['allow_non_registered_students'] = args.allow_non_registered_students
 
     logging.info('Script will run with this configuration: %s' % settings)
@@ -222,8 +230,9 @@ class ContestRunner:
                                             # submissions folder format: s???????[_datetime]
                                             # datetime in ISO8601 format:  https: // en.wikipedia.org / wiki / ISO_8601
 
+
     def __init__(self, teams_root, output_path, include_staff_team, staff_teams_dir, organizer, compress_logs, max_steps,
-                 no_fixed_layouts, no_random_layouts, team_names_file, allow_non_registered_students, ignore_file_name_format):
+                 no_fixed_layouts, no_random_layouts, team_names_file, allow_non_registered_students, ignore_file_name_format, upload_www_replays):
 
         self.max_steps = max_steps
 
@@ -306,7 +315,7 @@ class ContestRunner:
 
 
 
-    def _generate_run_html(self):
+    def _generate_run_html(self, upload_www_replays=False ):
         """
         Generates the html with the results of this run. The html is saved in www/results_<run_id>/results.html.
         """
@@ -318,9 +327,28 @@ class ContestRunner:
         with tarfile.open(tar_full_path, 'w:gz' if self.compress_logs else 'w') as tar:
             tar.add(self.results_dir_full_path, arcname='/')
 
+
+        #default local location if we don't use transfer.sh
+        transfer_url = 'recorded_games_%s.tar' % self.contest_run_id
+
+        #upload file into http://transfer.sh temporary file sharing service
+        if upload_www_replays is True:
+            logging.info("Transferring recorded games to transfer.sh service....")
+            transfer_cmd = 'curl --upload-file %s https://transfer.sh/recorded_games_%s.tar' % (
+            tar_full_path, self.contest_run_id)
+            try:
+                transfer_url = subprocess.check_output(transfer_cmd, shell=True)
+                print('rm %s' % tar_full_path)
+                os.system('rm %s' % tar_full_path)
+            except Exception as e:
+                # If transfer failed, use the standard server
+                logging.error("Transfer-url failed, using local copy to store games. Exception: %s" %str(e))
+                transfer_url = 'recorded_games_%s.tar' % self.contest_run_id
+
+
         # generate html for this run
         self._calculate_team_stats()
-        run_html = self._generate_output()
+        run_html = self._generate_output( transfer_url )
         # output --> www/results_<run_id>/results.html
         with open(os.path.join(self.www_dir_full_path, 'results.html'), "w") as f:
             print(run_html, file=f)
@@ -346,15 +374,15 @@ class ContestRunner:
             print(main_html, file=f)
 
 
-    def update_www(self):
+    def update_www(self, upload_www_replays=False ):
         """
         (Re)Generates the html for this run and updates the main html.
         :return: 
         """
-        self._generate_run_html()
+        self._generate_run_html( upload_www_replays )
         self._generate_main_html()
 
-    
+
     def _parse_result(self, output, red_team_name, blue_team_name):
         """
         Parses the result log of a match.
@@ -377,7 +405,7 @@ class ContestRunner:
                 self.errors[blue_team_name] += 1
                 winner = None
                 loser = None
-                score = self.ERROR_SCORE              
+                score = self.ERROR_SCORE
             elif output.find("Red agent crashed") != -1 or output.find("redAgents = loadAgents") != -1 or output.find("Red team failed to load!") != -1:
                 self.errors[red_team_name] += 1
                 winner = blue_team_name
@@ -419,9 +447,9 @@ class ContestRunner:
                 sys.exit(1)
 
         return score, winner, loser, bug
-    
-    
-    def _generate_output(self):
+
+
+    def _generate_output(self, transfer_url):
         """
         Generates the output HTML of the report of the tournament and returns it.
         """
@@ -448,7 +476,8 @@ class ContestRunner:
 
             # Second, print each game result
             output += "<br/><br/><h2>Games</h2><br/>"
-            output += "<a href=\"recorded_games_%s.tar\">DOWNLOAD RECORDED GAMES</a><br/>" % self.contest_run_id
+            # output += "<a href=\"recorded_games_%s.tar\">DOWNLOAD RECORDED GAMES</a><br/>" % self.contest_run_id
+            output += "<a href=\"%s\">DOWNLOAD RECORDED GAMES</a><br/>" % transfer_url
             output += "<a href=\"results_%s.json\">DOWNLOAD RESULTS</a><br/>" % self.contest_run_id
             output += "<table border=\"1\">"
             output += "<tr><th>Team1</th><th>Team2</th><th>Layout</th><th>Score</th><th>Winner</th></tr>"
@@ -476,7 +505,7 @@ class ContestRunner:
         output += "</table></body></html>"
 
         return output
-    
+
 
     def _prepare_platform(self, contest_zip_file_path, layouts_zip_file_path, destination, no_fixed_layouts=5, no_random_layouts=3):
         """
@@ -576,7 +605,7 @@ class ContestRunner:
             agent_factory = os.path.join(self.TEAMS_SUBDIR, team_name, desired_file)
             self.teams.append((team_name, agent_factory))
             self.submission_times[team_name] = submission_time
-            
+
         elif submission_time is not None and self.submission_times[team_name] < submission_time:
             shutil.rmtree(team_destination_dir)
             if submission_zip_file is None:
@@ -611,7 +640,7 @@ class ContestRunner:
             print(' Successful. Log in {output_file}.'.format(output_file=os.path.join(self.results_dir_full_path, log_file_name)))
         else:
             print(' Failed. Log in {output_file}.'.format(output_file=log_file_name))
-    
+
 
         score, winner, loser, bug = self._parse_result(output, red_team_name, blue_team_name)
 
@@ -634,8 +663,8 @@ class ContestRunner:
             self.games.append((red_team_name, blue_team_name, layout, score, winner))
         else:
             self.games.append((red_team_name, blue_team_name, layout, self.ERROR_SCORE, winner))
-    
-    
+
+
     def _run_match(self, red_team, blue_team, layout):
         red_team_name, _ = red_team
         blue_team_name, _ = blue_team
@@ -754,7 +783,8 @@ if __name__ == '__main__':
 
     with open(settings['workers_file_path'], 'r') as f:
         workers_details = json.load(f)['workers']
-    hosts = [Host(no_cpu=w['no_cpu'], hostname=w['hostname'], username=w['username'], password=w['password'], key_filename=w['private_key_file']) for w in workers_details]
+    print(workers_details)
+    hosts = [Host(no_cpu=w['no_cpu'], hostname=w['hostname'], username=w['username'], password=w['password'], key_filename=w['private_key_file'], key_password=w['key_password']) for w in workers_details]
 
     del settings['workers_file_path']
     runner = ContestRunner(**settings)
@@ -763,6 +793,6 @@ if __name__ == '__main__':
 
     runner.run_contest_remotely(hosts)
 
-    runner.update_www()
+    runner.update_www( settings['upload_www_replays'] )
 
     runner.clean_up()

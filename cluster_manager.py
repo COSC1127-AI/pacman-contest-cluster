@@ -21,6 +21,7 @@ from joblib import Parallel, delayed
 from getpass import getpass, getuser
 from paramiko.config import SSHConfig
 from paramiko.client import SSHClient
+from paramiko.rsakey import RSAKey
 from paramiko.proxy import ProxyCommand
 from paramiko import AutoAddPolicy
 
@@ -32,7 +33,7 @@ logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logg
 # ----------------------------------------------------------------------------------------------------------------------
 # Import class from helper module
 
-Host = namedtuple('Host', ['no_cpu', 'hostname', 'username', 'password', 'key_filename'], verbose=False)
+Host = namedtuple('Host', ['no_cpu', 'hostname', 'username', 'password', 'key_filename', 'key_password'], verbose=False)
 Job = namedtuple('Job', ['command', 'required_files', 'return_files', 'id'], verbose=False)
 TransferableFile = namedtuple('TransferableFile', ['local_path', 'remote_path'], verbose=False)
 
@@ -101,13 +102,16 @@ def create_worker(host):
     worker.host = host.hostname  # store all this for later reference (e.g., logging, reconnection)
     worker.username = host.username
     worker.password = host.password
-    worker.key_filename = host.key_filename
+    if not host.key_filename is None:
+        worker.pkey = RSAKey.from_private_key_file( host.key_filename, host.key_password )
+    else:
+        worker.pkey = None
 
     # time.sleep(4)
     # worker.connect(hostname=host.hostname, username=host.username, password=host.password, key_filename=host.key_filename, sock=proxy, timeout=3600)
-
-    worker.connect(hostname=host.hostname, username=host.username, password=host.password,
-                   key_filename=host.key_filename, sock=proxy)
+    
+    worker.connect(hostname=host.hostname, username=host.username, password=host.password, pkey=worker.pkey, sock=proxy )
+    
 
     return worker
 

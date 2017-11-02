@@ -1,7 +1,7 @@
 {
   "workers": [
-    {"no_cpu": 2, "hostname": "1.2.3.4", "username": "nir", "password": null, "private_key_file": "~/.ssh/id_nir"}, // private key authentication if private key is plain
-    {"no_cpu": 1, "hostname": "1.2.3.5", "username": "seba", "password": "unguessable", "private_key_file": "id_seba"}, // private key authentication if private key is password protected
-    {"no_cpu": 4, "hostname": "1.2.3.6", "username": "marco", "password": "more_unguessable", "private_key_file": null} // password authentication
+      {"no_cpu": 2, "hostname": "1.2.3.4", "username": "nir", "password": null, "private_key_file": "~/.ssh/id_nir", "key_password": null}, // private key authentication if private key is plain
+      {"no_cpu": 1, "hostname": "1.2.3.5", "username": "seba", "password": null, "private_key_file": "id_seba", "key_password": "key_encription_password"}, // private key authentication if private key is password protected
+      {"no_cpu": 4, "hostname": "1.2.3.6", "username": "marco", "password": "unguessable", "private_key_file": null, "key_password": "key_encription_password"} // password server authentication and private key password protected
   ]
 }
