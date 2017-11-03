@@ -175,9 +175,8 @@ python pacman-ssh-contest.py --compress-log --organizer RMIT \
                         --include-staff-team \
                         --no-fixed-layouts 3 \
                         --no-random-layouts 5 \
-                        --ignore-file-name-format \
                         --workers-file-path my_workers-nectar.json \
-			--upload-www-replays
+            			--upload-www-replays
 ````
 
 ## SCHEDULE COMPETITION ##
