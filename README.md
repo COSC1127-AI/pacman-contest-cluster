@@ -14,7 +14,7 @@ The system takes the set of teams, set of workers in a cluster, and tournament c
 
 To see options available run: 
 ```
-python pacman-ssh-contest.py --help_
+python pacman-ssh-contest.py --help
 ```
 
 ### Features ###
