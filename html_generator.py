@@ -170,14 +170,19 @@ class HtmlGenerator:
                 # Python 3.x
                 from urllib2 import urlopen as request
             content = request(stats_file_url).read()
-            games, team_stats = json.loads(content)
+            data = json.loads(content)
 
         else: # relative path
             # prepend www/ so the file can be opened by this script, which is somewhere else
             stats_file_path = os.path.join(self.www_dir, stats_file_url)
 
             with open(stats_file_path, 'r') as f:
-                games, team_stats = json.load(f)
+                data = json.load(f)
+
+        games = data['games']
+        team_stats = data['team_stats']
+        random_layouts = data['random_layouts']
+        fixed_layouts = data['fixed_layouts']
 
         # prepend ../ to local URLs so the files can be linked to from www/results_xxx/results.html
         if not stats_file_url.startswith('http'): # http url
@@ -195,7 +200,8 @@ class HtmlGenerator:
 
         if not os.path.exists(html_parent_path):
             os.makedirs(html_parent_path)
-        run_html = self._generate_output(run_id, games, team_stats, stats_file_url, replays_file_url, logs_file_url)
+        run_html = self._generate_output(run_id, games, team_stats, random_layouts, fixed_layouts,
+                                         stats_file_url, replays_file_url, logs_file_url)
 
         html_full_path = os.path.join(html_parent_path, 'results.html')
         with open(html_full_path, "w") as f:
@@ -218,20 +224,28 @@ class HtmlGenerator:
                 continue
             if not d.startswith('results'):
                 continue
-            main_html += """<a href="%s/results.html"> %s  </a> <br>""" % (d, d)
-        main_html += "<br></body></html>"
+            main_html += """<a href="%s/results.html"> %s  </a> <br/>""" % (d, d)
+        main_html += "<br/></body></html>"
         with open(os.path.join(self.www_dir, 'results.html'), "w") as f:
             print(main_html, file=f)
 
 
-    def _generate_output(self, run_id, games, team_stats, stats_url, replays_url, logs_url):
+    def _generate_output(self, run_id, games, team_stats, random_layouts, fixed_layouts,
+                         stats_url, replays_url, logs_url):
         """
         Generates the HTML of the report of the run.
         """
 
         output = """<html><head><title>Results for the tournament round</title>"""
         output += """<link rel="stylesheet" type="text/css" href="../style.css"/></head>"""
-        output += """<body><h1>Date Tournament %s </h1><br><table border="1">""" % run_id
+        output += """<body><h1>Date Tournament %s </h1>""" % run_id
+        if fixed_layouts:
+            s = '</li><li>'.join(fixed_layouts)
+            output += """<h2>Fixed layouts</h2><ul><li>%s</li></ul><br/>""" % s
+        if random_layouts:
+            s = '</li><li>'.join(random_layouts)
+            output += """<h2>Random layouts</h2><ul><li>%s</li></ul><br/>""" % s
+        output += """<br/><br/><table border="1">"""
 
         if len(games) == 0:
             output += "No match was run."

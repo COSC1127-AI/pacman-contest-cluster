@@ -632,7 +632,13 @@ class ContestRunner:
         stats_file_name = 'stats_%s.json' % self.contest_run_id  # stats_xxx.json
         stats_file_full_path = os.path.join(self.stats_archive_dir, stats_file_name)  # test/www/stats-archive/stats_xxx.json
         with open(stats_file_full_path, "w") as f:
-            json.dump((self.games, self.team_stats), f)
+            data = {
+                'games': self.games,
+                'team_stats': self.team_stats,
+                'random_layouts': [l for l in self.layouts if l.startswith('RANDOM')],
+                'fixed_layouts': [l for l in self.layouts if not l.startswith('RANDOM')]
+            }
+            json.dump(data, f)
         if self.upload_stats:
             stats_file_url = self.upload_file(stats_file_full_path)
         else:
