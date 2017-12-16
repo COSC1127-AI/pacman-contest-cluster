@@ -209,6 +209,7 @@ def run_job_on_worker(worker, job):
     startTime = datetime.datetime.now().replace(microsecond=0)
     actual_command = """cd %s ; sh -c '%s'""" % (dest_dir, job.command)
     try:
+        #TODO: do we want to put a timeout here in case the call does not return? some pacman games take 3 min eh
         # _, ssh_stdout, ssh_stderr = worker.exec_command(actual_command, timeout=60, get_pty=True)  # Non-blocking call
         _, ssh_stdout, ssh_stderr = worker.exec_command(actual_command, get_pty=True)  # Non-blocking call
         result_out = ssh_stdout.read()
