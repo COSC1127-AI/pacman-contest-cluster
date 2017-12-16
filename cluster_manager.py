@@ -17,6 +17,7 @@ from Queue import Queue
 import random
 from time import sleep
 import os
+import datetime
 from joblib import Parallel, delayed
 from getpass import getpass, getuser
 from paramiko.config import SSHConfig
@@ -99,19 +100,19 @@ def create_worker(host):
     worker.load_system_host_keys()
     worker.set_missing_host_key_policy(AutoAddPolicy())
 
-    worker.host = host.hostname  # store all this for later reference (e.g., logging, reconnection)
+    worker.hostname = host.hostname  # store all this for later reference (e.g., logging, reconnection)
     worker.username = host.username
     worker.password = host.password
+    worker.proxy = proxy
     if not host.key_filename is None:
-        worker.pkey = RSAKey.from_private_key_file( host.key_filename, host.key_password )
+        worker.pkey = RSAKey.from_private_key_file(host.key_filename, host.key_password)
     else:
         worker.pkey = None
 
     # time.sleep(4)
     # worker.connect(hostname=host.hostname, username=host.username, password=host.password, key_filename=host.key_filename, sock=proxy, timeout=3600)
-    
-    worker.connect(hostname=host.hostname, username=host.username, password=host.password, pkey=worker.pkey, sock=proxy )
-    
+
+    worker.connect(hostname=host.hostname, username=host.username, password=host.password, pkey=worker.pkey, sock=proxy)
 
     return worker
 
@@ -122,7 +123,7 @@ def transfer_core_package(hostname, workers, required_files):
     # TODO: ugly handling of the case where the dir exists by passing the exception?
     # Find a worker for this hostname and transfer the required files to des_dir
     for worker in workers:
-        if worker.host == hostname:
+        if worker.hostname == hostname:
             sftp = worker.open_sftp()
             try:
                 sftp.mkdir(dest_dir)
@@ -142,6 +143,7 @@ def run_job(pool, job):
     global no_failed_jobs
     global no_total_jobs
 
+    #  worker is an SSHClient
     worker = pool.get()
 
     tries = 3
@@ -151,9 +153,10 @@ def run_job(pool, job):
             result_job_on_worker = run_job_on_worker(worker, job)
         # TODO: this captures any error that may happen when doing the job in the worker. Is it enough?
         except Exception as e:
-            logging.error("The following job FAILED to execute (will retry): %s" % str(job.id))
-            worker.connect(hostname=worker.host, username=worker.username, password=worker.password,
-                           key_filename=worker.key_filename)
+            logging.error("The following job FAILED to execute (will reconnect & retry): %s" % str(job.id))
+            worker.close()
+            worker.connect(hostname=worker.hostname, username=worker.username, password=worker.password,
+                           pkey=worker.pkey, sock=worker.proxy)
             if i < tries - 1:  # i is zero indexed
                 continue
             else:
@@ -181,17 +184,19 @@ def report_match(job):
 
 
 def run_job_on_worker(worker, job):
+    #  worker is an SSHClient
+
     # create remote env
     instance_id = ''.join(random.choice('0123456789abcdef') for _ in range(30))
     dest_dir = '/tmp/cluster_instance_%s' % instance_id
 
-    logging.info('ABOUT TO PLAY GAME in host %s (%s): %s' % (worker.host, dest_dir, report_match(job)))
+    logging.info('ABOUT TO PLAY GAME in host %s (%s): %s' % (worker.hostname, dest_dir, report_match(job)))
     sftp = worker.open_sftp()
     sftp.mkdir(dest_dir)
     sftp.chdir(dest_dir)
     # copy core package into the temporary dir for this particular job
     worker.exec_command('cp -a %s/* %s' % (CORE_PACKAGE_DIR, dest_dir))
-    logging.debug('GAME PREPARED AND COPIED in host %s (%s): %s' % (worker.host, dest_dir, report_match(job)))
+    logging.debug('GAME PREPARED AND COPIED in host %s (%s): %s' % (worker.hostname, dest_dir, report_match(job)))
 
     # Old alternative: transfer core package to the host via sftp
     # for tf in job.required_files:
@@ -199,16 +204,24 @@ def run_job_on_worker(worker, job):
     #     #          callback=lambda x, y: report_progress_bytes_transfered(x, y, str(job.id)))
     #     sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
 
-    logging.debug('ABOUT TO EXECUTE command in host %s dir %s: %s' % (worker.host, dest_dir, job.command))
+    logging.debug('ABOUT TO EXECUTE command in host %s dir %s: %s' % (worker.hostname, dest_dir, job.command))
     # run job
+    startTime = datetime.datetime.now().replace(microsecond=0)
     actual_command = """cd %s ; sh -c '%s'""" % (dest_dir, job.command)
-    _, ssh_stdout, ssh_stderr = worker.exec_command(actual_command, get_pty=True)  # Non-blocking call
-    result_out = ssh_stdout.read()
-    result_err = ssh_stderr.read()
-    exit_code = ssh_stdout.channel.recv_exit_status()  # Blocking call but only after reading it all
+    try:
+        # _, ssh_stdout, ssh_stderr = worker.exec_command(actual_command, timeout=60, get_pty=True)  # Non-blocking call
+        _, ssh_stdout, ssh_stderr = worker.exec_command(actual_command, get_pty=True)  # Non-blocking call
+        result_out = ssh_stdout.read()
+        result_err = ssh_stderr.read()
+        exit_code = ssh_stdout.channel.recv_exit_status()  # Blocking call but only after reading it all
+    except Exception as e:
+        totalTimeTaken = datetime.datetime.now().replace(microsecond=0) - startTime
+        logging.warn('TIME OUT in host %s (%s time taken; %s): %s' % (worker.hostname, totalTimeTaken, dest_dir, report_match(job)))
+        raise
+    totalTimeTaken = datetime.datetime.now().replace(microsecond=0) - startTime
 
     logging.debug(
-        'END OF GAME in host %s (%s) - START COPYING BACK RESULT: %s' % (worker.host, dest_dir, report_match(job)))
+        'END OF GAME in host %s (%s) - START COPYING BACK RESULT: %s' % (worker.hostname, dest_dir, report_match(job)))
     # Retrieve replay file
     for tf in job.return_files:
         sftp.get(localpath=tf.local_path, remotepath=tf.remote_path)
@@ -217,9 +230,9 @@ def run_job_on_worker(worker, job):
     # clean temporary directory for game
     worker.exec_command('rm -rf %s' % dest_dir)
 
-    logging.info('FINISHED GAME in host %s (%s): %s' % (worker.host, dest_dir, report_match(job)))
+    logging.info('FINISHED GAME in host %s (%s time taken; %s): %s' % (worker.hostname, totalTimeTaken, dest_dir, report_match(job)))
     logging.debug(
-        'FINISHED SUCCESSFULLY EXECUTING command in host %s dir %s: %s' % (worker.host, dest_dir, job.command))
+        'FINISHED SUCCESSFULLY EXECUTING command in host %s dir %s: %s' % (worker.hostname, dest_dir, job.command))
 
     return job.id, exit_code, result_out, result_err
 
