@@ -51,6 +51,7 @@ python pacman-ssh-contest.py --help
 * In the local machine dispatching jobs to the cluster:
     * unzip & zip (to pack and unpack submissions and files for transfer)
     * Python >=2.7 with:
+       * setuptools
        * python-future
        * future
        * iso8601
@@ -83,6 +84,7 @@ available (including no of cores, IP, username, password, and private key file i
 ```
 sudo apt-get update
 sudo apt-get install python-pip unzip
+sudo pip install setuptools
 sudo pip install -r requirements.txt
 sudo pip install -U  paramiko
 ```
