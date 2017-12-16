@@ -94,15 +94,8 @@ def load_settings():
         help='directory containing the zip files or directories of the teams. See README for format on names.'
     )
     parser.add_argument(
-        '--include-staff-team',
-        help='if passed, the staff team will be included (it should sit in a directory called staff_name)',
-        action='store_true'
-    )
-    parser.add_argument(
         '--staff-teams-dir',
-        help='directory containing the files staff_team_basic.zip, staff_team_medium.zip, and staff_team_top.zip.   '
-             '(default: {default})'.format(default=DEFAULT_STAFF_TEAMS_DIR),
-        default=DEFAULT_STAFF_TEAMS_DIR
+        help='if given, include staff teams in the given directory (staff_team_basic.zip, staff_team_medium.zip, and staff_team_top.zip).'
     )
     parser.add_argument(
         '--compress-logs',
@@ -166,14 +159,16 @@ def load_settings():
         settings['organizer'] = args.organizer
     if args.compress_logs:
         settings['compress_logs'] = args.compress_logs
-    if args.include_staff_team:
-        settings['include_staff_team'] = args.include_staff_team
     elif 'include_staff_team' not in set(settings.keys()):
         settings['include_staff_team'] = False
-    if args.teams_root:
-        settings['teams_root'] = args.teams_root
     if args.staff_teams_dir:
         settings['staff_teams_dir'] = args.staff_teams_dir
+        settings['include_staff_team'] = True
+    else:
+        settings['include_staff_team'] = False
+        settings['staff_teams_dir'] = 'None'
+    if args.teams_root:
+        settings['teams_root'] = args.teams_root
     if args.output_path:
         settings['output_path'] = args.output_path
     if args.no_fixed_layouts:
@@ -248,6 +243,7 @@ class ContestRunner:
         # a flag indicating whether to compress the logs
         self.compress_logs = compress_logs
 
+
         # name and full path of the directory where the results of this execution will be stored
         self.results_dir_name = 'results_{run_id}'.format(run_id=self.contest_run_id)
         self.results_dir_full_path = os.path.join(self.RESULTS_DIR, self.results_dir_name)
@@ -294,7 +290,7 @@ class ContestRunner:
                 if not os.path.exists(STAFF_TEAM):
                     logging.error('Staff team file %s could not be found. Aborting.' % STAFF_TEAM)
                     sys.exit(1)
-                self._setup_team(STAFF_TEAM, teams_dir, ignore_file_name_format)
+                self._setup_team(STAFF_TEAM, teams_dir, True)
 
         # zip directory for transfer to remote workers
         shutil.make_archive(self.ENV_ZIP_READY[:-4], 'zip', self.TMP_CONTEST_DIR)
