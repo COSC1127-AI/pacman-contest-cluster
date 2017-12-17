@@ -160,6 +160,11 @@ def load_settings():
         help='if passed it uploads the logs into https://transfer.sh. This avoids filling up your personal www available space where data is uploaded',
         action='store_true',
     )
+    parser.add_argument(
+        '--upload-all',
+        help='if passed, uploads logs, replays, stats into https://transfer.sh.',
+        action='store_true',
+    )
 
     args = parser.parse_args()
 
@@ -220,9 +225,15 @@ def load_settings():
     elif 'max_steps' not in set(settings.keys()):
         settings['max_steps'] = DEFAULT_MAX_STEPS
 
-    settings['upload_stats'] = args.upload_stats
-    settings['upload_replays'] = args.upload_replays
-    settings['upload_logs'] = args.upload_logs
+    if args.upload_all:
+        settings['upload_stats'] = True
+        settings['upload_replays'] = True
+        settings['upload_logs'] = True
+    else:
+        settings['upload_stats'] = args.upload_stats
+        settings['upload_replays'] = args.upload_replays
+        settings['upload_logs'] = args.upload_logs
+
     settings['allow_non_registered_students'] = args.allow_non_registered_students
 
     logging.info('Script will run with this configuration: %s' % settings)
