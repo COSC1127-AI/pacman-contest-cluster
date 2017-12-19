@@ -23,7 +23,6 @@ import logging
 import re
 from pytz import timezone
 
-
 # logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG, datefmt='%a, %d %b %Y %H:%M:%S')
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO,
                     datefmt='%a, %d %b %Y %H:%M:%S')
@@ -48,8 +47,14 @@ def load_settings():
         help='name of the organizer of the contest'
     )
     parser.add_argument(
+        '--max-steps',
+        help='no of max steps in the games (default: {default} - unknown)'.format(default=0),
+        default=0
+    )
+    parser.add_argument(
         '--stats-archive-dir',
-        help='stats directory'
+        help='stats directory',
+        default=
     )
     parser.add_argument(
         '--replays-archive-dir',
@@ -86,6 +91,8 @@ def load_settings():
     # if given, set the parameters as per command line options (may override config file)
     if args.organizer:
         settings['organizer'] = args.organizer
+    if args.max_steps:
+        settings['max_steps'] = args.max_steps
     if args.www_dir:
         settings['www_dir'] = args.www_dir
     if args.stats_archive_dir:
@@ -113,8 +120,7 @@ class HtmlGenerator:
     RESULTS_DIR = 'results'
     TIMEZONE = timezone('Australia/Melbourne')
 
-
-    def __init__(self, www_dir, organizer):
+    def __init__(self, www_dir, organizer, max_steps):
         """
         Initializes this generator.
 
@@ -128,17 +134,17 @@ class HtmlGenerator:
         # just used in html as a readable string
         self.organizer = organizer
 
+        # just used in html to show configuration of tournament
+        self.max_steps = max_steps
 
     def _close(self):
         pass
-
 
     def clean_up(self):
         """
         Empties and removes the output directory
         """
         shutil.rmtree(self.www_dir)
-
 
     def add_run(self, run_id, stats_file_full_path, replays_url, logs_url):
         """
@@ -147,7 +153,6 @@ class HtmlGenerator:
         """
         self._save_run_html(run_id, stats_file_full_path, replays_url, logs_url)
         self._generate_main_html()
-        
 
     def _save_run_html(self, run_id, stats_file_url, replays_file_url, logs_file_url):
         """
@@ -161,7 +166,7 @@ class HtmlGenerator:
         """
         html_parent_path = os.path.join(self.www_dir, 'results_%s' % run_id)
 
-        if stats_file_url.startswith('http'): # http url
+        if stats_file_url.startswith('http'):  # http url
             try:
                 # Python 2.x
                 import urllib.request as request
@@ -171,7 +176,7 @@ class HtmlGenerator:
             content = request(stats_file_url).read()
             data = json.loads(content)
 
-        else: # relative path
+        else:  # relative path
             # prepend www/ so the file can be opened by this script, which is somewhere else
             stats_file_path = os.path.join(self.www_dir, stats_file_url)
 
@@ -184,11 +189,11 @@ class HtmlGenerator:
         fixed_layouts = data['fixed_layouts']
 
         # prepend ../ to local URLs so the files can be linked to from www/results_xxx/results.html
-        if not stats_file_url.startswith('http'): # http url
+        if not stats_file_url.startswith('http'):  # http url
             stats_file_url = os.path.join('..', stats_file_url)
-        if not replays_file_url.startswith('http'): # http url
+        if not replays_file_url.startswith('http'):  # http url
             replays_file_url = os.path.join('..', replays_file_url)
-        if not logs_file_url.startswith('http'): # http url
+        if not logs_file_url.startswith('http'):  # http url
             logs_file_url = os.path.join('..', logs_file_url)
 
         if not os.path.exists(self.www_dir):
@@ -206,16 +211,16 @@ class HtmlGenerator:
         with open(html_full_path, "w") as f:
             print(run_html, file=f)
 
-
     def _generate_main_html(self):
         """
         Generates the index HTML, containing links to the HTML files of all the runs.
         The file is saved in www/results.html.
         """
         # regenerate main html
-        main_html = """<html><head><title>Results for the tournament</title>"""
+        main_html = """<html><head><title>Results for PACMAN Capture the Flag the tournament</title>"""
         main_html += """<link rel="stylesheet" type="text/css" href="style.css"/></head>"""
-        main_html += """<body><h1>Results Pacman %s Tournament by Date</h1>""" % self.organizer
+        main_html += """<body><h1>Results Pacman Capture the Flag by Date</h1>"""
+        main_html += """<body><h2>Organizer: %s </h1>""" % self.organizer
         for d in sorted(os.listdir(self.www_dir)):
             if not os.path.isdir(os.path.join(self.www_dir, d)):
                 continue
@@ -228,7 +233,6 @@ class HtmlGenerator:
         with open(os.path.join(self.www_dir, 'results.html'), "w") as f:
             print(main_html, file=f)
 
-
     def _generate_output(self, run_id, games, team_stats, random_layouts, fixed_layouts,
                          stats_url, replays_url, logs_url):
         """
@@ -237,37 +241,62 @@ class HtmlGenerator:
 
         output = """<html><head><title>Results for the tournament round</title>"""
         output += """<link rel="stylesheet" type="text/css" href="../style.css"/></head>"""
-        output += """<body><h1>Date Tournament %s </h1>""" % run_id
-        if fixed_layouts:
-            s = '</li><li>'.join(fixed_layouts)
-            output += """<h2>Fixed layouts</h2><ul><li>%s</li></ul><br/>""" % s
-        if random_layouts:
-            s = '</li><li>'.join(random_layouts)
-            output += """<h2>Random layouts</h2><ul><li>%s</li></ul><br/>""" % s
-        output += """<br/><br/><table border="1">"""
+        output += """<body><h1>PACMAN Capture the Flag Tournament</h1>"""
+        output += """<body><h2>Tournament Organizer: %s </h1>""" % self.organizer
+        output += """<body><h2>Date of Tournament: %s </h1>""" % run_id
 
+        output += """<h2>Configuration: %d teams in %d (%d fixed + %d random) layouts for %d steps</h2>""" \
+                  % (len(team_stats), len(fixed_layouts) + len(random_layouts), len(fixed_layouts), len(random_layouts),
+                     self.max_steps)
+
+        # output += """<h2>Configuration:</h2><ul>"""
+        # output += """<li>No. of teams: %d</li>""" % len(team_stats)
+        # output += """<li>No. of layouts: %d (%d fixed + %d random)</li>""" % \
+        #           (len(fixed_layouts) + len(random_layouts), len(fixed_layouts), len(random_layouts))
+        # output += """<li>No. of steps: %d</li>""" % self.max_steps
+        # output += """</ul><br/>"""
+
+
+
+        # This actually enumerates the list of layouts, not needed... :-)
+        # if fixed_layouts:
+        #     s = '</li><li>'.join(fixed_layouts)
+        #     output += """<h3>Fixed layouts</h2><ul><li>%s</li></ul><br/>""" % s
+        # if random_layouts:
+        #     s = '</li><li>'.join(random_layouts)
+        #     output += """<h3>Random layouts</h2><ul><li>%s</li></ul><br/>""" % s
+
+        output += """<br/><br/><table border="1">"""
         if len(games) == 0:
             output += "No match was run."
         else:
             # First, print a table with the final standing
-            output += """<tr><th>Team</th>"""
+            output += """<tr>"""
+            output += """<th>Position</th>"""
+            output += """<th>Team</th>"""
             output += """<th>Points</th>"""
             output += """<th>Win</th>"""
             output += """<th>Tie</th>"""
             output += """<th>Lost</th>"""
             output += """<th>TOTAL</th>"""
             output += """<th>FAILED</th>"""
-            output += """<th>Score Balance</th></tr>"""
+            output += """<th>Score Balance</th>"""
+            output += """</tr>"""
             sorted_team_stats = sorted(team_stats.items(), key=lambda (k, v): v[0], reverse=True)
+            position = 0
             for key, (points, wins, draws, losses, errors, sum_score) in sorted_team_stats:
-                output += """<tr><td>%s</td>""" % key
+                ++position
+                output += """<tr>"""
+                output += """<td>%d</td>""" % position
+                output += """<td>%s</td>""" % key
                 output += """<td>%d</td>""" % points
                 output += """<td>%d</td>""" % wins
                 output += """<td >%d</td>""" % draws
                 output += """<td>%d</td>""" % losses
                 output += """<td>%d</td>""" % (wins + draws + losses)
                 output += """<td >%d</td>""" % errors
-                output += """<td >%d</td></tr>""" % sum_score
+                output += """<td >%d</td>""" % sum_score
+                output += """</tr>"""
             output += "</table>"
 
             # Second, print each game result
@@ -328,7 +357,8 @@ if __name__ == '__main__':
 
     settings = {
         'www_dir': settings['www_dir'],
-        'organizer': settings['organizer']
+        'organizer': settings['organizer'],
+        'max_steps': settings['max_steps']
     }
     generator = HtmlGenerator(**settings)
 
