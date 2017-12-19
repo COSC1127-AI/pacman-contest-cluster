@@ -53,16 +53,15 @@ def load_settings():
     )
     parser.add_argument(
         '--stats-archive-dir',
-        help='stats directory',
-        default=
+        help='stats directory (default <www-dir>/stats-archive)'
     )
     parser.add_argument(
         '--replays-archive-dir',
-        help='replays directory'
+        help='replays directory (default <www-dir>/replays-archive)'
     )
     parser.add_argument(
         '--logs-archive-dir',
-        help='logs directory'
+        help='logs directory (default <www-dir>/logs-archive)'
     )
     parser.add_argument(
         '--www-dir',
@@ -95,20 +94,28 @@ def load_settings():
         settings['max_steps'] = args.max_steps
     if args.www_dir:
         settings['www_dir'] = args.www_dir
-    if args.stats_archive_dir:
-        settings['stats_archive_dir'] = args.stats_archive_dir
-    if args.replays_archive_dir:
-        settings['replays_archive_dir'] = args.replays_archive_dir
-    if args.logs_archive_dir:
-        settings['logs_archive_dir'] = args.logs_archive_dir
 
-    logging.info('Script will run with this configuration: %s' % settings)
-
-    missing_parameters = {'organizer'} - set(settings.keys())
+    missing_parameters = {'organizer', 'max_steps', 'www_dir'} - set(settings.keys())
     if missing_parameters:
         logging.error('Missing parameters: %s. Aborting.' % list(sorted(missing_parameters)))
         parser.print_help()
         sys.exit(1)
+
+
+    if args.stats_archive_dir:
+        settings['stats_archive_dir'] = args.stats_archive_dir
+    else:
+        settings['stats_archive_dir'] = os.path.join(settings['www_dir'], 'stats-archive')
+    if args.replays_archive_dir:
+        settings['replays_archive_dir'] = args.replays_archive_dir
+    else:
+        settings['replays_archive_dir'] = os.path.join(settings['www_dir'], 'replays-archive')
+    if args.logs_archive_dir:
+        settings['logs_archive_dir'] = args.logs_archive_dir
+    else:
+        settings['logs_archive_dir'] = os.path.join(settings['www_dir'], 'logs-archive')
+
+    logging.info('Script will run with this configuration: %s' % settings)
 
     return settings
 
@@ -135,7 +142,7 @@ class HtmlGenerator:
         self.organizer = organizer
 
         # just used in html to show configuration of tournament
-        self.max_steps = max_steps
+        self.max_steps = int(max_steps)
 
     def _close(self):
         pass
@@ -285,7 +292,7 @@ class HtmlGenerator:
             sorted_team_stats = sorted(team_stats.items(), key=lambda (k, v): v[0], reverse=True)
             position = 0
             for key, (points, wins, draws, losses, errors, sum_score) in sorted_team_stats:
-                ++position
+                position += 1
                 output += """<tr>"""
                 output += """<td>%d</td>""" % position
                 output += """<td>%s</td>""" % key
