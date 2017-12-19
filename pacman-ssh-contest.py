@@ -803,7 +803,7 @@ if __name__ == '__main__':
                   key_filename=w['private_key_file'], key_password=w['key_password']) for w in workers_details]
     del settings['workers_file']
 
-    html_generator = HtmlGenerator(settings['www_dir'], settings['organizer'])
+    html_generator = HtmlGenerator(settings['www_dir'], settings['organizer'], settings['max_steps'])
     del settings['organizer']
 
     runner = ContestRunner(**settings)
