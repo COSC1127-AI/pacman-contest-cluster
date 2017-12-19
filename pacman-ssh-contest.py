@@ -644,7 +644,7 @@ class ContestRunner:
 
 
     def store_results(self):
-        # Store stats
+        # Store stats in a json file
         stats_file_name = 'stats_%s.json' % self.contest_run_id  # stats_xxx.json
         stats_file_full_path = os.path.join(self.stats_archive_dir, stats_file_name)  # test/www/stats-archive/stats_xxx.json
         with open(stats_file_full_path, "w") as f:
@@ -652,7 +652,8 @@ class ContestRunner:
                 'games': self.games,
                 'team_stats': self.team_stats,
                 'random_layouts': [l for l in self.layouts if l.startswith('RANDOM')],
-                'fixed_layouts': [l for l in self.layouts if not l.startswith('RANDOM')]
+                'fixed_layouts': [l for l in self.layouts if not l.startswith('RANDOM')],
+                'max_steps': self.max_steps
             }
             json.dump(data, f)
         if self.upload_stats:
@@ -800,7 +801,7 @@ if __name__ == '__main__':
         workers_details = json.load(f)['workers']
     print(workers_details)
     hosts = [Host(no_cpu=w['no_cpu'], hostname=w['hostname'], username=w['username'], password=w['password'],
-                  key_filename=w['private_key_file'], key_password=w['key_password']) for w in workers_details]
+                  key_filename=w['private_key_file'], key_password=w['private_key_password']) for w in workers_details]
     del settings['workers_file']
 
     html_generator = HtmlGenerator(settings['www_dir'], settings['organizer'], settings['max_steps'])
