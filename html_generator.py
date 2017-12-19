@@ -47,11 +47,6 @@ def load_settings():
         help='name of the organizer of the contest'
     )
     parser.add_argument(
-        '--max-steps',
-        help='no of max steps in the games (default: {default} - unknown)'.format(default=0),
-        default=0
-    )
-    parser.add_argument(
         '--stats-archive-dir',
         help='stats directory (default <www-dir>/stats-archive)'
     )
@@ -90,17 +85,14 @@ def load_settings():
     # if given, set the parameters as per command line options (may override config file)
     if args.organizer:
         settings['organizer'] = args.organizer
-    if args.max_steps:
-        settings['max_steps'] = args.max_steps
     if args.www_dir:
         settings['www_dir'] = args.www_dir
 
-    missing_parameters = {'organizer', 'max_steps', 'www_dir'} - set(settings.keys())
+    missing_parameters = {'organizer', 'www_dir'} - set(settings.keys())
     if missing_parameters:
         logging.error('Missing parameters: %s. Aborting.' % list(sorted(missing_parameters)))
         parser.print_help()
         sys.exit(1)
-
 
     if args.stats_archive_dir:
         settings['stats_archive_dir'] = args.stats_archive_dir
@@ -127,7 +119,7 @@ class HtmlGenerator:
     RESULTS_DIR = 'results'
     TIMEZONE = timezone('Australia/Melbourne')
 
-    def __init__(self, www_dir, organizer, max_steps):
+    def __init__(self, www_dir, organizer):
         """
         Initializes this generator.
 
@@ -141,8 +133,6 @@ class HtmlGenerator:
         # just used in html as a readable string
         self.organizer = organizer
 
-        # just used in html to show configuration of tournament
-        self.max_steps = int(max_steps)
 
     def _close(self):
         pass
@@ -191,6 +181,7 @@ class HtmlGenerator:
                 data = json.load(f)
 
         games = data['games']
+        max_steps = data['max_steps']
         team_stats = data['team_stats']
         random_layouts = data['random_layouts']
         fixed_layouts = data['fixed_layouts']
@@ -211,7 +202,7 @@ class HtmlGenerator:
 
         if not os.path.exists(html_parent_path):
             os.makedirs(html_parent_path)
-        run_html = self._generate_output(run_id, games, team_stats, random_layouts, fixed_layouts,
+        run_html = self._generate_output(run_id, games, team_stats, random_layouts, fixed_layouts, max_steps,
                                          stats_file_url, replays_file_url, logs_file_url)
 
         html_full_path = os.path.join(html_parent_path, 'results.html')
@@ -240,7 +231,7 @@ class HtmlGenerator:
         with open(os.path.join(self.www_dir, 'results.html'), "w") as f:
             print(main_html, file=f)
 
-    def _generate_output(self, run_id, games, team_stats, random_layouts, fixed_layouts,
+    def _generate_output(self, run_id, games, team_stats, random_layouts, fixed_layouts, max_steps,
                          stats_url, replays_url, logs_url):
         """
         Generates the HTML of the report of the run.
@@ -254,7 +245,7 @@ class HtmlGenerator:
 
         output += """<h2>Configuration: %d teams in %d (%d fixed + %d random) layouts for %d steps</h2>""" \
                   % (len(team_stats), len(fixed_layouts) + len(random_layouts), len(fixed_layouts), len(random_layouts),
-                     self.max_steps)
+                     max_steps)
 
         # output += """<h2>Configuration:</h2><ul>"""
         # output += """<li>No. of teams: %d</li>""" % len(team_stats)
@@ -365,7 +356,6 @@ if __name__ == '__main__':
     settings = {
         'www_dir': settings['www_dir'],
         'organizer': settings['organizer'],
-        'max_steps': settings['max_steps']
     }
     generator = HtmlGenerator(**settings)
 
