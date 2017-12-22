@@ -40,13 +40,13 @@ python pacman-html-generator.py --help
     * Via student-team mapping file; option `--team-names`
     * Mapping each filename.zip submission as teamname=filename; option `--ignore-file-name-format`
 * Generate HTML page with tournament results and list of replay files.
-    * option --www-path
-    * option --upload-replays to uploads tar file into https://transfer.sh to avoid filling your local www space
-    * option --upload-logs and --upload-stats to uploads logs and stats into https://transfer.sh to avoid filling your local www space
+    * option `--www-path` to specify where HTML should be placed.
+    * option `--upload-replays` to uploads tar file into https://transfer.sh to avoid filling your local www space
+    * option `--upload-logs` and `--upload-stats` to uploads logs and stats into https://transfer.sh to avoid filling your local www space
 * Handle latest submission by sorting via timestamp in file name.
     * all members of a team can submit at any point
     * last submission per team is considered (if there are multiple)
-    * this is done by mapping individual submission to a team via --team-names-file and timestamp in zip submission file
+    * this is done by mapping individual submission to a team via `--team-names-file` and timestamp in zip submission file
 * Automate tournament using a `driver.py` script and `cron`
     
     
