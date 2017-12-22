@@ -15,7 +15,7 @@ The system takes the set of teams, set of workers in a cluster, and tournament c
 The system contains two main scripts:
 
 1. ```pacman-ssh-contest.py``` is the main script to actually run a contest.
-2. ```pacman-html-generator.py``` generates an HTML web page from existing data of already ran contests.
+2. ```pacman_html_generator.py``` generates an HTML web page from existing data of already ran contests.
 
 
 To see options available run: 
@@ -24,7 +24,7 @@ python pacman-ssh-contest.py --help
 ```
 
 ```
-python pacman-html-generator.py --help
+python pacman_html_generator.py --help
 ```
 
 
