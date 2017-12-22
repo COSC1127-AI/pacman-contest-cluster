@@ -156,29 +156,46 @@ sudo pip install scipy
 
 
 ### Example of a run: ###
-Using a csv file to specify teams:
+Using a csv file to specify team names, include staff teams:
 ````
-python pacman-ssh-contest.py --compress-log --organizer RMIT \
-                        --teams-root test-teams/ \ 
-                        --output-path test-www/ \ 
-                        --max-steps 1200 \
-                        --team-names-file AI17-Contest-TEAMS.csv \
-                        --include-staff-team \
-                        --no-fixed-layouts 3 \
-                        --no-random-layouts 5 \
-                        --workers-file-path my_workers-nectar.json
+python pacman-ssh-contest.py --compress-log \
+        --organizer "RMIT COSC1125/1127 - Intro to AI" \
+        --teams-root AI17-contest/teams/  \
+        --team-names-file AI17-contest/AI17-Contest-TEAMS.csv  \
+        --www-dir www/ \
+        --max-steps 1200 \
+        --no-fixed-layouts 5 --no-random-layouts 10 \
+        -workers-file AI1-contest/workers/nectar-workers.jason  
+        --staff-teams-dir AI17-contest/staff-teams/
 ````
-Collecting submitted files in teams, and using the zip filename as teamname, and uploading the replays file into a sharing file service instead of your local directory:
+Collecting submitted files in teams, and using the zip filename as teamname, and uploading the replays file only into a sharing file service instead of your local directory:
 ````
-python pacman-ssh-contest.py --compress-log --organizer RMIT \
-                        --teams-root test-teams/ \ 
-                        --output-path test-www/ \ 
-                        --max-steps 1200 \
-                        --include-staff-team \
-                        --no-fixed-layouts 3 \
-                        --no-random-layouts 5 \
-                        --workers-file-path my_workers-nectar.json \
-            			--upload-www-replays
+python pacman-ssh-contest.py --compress-log \
+        --organizer "RMIT COSC1125/1127 - Intro to AI" \
+        --teams-root AI17-contest/teams/  \
+        --www-dir www/ \
+        --max-steps 1200 \
+        --no-fixed-layouts 5 --no-random-layouts 10 \
+        -workers-file AI1-contest/workers/nectar-workers.jason  
+        --staff-teams-dir AI17-contest/staff-teams/
+        --upload-www-replays
+````
+
+### Example of generating web page from statistics: ###
+
+Build web page in www/ from stats, replays, and logs dirs:
+````
+python html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" \
+    --www-dir www/ 
+    --stats-archive-dir stats-archive/ 
+    --replays-archive-dir replays-archive/ 
+    --logs-archive-dir logs-archive/
+````
+
+or if all stats, replays, and logs are within <www-dir> then just:
+
+````
+python html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" --www-dir www/
 ````
 
 ## SCHEDULE COMPETITION ##
