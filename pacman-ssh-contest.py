@@ -42,7 +42,7 @@ from cluster_manager import ClusterManager, Job, Host, TransferableFile
 import iso8601
 from pytz import timezone
 
-from html_generator import HtmlGenerator
+from pacman_html_generator import HtmlGenerator
 
 
 # logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG, datefmt='%a, %d %b %Y %H:%M:%S')
