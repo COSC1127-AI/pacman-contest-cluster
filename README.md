@@ -10,27 +10,39 @@ CONTACT: Sebastian Sardina (ssardina@gmail.com) and Nir Lipovetzky (nirlipo@gmai
 
 This system allows to run a full Pacman Conquer the Flag tournament among many teams using a cluster of machines. This means that it allows to run many games at the same time, depending how many total cpu cores are available.
 
-The system takes the set of teams, set of workers in a cluster, and tournament configuration (which layouts and how many steps per game) and runs games for every pair of teams and layouts.
+The system takes the set of teams, set of workers in a cluster, and tournament configuration (which layouts and how many steps per game), runs games for every pair of teams and layouts, and produces files and html web page with the results.
+
+The system contains two main scripts:
+
+1. ```pacman-ssh-contest.py``` is the main script to actually run a contest.
+2. ```pacman-html-generator.py``` generates an HTML web page from existing data of already ran contests.
+
 
 To see options available run: 
 ```
 python pacman-ssh-contest.py --help
 ```
 
+```
+python pacman-html-generator.py --help
+```
+
+
 ### Features ###
 
 * Cluster support to run many games at the same time.
-    * option `--workers-file-path <json file>`
+    * option `--workers-file <json file>`
     * connection via ssh with tunneling support if needed.
 * Can use variable number of fixed layouts and randomly generated layouts.
     * options `--no-fixed-layouts` and `--no-random-layouts `
 * Flexible configuration via many command line options.
 * Map individual student submissions to teams.
-    * Via student-team mapping file; option `--team-names-file`
+    * Via student-team mapping file; option `--team-names`
     * Mapping each filename.zip submission as teamname=filename; option `--ignore-file-name-format`
 * Generate HTML page with tournament results and list of replay files.
-    * option --output-path
-    * option --upload-www-replays, uploads tar file into https://transfer.sh to avoid filling your local www space
+    * option --www-path
+    * option --upload-replays to uploads tar file into https://transfer.sh to avoid filling your local www space
+    * option --upload-logs and --upload-stats to uploads logs and stats into https://transfer.sh to avoid filling your local www space
 * Handle latest submission by sorting via timestamp in file name.
     * all members of a team can submit at any point
     * last submission per team is considered (if there are multiple)
