@@ -280,7 +280,9 @@ class HtmlGenerator:
             output += """<th>FAILED</th>"""
             output += """<th>Score Balance</th>"""
             output += """</tr>"""
-            sorted_team_stats = sorted(team_stats.items(), key=lambda (k, v): v[0], reverse=True)
+
+            # Sort teams by points v[0], then
+            sorted_team_stats = sorted(team_stats.items(), key=lambda (k, v): (v[0], v[1], v[5]), reverse=True)
             position = 0
             for key, (points, wins, draws, losses, errors, sum_score) in sorted_team_stats:
                 position += 1

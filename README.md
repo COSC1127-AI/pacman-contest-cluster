@@ -43,6 +43,9 @@ python pacman_html_generator.py --help
     * option `--www-path` to specify where HTML should be placed.
     * option `--upload-replays` to uploads tar file into https://transfer.sh to avoid filling your local www space
     * option `--upload-logs` and `--upload-stats` to uploads logs and stats into https://transfer.sh to avoid filling your local www space
+    * Ranking generation:
+        * 3 points per win; 1 point per tie. Failed games are loses.
+        * Order by: points first, no. of wins second, score points third.
 * Handle latest submission by sorting via timestamp in file name.
     * all members of a team can submit at any point
     * last submission per team is considered (if there are multiple)
@@ -197,7 +200,7 @@ python pacman-ssh-contest.py --compress-log \
 
 Build web page in www/ from stats, replays, and logs dirs:
 ````
-python html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" \
+python pacman_html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" \
     --www-dir www/ 
     --stats-archive-dir stats-archive/ 
     --replays-archive-dir replays-archive/ 
@@ -207,7 +210,7 @@ python html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" \
 or if all stats, replays, and logs are within <www-dir> then just:
 
 ````
-python html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" --www-dir www/
+python pacman_html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" --www-dir www/
 ````
 
 ## SCHEDULE COMPETITION ##
