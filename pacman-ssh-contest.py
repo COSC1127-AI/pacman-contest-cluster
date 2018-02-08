@@ -18,9 +18,9 @@ student Marco Tamassia. The script is in turn based on an original script from D
 from __future__ import print_function
 from future.utils import iteritems
 
-__author__      = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
-__copyright__   = "Copyright 2017-2018"
-__license__     = "GPLv3"
+__author__ = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
+__copyright__ = "Copyright 2017-2018"
+__license__ = "GPLv3"
 
 #  ----------------------------------------------------------------------------------------------------------------------
 # Import standard stuff
@@ -50,7 +50,8 @@ import cluster_manager
 from pacman_html_generator import HtmlGenerator
 
 # logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG, datefmt='%a, %d %b %Y %H:%M:%S')
-logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO, datefmt='%a, %d %b %Y %H:%M:%S')
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO,
+                    datefmt='%a, %d %b %Y %H:%M:%S')
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -62,6 +63,7 @@ def load_settings():
     DEFAULT_RANDOM_LAYOUTS = 3
     DEFAULT_CONFIG_FILE = 'config.json'
     DEFAULT_STAFF_TEAMS_DIR = './'
+
 
     parser = argparse.ArgumentParser(
         description='This script is to run a tournament between teams of agents for the Pacman package developed by '
@@ -75,7 +77,7 @@ def load_settings():
                     '\n'
                     'The script was developed for RMIT COSC1125/1127 AI course in 2017 (A/Prof. Sebastian Sardina), '
                     'and is based on an original script from Dr. Nir Lipovetzky.'
-        )
+    )
 
     parser.add_argument(
         '--config-file',
@@ -131,7 +133,8 @@ def load_settings():
     )
     parser.add_argument(
         '--no-fixed-layouts',
-        help='number of (random) layouts to use from a given fix set (default: {default})'.format(default=DEFAULT_FIXED_LAYOUTS),
+        help='number of (random) layouts to use from a given fix set (default: {default})'.format(
+            default=DEFAULT_FIXED_LAYOUTS),
         default=DEFAULT_FIXED_LAYOUTS,
     )
     parser.add_argument(
@@ -171,7 +174,6 @@ def load_settings():
     )
 
     args = parser.parse_args()
-
 
     # First get the options from the configuration file if available
     if not args.config_file is None:
@@ -219,7 +221,6 @@ def load_settings():
     if args.logs_archive_dir:
         settings['logs_archive_dir'] = args.logs_archive_dir
 
-
     if args.no_fixed_layouts:
         settings['no_fixed_layouts'] = int(args.no_fixed_layouts)
     if args.no_random_layouts:
@@ -240,9 +241,6 @@ def load_settings():
 
     settings['allow_non_registered_students'] = args.allow_non_registered_students
 
-    logging.info('Script will run with this configuration: %s' % settings)
-
-
     missing_parameters = {'organizer'} - set(settings.keys())
     if missing_parameters:
         logging.error('Missing parameters: %s. Aborting.' % list(sorted(missing_parameters)))
@@ -255,28 +253,31 @@ def load_settings():
         with open(args.config_file, 'w') as f:
             json.dump(settings, f, sort_keys=True, indent=4, separators=(',', ': '))
 
+
     return settings
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
 class ContestRunner:
-    # Output directories:
 
+    ERROR_SCORE = 9999
+
+    # Output directories:
     #  run_replays/{red_team_name}_vs_{blue_team_name}_{layout}.replay
     #  run_logs/{red_team_name}_vs_{blue_team_name}_{layout}.log
     #  replays_archive/replays_{run_id}.tar.gz  # lots of .replay files
     #  logs_archive/replays_{run_id}.tar.gz  # lots of .log files
     #  stats_archive/replays_{run_id}.json
-
     DEFAULT_STATS_ARCHIVE_DIR = 'stats-archive'
     DEFAULT_LOGS_ARCHIVE_DIR = 'logs-archive'
     DEFAULT_REPLAYS_ARCHIVE_DIR = 'replays-archive'
 
-    ERROR_SCORE = 9999
     TMP_DIR = 'tmp'
     TMP_CONTEST_DIR = os.path.join(TMP_DIR, 'contest-run')
     TMP_REPLAYS_DIR = os.path.join(TMP_DIR, 'replays-run')
     TMP_LOGS_DIR = os.path.join(TMP_DIR, 'logs-run')
+
     CONTEST_ZIP_FILE = 'contest.zip'
     LAYOUTS_ZIP_FILE = 'layouts.zip'
     STAFF_TEAM_ZIP_FILE = ['staff_team_basic.zip', 'staff_team_medium.zip', 'staff_team_top.zip']
@@ -285,9 +286,10 @@ class ContestRunner:
     TIMEZONE = timezone('Australia/Melbourne')
     ENV_ZIP_READY = 'contest_and_teams.zip'
     SUBMISSION_FILENAME_PATTERN = re.compile(r'^(s\d+)(_([-+0-9T:.]+))?(\.zip)?$')
-                                            # submissions file format: s???????[_datetime].zip
-                                            # submissions folder format: s???????[_datetime]
-                                            # datetime in ISO8601 format:  https: // en.wikipedia.org / wiki / ISO_8601
+
+    # submissions file format: s???????[_datetime].zip
+    # submissions folder format: s???????[_datetime]
+    # datetime in ISO8601 format:  https: // en.wikipedia.org / wiki / ISO_8601
 
 
     def __init__(self, teams_root, include_staff_team, staff_teams_dir, compress_logs,
@@ -306,18 +308,15 @@ class ContestRunner:
         self.replays_archive_dir = \
             os.path.join(self.www_dir, replays_archive_dir or self.DEFAULT_REPLAYS_ARCHIVE_DIR)
 
-
         self.upload_stats = upload_stats
         self.upload_replays = upload_replays
         self.upload_logs = upload_logs
-
 
         # unique id for this execution of the contest; used to label logs
         self.contest_run_id = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
 
         # a flag indicating whether to compress the logs
         self.compress_logs = compress_logs
-
 
         if not os.path.exists(self.CONTEST_ZIP_FILE):
             logging.error('File %s could not be found. Aborting.' % self.CONTEST_ZIP_FILE)
@@ -329,7 +328,8 @@ class ContestRunner:
 
         # Setup Pacman CTF environment by extracting it from a clean zip file
         self.layouts = None
-        self._prepare_platform(self.CONTEST_ZIP_FILE, self.LAYOUTS_ZIP_FILE, self.TMP_CONTEST_DIR, no_fixed_layouts, no_random_layouts)
+        self._prepare_platform(self.CONTEST_ZIP_FILE, self.LAYOUTS_ZIP_FILE, self.TMP_CONTEST_DIR, no_fixed_layouts,
+                               no_random_layouts)
 
         # Setup all of the TEAMS
         teams_dir = os.path.join(self.TMP_CONTEST_DIR, self.TEAMS_SUBDIR)
@@ -345,13 +345,11 @@ class ContestRunner:
             shutil.rmtree(self.TMP_LOGS_DIR)
         os.makedirs(self.TMP_LOGS_DIR)
 
-
         # Get all team name mapping from mapping file, If no file is specified, all zip files in team folder will be taken.
         if team_names_file is 'None':
             self.team_names = None
         else:
             self.team_names = self._load_teams(team_names_file)
-
 
         # setup all team directories under contest/team subdir for contest (copy content in .zip to team dirs)
         self.teams = []
@@ -359,7 +357,8 @@ class ContestRunner:
         for submission in os.listdir(teams_root):
             submission_path = os.path.join(teams_root, submission)
             if submission.endswith(".zip") or os.path.isdir(submission_path):
-                self._setup_team(submission_path, teams_dir, ignore_file_name_format, allow_non_registered_students=allow_non_registered_students)
+                self._setup_team(submission_path, teams_dir, ignore_file_name_format,
+                                 allow_non_registered_students=allow_non_registered_students)
 
         # Add the staff team, if necessary
         if include_staff_team:
@@ -377,7 +376,6 @@ class ContestRunner:
         self.errors = {n: 0 for n, _ in self.teams}
         self.team_stats = {n: 0 for n, _ in self.teams}
 
-
     def _close(self):
         pass
 
@@ -387,8 +385,6 @@ class ContestRunner:
         # shutil.rmtree(self.TMP_LOGS_DIR)
         # shutil.rmtree(self.TMP_CONTEST_DIR)
         # os.remove(self.ENV_ZIP_READY)
-
-
 
     def _parse_result(self, output, red_team_name, blue_team_name):
         """
@@ -406,25 +402,28 @@ class ContestRunner:
 
         if output.find("Traceback") != -1 or output.find("agent crashed") != -1:
             bug = True
-            #if both teams fail to load, no one wins
+            # if both teams fail to load, no one wins
             if output.find("Red team failed to load!") != -1 and output.find("Blue team failed to load!") != -1:
                 self.errors[red_team_name] += 1
                 self.errors[blue_team_name] += 1
                 winner = None
                 loser = None
                 score = self.ERROR_SCORE
-            elif output.find("Red agent crashed") != -1 or output.find("redAgents = loadAgents") != -1 or output.find("Red team failed to load!") != -1:
+            elif output.find("Red agent crashed") != -1 or output.find("redAgents = loadAgents") != -1 or output.find(
+                    "Red team failed to load!") != -1:
                 self.errors[red_team_name] += 1
                 winner = blue_team_name
                 loser = red_team_name
                 score = 1
-            elif output.find("Blue agent crashed") != -1 or output.find("blueAgents = loadAgents") != -1 or output.find("Blue team failed to load!") :
+            elif output.find("Blue agent crashed") != -1 or output.find("blueAgents = loadAgents") != -1 or output.find(
+                    "Blue team failed to load!"):
                 self.errors[blue_team_name] += 1
                 winner = red_team_name
                 loser = blue_team_name
                 score = 1
             else:
-                logging.error("Something went wrong in the contest script - Traceback but no winner: %s vs %s" % (red_team_name, blue_team_name))
+                logging.error("Something went wrong in the contest script - Traceback but no winner: %s vs %s" % (
+                red_team_name, blue_team_name))
         else:
             for line in output.splitlines():
                 if line.find("wins by") != -1:
@@ -449,14 +448,16 @@ class ContestRunner:
                     tied = True
             # signal strange case where script was unable to find outcome of game - should never happen!
             if winner is None and loser is None and not tied:
-                logging.error("Something went wrong in the contest script - there is no traceback and no clear winner: %s vs %s" % (red_team_name, blue_team_name))
+                logging.error(
+                    "Something went wrong in the contest script - there is no traceback and no clear winner: %s vs %s" % (
+                    red_team_name, blue_team_name))
                 print(output)
                 sys.exit(1)
 
         return score, winner, loser, bug
 
-
-    def _prepare_platform(self, contest_zip_file_path, layouts_zip_file_path, destination, no_fixed_layouts=5, no_random_layouts=3):
+    def _prepare_platform(self, contest_zip_file_path, layouts_zip_file_path, destination, no_fixed_layouts=5,
+                          no_random_layouts=3):
         """
         Cleans the given destination directory and prepares a fresh setup to execute a Pacman CTF game within.
         Information on the layouts are saved in the member variable layouts.
@@ -483,11 +484,11 @@ class ContestRunner:
 
         # add a no_random_layouts random layouts
         if no_random_layouts > 0:
-            list_random_layouts = ['RANDOM'+str(random.randint(1,9999)) for _ in range(0,no_random_layouts)]
+            list_random_layouts = ['RANDOM' + str(random.randint(1, 9999)) for _ in range(0, no_random_layouts)]
             self.layouts += list_random_layouts
 
-
-    def _setup_team(self, submission_path, destination, ignore_file_name_format=False, allow_non_registered_students=False):
+    def _setup_team(self, submission_path, destination, ignore_file_name_format=False,
+                    allow_non_registered_students=False):
         """
         Extracts team.py from the team submission zip file into a directory inside contest/teams
             If the zip file name is listed in team-name mapping, then name directory with team name
@@ -542,7 +543,6 @@ class ContestRunner:
             team_name = os.path.basename(submission_path)
             team_name = team_name[:-4] if team_name.endswith(".zip") else team_name
 
-
         # This submission will be temporarily expanded into team_destination_dir
         team_destination_dir = os.path.join(destination, team_name)
         desired_file = 'myTeam.py'
@@ -564,16 +564,14 @@ class ContestRunner:
                 submission_zip_file.extractall(team_destination_dir)
             self.submission_times[team_name] = submission_time
 
-
     def _generate_command(self, red_team, blue_team, layout):
         (red_team_name, red_team_agent_factory) = red_team
         (blue_team_name, blue_team_agent_factory) = blue_team
         # TODO: make the -c an option at the meta level to "Catch exceptions and enforce time limits"
         command = 'python capture.py -c -r {red_team_agent_factory} -b {blue_team_agent_factory} -l {layout} -i {steps} -q --record'.format(
-                red_team_agent_factory=red_team_agent_factory, blue_team_agent_factory=blue_team_agent_factory,
-                layout=layout, steps=self.max_steps)
+            red_team_agent_factory=red_team_agent_factory, blue_team_agent_factory=blue_team_agent_factory,
+            layout=layout, steps=self.max_steps)
         return command
-
 
     def _analyse_output(self, red_team, blue_team, layout, exit_code, output):
         """
@@ -590,10 +588,10 @@ class ContestRunner:
             print(output, file=f)
 
         if exit_code == 0:
-            print(' Successful. Log in {output_file}.'.format(output_file=os.path.join(self.TMP_LOGS_DIR, log_file_name)))
+            print(
+                ' Successful. Log in {output_file}.'.format(output_file=os.path.join(self.TMP_LOGS_DIR, log_file_name)))
         else:
             print(' Failed. Log in {output_file}.'.format(output_file=log_file_name))
-
 
         score, winner, loser, bug = self._parse_result(output, red_team_name, blue_team_name)
 
@@ -604,7 +602,7 @@ class ContestRunner:
             self.ladder[winner].append(score)
             self.ladder[loser].append(-score)
 
-        #  Next handle replay file
+        # Next handle replay file
         replay_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.replay'.format(
             layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
 
@@ -617,7 +615,6 @@ class ContestRunner:
         else:
             self.games.append((red_team_name, blue_team_name, layout, self.ERROR_SCORE, winner))
 
-
     def _run_match(self, red_team, blue_team, layout):
         red_team_name, _ = red_team
         blue_team_name, _ = blue_team
@@ -627,7 +624,6 @@ class ContestRunner:
         logging.info(command)
         exit_code, output = commands.getstatusoutput('cd %s && %s' % (self.TMP_CONTEST_DIR, command))
         self._analyse_output(red_team, blue_team, layout, exit_code, output)
-
 
     @staticmethod
     def upload_file(file_full_path, remote_name=None, remove_local=False):
@@ -643,16 +639,16 @@ class ContestRunner:
                 os.system('rm %s' % file_full_path)
         except Exception as e:
             # If transfer failed, use the standard server
-            logging.error("Transfer-url failed, using local copy to store games. Exception: %s" %str(e))
+            logging.error("Transfer-url failed, using local copy to store games. Exception: %s" % str(e))
             transfer_url = file_name
 
         return transfer_url
 
-
     def store_results(self):
         # Store stats in a json file
         stats_file_name = 'stats_%s.json' % self.contest_run_id  # stats_xxx.json
-        stats_file_full_path = os.path.join(self.stats_archive_dir, stats_file_name)  # test/www/stats-archive/stats_xxx.json
+        stats_file_full_path = os.path.join(self.stats_archive_dir,
+                                            stats_file_name)  # test/www/stats-archive/stats_xxx.json
         with open(stats_file_full_path, "w") as f:
             data = {
                 'games': self.games,
@@ -691,7 +687,6 @@ class ContestRunner:
 
         return stats_file_url, replays_file_url, logs_file_url
 
-
     def prepare_dirs(self):
         if not os.path.exists(self.stats_archive_dir):
             os.makedirs(self.stats_archive_dir)
@@ -700,7 +695,6 @@ class ContestRunner:
         if not os.path.exists(self.logs_archive_dir):
             os.makedirs(self.logs_archive_dir)
 
-
     def run_contest(self):
         self.prepare_dirs()
         for red_team, blue_team in combinations(self.teams, r=2):
@@ -708,24 +702,29 @@ class ContestRunner:
                 self._run_match(red_team, blue_team, layout)
         self._calculate_team_stats()
 
-
     def _generate_job(self, red_team, blue_team, layout):
         red_team_name, _ = red_team
         blue_team_name, _ = blue_team
         game_command = self._generate_command(red_team, blue_team, layout)
-        deflate_command = 'unzip {zip_file} -d {contest_dir} ; chmod +x -R *'.format(zip_file=self.ENV_ZIP_READY, contest_dir=self.TMP_CONTEST_DIR)
-        command = '{deflate_command} ; cd {contest_dir} ; {game_command} ; touch {replay_filename}'.format(deflate_command=deflate_command, contest_dir=self.TMP_CONTEST_DIR, game_command=game_command, replay_filename='replay-0')
+        deflate_command = 'mkdir -p {contest_dir} ; unzip {zip_file} -d {contest_dir} ; chmod +x -R *'.format(
+            zip_file=self.ENV_ZIP_READY, contest_dir=self.TMP_CONTEST_DIR)
+        command = '{deflate_command} ; cd {contest_dir} ; {game_command} ; touch {replay_filename}'.format(
+            deflate_command=deflate_command, contest_dir=self.TMP_CONTEST_DIR, game_command=game_command,
+            replay_filename='replay-0')
         req_file = TransferableFile(local_path=self.ENV_ZIP_READY, remote_path=self.ENV_ZIP_READY)
-        replay_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.replay'.format(layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
-        ret_file = TransferableFile(local_path=os.path.join(self.TMP_REPLAYS_DIR, replay_file_name), remote_path=os.path.join(self.TMP_CONTEST_DIR, 'replay-0'))
+        replay_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.replay'.format(layout=layout,
+                                                                                        run_id=self.contest_run_id,
+                                                                                        red_team_name=red_team_name,
+                                                                                        blue_team_name=blue_team_name)
+        ret_file = TransferableFile(local_path=os.path.join(self.TMP_REPLAYS_DIR, replay_file_name),
+                                    remote_path=os.path.join(self.TMP_CONTEST_DIR, 'replay-0'))
 
-        return Job(command=command, required_files=[req_file], return_files=[ret_file], id=(red_team, blue_team, layout))
-
+        return Job(command=command, required_files=[req_file], return_files=[ret_file],
+                   id=(red_team, blue_team, layout))
 
     def _analyse_all_outputs(self, results):
         for (red_team, blue_team, layout), exit_code, output, error in results:
             self._analyse_output(red_team, blue_team, layout, exit_code, output + error)
-
 
     def run_contest_remotely(self, hosts):
         self.prepare_dirs()
@@ -740,7 +739,6 @@ class ContestRunner:
         results = cm.start()
         self._analyse_all_outputs(results)
         self._calculate_team_stats()
-
 
     def _calculate_team_stats(self):
         """
@@ -763,7 +761,6 @@ class ContestRunner:
                 sum_score += s
 
             self.team_stats[team] = [((wins * 3) + draws), wins, draws, loses, self.errors[team], sum_score]
-
 
     @staticmethod
     def _load_teams(team_names_file):
@@ -792,7 +789,6 @@ class ContestRunner:
         return team_names
 
 
-
 if __name__ == '__main__':
     settings = load_settings()
 
@@ -805,7 +801,8 @@ if __name__ == '__main__':
 
     with open(settings['workers_file'], 'r') as f:
         workers_details = json.load(f)['workers']
-    print(workers_details)
+        logging.info("Host workers details to be used: {}".format(workers_details))
+
     hosts = [Host(no_cpu=w['no_cpu'], hostname=w['hostname'], username=w['username'], password=w['password'],
                   key_filename=w['private_key_file'], key_password=w['private_key_password']) for w in workers_details]
     del settings['workers_file']
@@ -813,12 +810,12 @@ if __name__ == '__main__':
     html_generator = HtmlGenerator(settings['www_dir'], settings['organizer'])
     del settings['organizer']
 
-    runner = ContestRunner(**settings)
-    # runner.run_contest()
-    runner.run_contest_remotely(hosts)
+
+    logging.info("Will create contest runner with options: {}".format(settings))
+    runner = ContestRunner(**settings)  # Setup ContestRunner
+    runner.run_contest_remotely(hosts)  # Now run ContestRunner with the hosts!
 
     stats_file_url, replays_file_url, logs_file_url = runner.store_results()
-
     html_generator.add_run(runner.contest_run_id, stats_file_url, replays_file_url, logs_file_url)
 
     runner.clean_up()

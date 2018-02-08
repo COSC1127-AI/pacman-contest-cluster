@@ -47,6 +47,7 @@ no_finished_jobs = 0
 no_failed_jobs = 0
 
 CORE_PACKAGE_DIR = '/tmp/pacman_files'
+NO_RETRIES = 3  # Number of retries when a remote command failed (e.g., connection lost)
 
 
 class ClusterManager:
@@ -55,6 +56,7 @@ class ClusterManager:
         self.jobs = jobs  # type: 'List[Job]'
         self.workers = []  # type: 'List[SSHClient]'
         self.pool = Queue()  # type: 'Queue[SSHClient]'
+        self.no_tries = NO_RETRIES
 
         total_no_workers = sum(host.no_cpu for host in hosts)
         # https: // pythonhosted.org / joblib / generated / joblib.Parallel.html
@@ -83,9 +85,6 @@ class ClusterManager:
                                                                    for job in self.jobs)
         return results
 
-    def start_single_threaded(self):
-        results = [run_job(self.pool, job) for job in self.jobs]
-        return results
 
 
 def create_worker(host):
@@ -149,8 +148,7 @@ def run_job(pool, job):
     #  worker is an SSHClient
     worker = pool.get()
 
-    tries = 3
-    for i in range(tries):
+    for i in range(NO_RETRIES):
         try:
             # time.sleep(randint(1, 10))
             result_job_on_worker = run_job_on_worker(worker, job)
@@ -178,7 +176,7 @@ def run_job(pool, job):
 def report_progress_bytes_transfered(xfer, to_be_xfer, data):
     remains_per = 0.000
     remains_per = (xfer / to_be_xfer) * 100
-    print(
+    logging.debug(
         'Complete percent for job %s: %.2f%% - (%d bytes transfered out of %d)' % (data, remains_per, xfer, to_be_xfer))
 
 
@@ -220,7 +218,7 @@ def run_job_on_worker(worker, job):
         exit_code = ssh_stdout.channel.recv_exit_status()  # Blocking call but only after reading it all
     except Exception as e:
         totalTimeTaken = datetime.datetime.now().replace(microsecond=0) - startTime
-        logging.warn('TIME OUT in host %s (%s time taken; %s): %s' % (worker.hostname, totalTimeTaken, dest_dir, report_match(job)))
+        logging.warning('TIME OUT in host %s (%s time taken; %s): %s' % (worker.hostname, totalTimeTaken, dest_dir, report_match(job)))
         raise
     totalTimeTaken = datetime.datetime.now().replace(microsecond=0) - startTime
 
