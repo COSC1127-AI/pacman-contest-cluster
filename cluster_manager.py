@@ -9,10 +9,9 @@ paths) or anywhere else (via absolute paths).
 Extreme care is recommended to both commands and file paths passed: this script performs no checks whatsoever - it's on
 you!
 """
-__author__      = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
-__copyright__   = "Copyright 2017-2018"
-__license__     = "GPLv3"
-
+__author__ = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
+__copyright__ = "Copyright 2017-2018"
+__license__ = "GPLv3"
 
 from collections import namedtuple
 from queue import Queue
@@ -44,8 +43,8 @@ TransferableFile = namedtuple('TransferableFile', ['local_path', 'remote_path'],
 no_total_jobs = 0
 no_finished_jobs = 0
 no_failed_jobs = 0
-totalTimeTaken = 0
-maxTimeTaken = datetime.datetime.now() - datetime.datetime.now()
+total_secs_taken = 0
+max_secs_game = 0
 
 CORE_PACKAGE_DIR = '/tmp/pacman_files'
 NO_RETRIES = 3  # Number of retries when a remote command failed (e.g., connection lost)
@@ -85,12 +84,13 @@ class ClusterManager:
         results = Parallel(self.pool.qsize(), backend='threading')(delayed(run_job)(self.pool, job)
                                                                    for job in self.jobs)
 
+        avg_secs_game = round(total_secs_taken / no_finished_jobs, 0)
+        max_secs_game2 = round(max_secs_game, 0)
         logging.info("STATISTICS: {} games played / {} per game / {} the longest game"
                      .format(no_finished_jobs,
-                             str(datetime.timedelta(seconds=round(totalTimeTaken / no_finished_jobs, 2))),
-                             maxTimeTaken))
-        return results
-
+                             str(datetime.timedelta(seconds=avg_secs_game)),
+                             str(datetime.timedelta(seconds=max_secs_game2)) ))
+        return (results, avg_secs_game, max_secs_game2)
 
 
 def create_worker(host):
@@ -191,8 +191,8 @@ def report_match(job):
 
 
 def run_job_on_worker(worker, job):
-    global totalTimeTaken
-    global maxTimeTaken
+    global total_secs_taken
+    global max_secs_game
 
     #  worker is an SSHClient
 
@@ -220,19 +220,20 @@ def run_job_on_worker(worker, job):
     startTime = datetime.datetime.now()
     actual_command = """cd %s ; sh -c '%s'""" % (dest_dir, job.command)
     try:
-        #TODO: do we want to put a timeout here in case the call does not return? some pacman games take 3 min eh
+        # TODO: do we want to put a timeout here in case the call does not return? some pacman games take 3 min eh
         # _, ssh_stdout, ssh_stderr = worker.exec_command(actual_command, timeout=60, get_pty=True)  # Non-blocking call
         _, ssh_stdout, ssh_stderr = worker.exec_command(actual_command, get_pty=True)  # Non-blocking call
         result_out = ssh_stdout.read()
         result_err = ssh_stderr.read()
         exit_code = ssh_stdout.channel.recv_exit_status()  # Blocking call but only after reading it all
     except Exception as e:
-        jobTimeTaken = datetime.datetime.now() - startTime
-        logging.warning('TIME OUT in host %s (%s time taken; %s): %s' % (worker.hostname, jobTimeTaken, dest_dir, report_match(job)))
+        job_secs_taken = datetime.datetime.now() - startTime
+        logging.warning('TIME OUT in host %s (%s time taken; %s): %s' % (
+        worker.hostname, job_secs_taken, dest_dir, report_match(job)))
         raise
-    jobTimeTaken = datetime.datetime.now().replace(microsecond=0) - startTime.replace(microsecond=0)
-    totalTimeTaken = totalTimeTaken + jobTimeTaken.total_seconds()
-    maxTimeTaken = max([maxTimeTaken, jobTimeTaken])
+    job_secs_taken = datetime.datetime.now().replace(microsecond=0) - startTime.replace(microsecond=0)
+    total_secs_taken = total_secs_taken + job_secs_taken.total_seconds()
+    max_secs_game = max(max_secs_game, job_secs_taken.total_seconds())
 
     logging.debug(
         'END OF GAME in host %s (%s) - START COPYING BACK RESULT: %s' % (worker.hostname, dest_dir, report_match(job)))
@@ -244,7 +245,8 @@ def run_job_on_worker(worker, job):
     # clean temporary directory for game
     worker.exec_command('rm -rf %s' % dest_dir)
 
-    logging.info('FINISHED GAME in host %s (%s time taken; %s): %s' % (worker.hostname, jobTimeTaken, dest_dir, report_match(job)))
+    logging.info('FINISHED GAME in host %s (%s time taken; %s): %s' % (
+        worker.hostname, job_secs_taken, dest_dir, report_match(job)))
     logging.debug(
         'FINISHED SUCCESSFULLY EXECUTING command in host %s dir %s: %s' % (worker.hostname, dest_dir, job.command))
 

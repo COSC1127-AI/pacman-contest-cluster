@@ -305,6 +305,10 @@ class ContestRunner:
         self.upload_replays = upload_replays
         self.upload_logs = upload_logs
 
+        self.avg_secs_game = 0
+        # self.maxTimeTaken = Null
+
+
         # unique id for this execution of the contest; used to label logs
         self.contest_run_id = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
 
@@ -650,7 +654,9 @@ class ContestRunner:
                 'team_stats': self.team_stats,
                 'random_layouts': [l for l in self.layouts if l.startswith('RANDOM')],
                 'fixed_layouts': [l for l in self.layouts if not l.startswith('RANDOM')],
-                'max_steps': self.max_steps
+                'max_steps': self.max_steps,
+                'avg_secs_game': self.avg_secs_game,
+                'max_secs_game': self.max_secs_game
             }
             json.dump(data, f)
         if self.upload_stats:
@@ -680,7 +686,7 @@ class ContestRunner:
         else:
             logs_file_url = os.path.relpath(logs_archive_full_path, self.www_dir)
 
-        return stats_file_url, replays_file_url, logs_file_url
+        return stats_file_url, replays_file_url, logs_file_url, self.avg_secs_game, self.max_secs_game
 
     def prepare_dirs(self):
         if not os.path.exists(self.stats_archive_dir):
@@ -731,9 +737,11 @@ class ContestRunner:
 
         # create cluster with hots and jobs and run it by starting it, and then analyze output results
         cm = ClusterManager(hosts, jobs)
-        results = cm.start()
+        results, avg_secs_game, max_secs_game = cm.start()
         self._analyse_all_outputs(results)
         self._calculate_team_stats()
+        self.avg_secs_game = avg_secs_game
+        self.max_secs_game = max_secs_game
 
     def _calculate_team_stats(self):
         """
@@ -810,7 +818,7 @@ if __name__ == '__main__':
     runner = ContestRunner(**settings)  # Setup ContestRunner
     runner.run_contest_remotely(hosts)  # Now run ContestRunner with the hosts!
 
-    stats_file_url, replays_file_url, logs_file_url = runner.store_results()
+    stats_file_url, replays_file_url, logs_file_url, avg_secs_game, max_secs_game = runner.store_results()
     html_generator.add_run(runner.contest_run_id, stats_file_url, replays_file_url, logs_file_url)
 
     runner.clean_up()
