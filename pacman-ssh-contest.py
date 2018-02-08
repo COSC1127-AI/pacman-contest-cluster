@@ -11,16 +11,12 @@ uploaded to a specified server via scp.
 The script was developed for RMIT COSC1125/1127 AI course in Semester 1, 2017 by A/Prof. Sebastian Sardina and PhD
 student Marco Tamassia. The script is in turn based on an original script from Dr. Nir Lipovetzky.
 """
-
-#  ----------------------------------------------------------------------------------------------------------------------
-# Import future stuff (syntax equivalent to Python 3)
-
-from __future__ import print_function
-from future.utils import iteritems
-
 __author__ = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
 __copyright__ = "Copyright 2017-2018"
 __license__ = "GPLv3"
+
+from future.utils import iteritems
+
 
 #  ----------------------------------------------------------------------------------------------------------------------
 # Import standard stuff
@@ -37,8 +33,6 @@ import logging
 import glob
 import csv
 import random
-# noinspection PyCompatibility
-import commands
 import tarfile
 import subprocess
 from itertools import combinations
@@ -46,7 +40,6 @@ from cluster_manager import ClusterManager, Job, Host, TransferableFile
 import iso8601
 from pytz import timezone
 
-import cluster_manager
 from pacman_html_generator import HtmlGenerator
 
 # logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG, datefmt='%a, %d %b %Y %H:%M:%S')
@@ -400,6 +393,8 @@ class ContestRunner:
         bug = False
         tied = False
 
+
+        output = output.decode()    # convert byte into string
         if output.find("Traceback") != -1 or output.find("agent crashed") != -1:
             bug = True
             # if both teams fail to load, no one wins
@@ -585,7 +580,7 @@ class ContestRunner:
             layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
         # results/results_<run_id>/{red_team_name}_vs_{blue_team_name}_{layout}.log
         with open(os.path.join(self.TMP_LOGS_DIR, log_file_name), 'w') as f:
-            print(output, file=f)
+            print(output.decode('utf-8'), file=f)
 
         if exit_code == 0:
             print(
@@ -622,7 +617,7 @@ class ContestRunner:
         sys.stdout.flush()
         command = self._generate_command(red_team, blue_team, layout)
         logging.info(command)
-        exit_code, output = commands.getstatusoutput('cd %s && %s' % (self.TMP_CONTEST_DIR, command))
+        exit_code, output = subprocess.getstatusoutput('cd %s && %s' % (self.TMP_CONTEST_DIR, command))
         self._analyse_output(red_team, blue_team, layout, exit_code, output)
 
     @staticmethod

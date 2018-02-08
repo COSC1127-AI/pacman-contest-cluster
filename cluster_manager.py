@@ -1,6 +1,5 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
 """
 ClusterManager manages a set of remote workers and distributes a list of jobs using a greedy policy (jobs are assigned,
 in order, to the first free worker. Transfers and communications are done over SSH.
@@ -9,14 +8,14 @@ paths) or anywhere else (via absolute paths).
 
 Extreme care is recommended to both commands and file paths passed: this script performs no checks whatsoever - it's on
 you!
-
 """
 __author__      = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
 __copyright__   = "Copyright 2017-2018"
 __license__     = "GPLv3"
 
+
 from collections import namedtuple
-from Queue import Queue
+from queue import Queue
 import random
 from time import sleep
 import os
@@ -45,6 +44,8 @@ TransferableFile = namedtuple('TransferableFile', ['local_path', 'remote_path'],
 no_total_jobs = 0
 no_finished_jobs = 0
 no_failed_jobs = 0
+totalTimeTaken = 0
+maxTimeTaken = datetime.datetime.now() - datetime.datetime.now()
 
 CORE_PACKAGE_DIR = '/tmp/pacman_files'
 NO_RETRIES = 3  # Number of retries when a remote command failed (e.g., connection lost)
@@ -83,6 +84,10 @@ class ClusterManager:
     def start(self):
         results = Parallel(self.pool.qsize(), backend='threading')(delayed(run_job)(self.pool, job)
                                                                    for job in self.jobs)
+
+        logging.info("STATISTICS: {} games played - {} secs./game - {} the longest game".format(no_finished_jobs,
+                                                                                              totalTimeTaken / no_finished_jobs,
+                                                                                              maxTimeTaken))
         return results
 
 
@@ -185,6 +190,9 @@ def report_match(job):
 
 
 def run_job_on_worker(worker, job):
+    global totalTimeTaken
+    global maxTimeTaken
+
     #  worker is an SSHClient
 
     # create remote env
@@ -207,7 +215,7 @@ def run_job_on_worker(worker, job):
 
     logging.debug('ABOUT TO EXECUTE command in host %s dir %s: %s' % (worker.hostname, dest_dir, job.command))
     # run job
-    startTime = datetime.datetime.now().replace(microsecond=0)
+    startTime = datetime.datetime.now()
     actual_command = """cd %s ; sh -c '%s'""" % (dest_dir, job.command)
     try:
         #TODO: do we want to put a timeout here in case the call does not return? some pacman games take 3 min eh
@@ -217,10 +225,12 @@ def run_job_on_worker(worker, job):
         result_err = ssh_stderr.read()
         exit_code = ssh_stdout.channel.recv_exit_status()  # Blocking call but only after reading it all
     except Exception as e:
-        totalTimeTaken = datetime.datetime.now().replace(microsecond=0) - startTime
-        logging.warning('TIME OUT in host %s (%s time taken; %s): %s' % (worker.hostname, totalTimeTaken, dest_dir, report_match(job)))
+        jobTimeTaken = datetime.datetime.now() - startTime
+        logging.warning('TIME OUT in host %s (%s time taken; %s): %s' % (worker.hostname, jobTimeTaken, dest_dir, report_match(job)))
         raise
-    totalTimeTaken = datetime.datetime.now().replace(microsecond=0) - startTime
+    jobTimeTaken = datetime.datetime.now().replace(microsecond=0) - startTime.replace(microsecond=0)
+    totalTimeTaken = totalTimeTaken + jobTimeTaken.total_seconds()
+    maxTimeTaken = max([maxTimeTaken, jobTimeTaken])
 
     logging.debug(
         'END OF GAME in host %s (%s) - START COPYING BACK RESULT: %s' % (worker.hostname, dest_dir, report_match(job)))
@@ -232,7 +242,7 @@ def run_job_on_worker(worker, job):
     # clean temporary directory for game
     worker.exec_command('rm -rf %s' % dest_dir)
 
-    logging.info('FINISHED GAME in host %s (%s time taken; %s): %s' % (worker.hostname, totalTimeTaken, dest_dir, report_match(job)))
+    logging.info('FINISHED GAME in host %s (%s time taken; %s): %s' % (worker.hostname, jobTimeTaken, dest_dir, report_match(job)))
     logging.debug(
         'FINISHED SUCCESSFULLY EXECUTING command in host %s dir %s: %s' % (worker.hostname, dest_dir, job.command))
 

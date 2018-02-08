@@ -1,17 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
 """
 Generates the HTML output given logs of the past tournament runs.
 """
-
-#  ----------------------------------------------------------------------------------------------------------------------
-# Import future stuff (syntax equivalent to Python 3)
-from __future__ import print_function
-
 __author__      = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
 __copyright__   = "Copyright 2017-2018"
 __license__     = "GPLv3"
+
 
 
 #  ----------------------------------------------------------------------------------------------------------------------
@@ -168,12 +163,7 @@ class HtmlGenerator:
         html_parent_path = os.path.join(self.www_dir, 'results_%s' % run_id)
 
         if stats_file_url.startswith('http'):  # http url
-            try:
-                # Python 2.x
-                import urllib.request as request
-            except ImportError:
-                # Python 3.x
-                from urllib2 import urlopen as request
+            import urllib.request as request
             content = request(stats_file_url).read()
             data = json.loads(content)
 
@@ -285,8 +275,9 @@ class HtmlGenerator:
             output += """<th>Score Balance</th>"""
             output += """</tr>"""
 
-            # Sort teams by points v[0], then
-            sorted_team_stats = sorted(team_stats.items(), key=lambda (k, v): (v[0], v[1], v[5]), reverse=True)
+            # Sort teams by points v[1][0] first, then no. of wins, then score points.
+            # example list(team_stats.items() = [('TYGA_THUG', [6, 2, 0, 0, 0, 2]), ('RationalAgents_', [0, 0, 0, 2, 2, -2])]
+            sorted_team_stats = sorted(list(team_stats.items()), key=lambda v: (v[1][0], v[1][1], v[1][5]), reverse=True)
             position = 0
             for key, (points, wins, draws, losses, errors, sum_score) in sorted_team_stats:
                 position += 1

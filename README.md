@@ -101,7 +101,6 @@ sudo apt-get update
 sudo apt-get install python-pip unzip
 sudo pip install setuptools
 sudo pip install -r requirements.txt
-sudo pip install -U  paramiko
 ```
 
 
