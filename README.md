@@ -65,7 +65,7 @@ python pacman_html_generator.py --help
         
 * In the local machine dispatching jobs to the cluster:
     * unzip & zip (to pack and unpack submissions and files for transfer)
-    * Python >=2.7 with:
+    * Python >= 3.5 with:
        * setuptools
        * python-future
        * future

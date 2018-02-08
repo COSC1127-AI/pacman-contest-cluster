@@ -85,9 +85,10 @@ class ClusterManager:
         results = Parallel(self.pool.qsize(), backend='threading')(delayed(run_job)(self.pool, job)
                                                                    for job in self.jobs)
 
-        logging.info("STATISTICS: {} games played - {} secs./game - {} the longest game".format(no_finished_jobs,
-                                                                                              totalTimeTaken / no_finished_jobs,
-                                                                                              maxTimeTaken))
+        logging.info("STATISTICS: {} games played / {} per game / {} the longest game"
+                     .format(no_finished_jobs,
+                             str(datetime.timedelta(seconds=round(totalTimeTaken / no_finished_jobs, 2))),
+                             maxTimeTaken))
         return results
 
 
@@ -212,6 +213,7 @@ def run_job_on_worker(worker, job):
     #     # sftp.put(localpath=tf.local_path, remotepath=tf.remote_path,
     #     #          callback=lambda x, y: report_progress_bytes_transfered(x, y, str(job.id)))
     #     sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
+
 
     logging.debug('ABOUT TO EXECUTE command in host %s dir %s: %s' % (worker.hostname, dest_dir, job.command))
     # run job
