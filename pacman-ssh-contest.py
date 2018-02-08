@@ -42,8 +42,8 @@ from cluster_manager import ClusterManager, Job, Host, TransferableFile
 import iso8601
 from pytz import timezone
 
+import cluster_manager
 from pacman_html_generator import HtmlGenerator
-
 
 # logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG, datefmt='%a, %d %b %Y %H:%M:%S')
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO, datefmt='%a, %d %b %Y %H:%M:%S')
@@ -269,9 +269,10 @@ class ContestRunner:
     DEFAULT_REPLAYS_ARCHIVE_DIR = 'replays-archive'
 
     ERROR_SCORE = 9999
-    TMP_CONTEST_DIR = 'contest-tmp'
-    TMP_REPLAYS_DIR = 'run-replays'
-    TMP_LOGS_DIR = 'run-logs'
+    TMP_DIR = 'tmp'
+    TMP_CONTEST_DIR = os.path.join(TMP_DIR, 'contest-tmp')
+    TMP_REPLAYS_DIR = os.path.join(TMP_DIR, 'run-replays')
+    TMP_LOGS_DIR = os.path.join(TMP_DIR, 'run-logs')
     CONTEST_ZIP_FILE = 'contest.zip'
     LAYOUTS_ZIP_FILE = 'layouts.zip'
     STAFF_TEAM_ZIP_FILE = ['staff_team_basic.zip', 'staff_team_medium.zip', 'staff_team_top.zip']
@@ -377,9 +378,10 @@ class ContestRunner:
         pass
 
     def clean_up(self):
-        shutil.rmtree(self.TMP_REPLAYS_DIR)
-        shutil.rmtree(self.TMP_LOGS_DIR)
-        shutil.rmtree(self.TMP_CONTEST_DIR)
+        shutil.rmtree(self.TMP_DIR)
+        # shutil.rmtree(self.TMP_REPLAYS_DIR)
+        # shutil.rmtree(self.TMP_LOGS_DIR)
+        # shutil.rmtree(self.TMP_CONTEST_DIR)
         # os.remove(self.ENV_ZIP_READY)
 
 
