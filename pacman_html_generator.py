@@ -7,8 +7,12 @@ Generates the HTML output given logs of the past tournament runs.
 
 #  ----------------------------------------------------------------------------------------------------------------------
 # Import future stuff (syntax equivalent to Python 3)
-
 from __future__ import print_function
+
+__author__      = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
+__copyright__   = "Copyright 2017-2018"
+__license__     = "GPLv3"
+
 
 #  ----------------------------------------------------------------------------------------------------------------------
 # Import standard stuff

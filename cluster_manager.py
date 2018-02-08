@@ -11,6 +11,9 @@ Extreme care is recommended to both commands and file paths passed: this script 
 you!
 
 """
+__author__      = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
+__copyright__   = "Copyright 2017-2018"
+__license__     = "GPLv3"
 
 from collections import namedtuple
 from Queue import Queue
@@ -65,6 +68,9 @@ class ClusterManager:
         self.workers = Parallel(total_no_workers, backend='threading')(delayed(create_worker)(host)
                                                                        for host in self.hosts
                                                                        for _ in range(host.no_cpu))
+
+        print("======================> FINISHEDEEEEEEEEEEEEEEEEEEEEEEEEE")
+        exit(1)
 
         # Second, transfer the required core files to each hostname (there will be much less than workers, one per IP)
         Parallel(len(self.hosts), backend='threading')(

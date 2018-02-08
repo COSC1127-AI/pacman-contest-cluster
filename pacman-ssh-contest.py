@@ -18,6 +18,10 @@ student Marco Tamassia. The script is in turn based on an original script from D
 from __future__ import print_function
 from future.utils import iteritems
 
+__author__      = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
+__copyright__   = "Copyright 2017-2018"
+__license__     = "GPLv3"
+
 #  ----------------------------------------------------------------------------------------------------------------------
 # Import standard stuff
 
@@ -270,9 +274,9 @@ class ContestRunner:
 
     ERROR_SCORE = 9999
     TMP_DIR = 'tmp'
-    TMP_CONTEST_DIR = os.path.join(TMP_DIR, 'contest-tmp')
-    TMP_REPLAYS_DIR = os.path.join(TMP_DIR, 'run-replays')
-    TMP_LOGS_DIR = os.path.join(TMP_DIR, 'run-logs')
+    TMP_CONTEST_DIR = os.path.join(TMP_DIR, 'contest-run')
+    TMP_REPLAYS_DIR = os.path.join(TMP_DIR, 'replays-run')
+    TMP_LOGS_DIR = os.path.join(TMP_DIR, 'logs-run')
     CONTEST_ZIP_FILE = 'contest.zip'
     LAYOUTS_ZIP_FILE = 'layouts.zip'
     STAFF_TEAM_ZIP_FILE = ['staff_team_basic.zip', 'staff_team_medium.zip', 'staff_team_top.zip']
