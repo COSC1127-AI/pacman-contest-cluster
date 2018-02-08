@@ -4,7 +4,7 @@ This script can be used to run a Berkley Pacman Conquer the Flag Contest (http:/
 
 Developed for RMIT COSC1125/1127 AI course in 2017 (lecturer A/Prof. Sebastian Sardina; support: Marco Tamassia), based on an original script from Dr. Nir Lipovetzky developed for UNIMELB COMP90054 AI course in 2014, and adapted in 2017 to work at Unimelb after RMIT refactoring and extensions.
 
-CONTACT: Sebastian Sardina (ssardina@gmail.com) and Nir Lipovetzky (nirlipo@gmail.com)
+**CONTACT:** Sebastian Sardina (ssardina@gmail.com) and Nir Lipovetzky (nirlipo@gmail.com)
 
 ## OVERVIEW ##
 

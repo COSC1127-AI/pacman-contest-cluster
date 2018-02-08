@@ -69,9 +69,6 @@ class ClusterManager:
                                                                        for host in self.hosts
                                                                        for _ in range(host.no_cpu))
 
-        print("======================> FINISHEDEEEEEEEEEEEEEEEEEEEEEEEEE")
-        exit(1)
-
         # Second, transfer the required core files to each hostname (there will be much less than workers, one per IP)
         Parallel(len(self.hosts), backend='threading')(
             delayed(transfer_core_package)(host.hostname, self.workers, jobs[0].required_files)
