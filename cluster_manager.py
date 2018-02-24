@@ -151,7 +151,7 @@ def run_job(pool, job):
     global no_failed_jobs
     global no_total_jobs
 
-    #  worker is an SSHClient
+    #  worker is a SSHClient
     worker = pool.get()
 
     for i in range(NO_RETRIES):
