@@ -180,8 +180,6 @@ class HtmlGenerator:
         team_stats = data['team_stats']
         random_layouts = data['random_layouts']
         fixed_layouts = data['fixed_layouts']
-        avg_secs_game = data['avg_secs_game']
-        max_secs_game = data['max_secs_game']
 
         # prepend ../ to local URLs so the files can be linked to from www/results_xxx/results.html
         if not stats_file_url.startswith('http'):  # http url
@@ -200,7 +198,7 @@ class HtmlGenerator:
         if not os.path.exists(html_parent_path):
             os.makedirs(html_parent_path)
         run_html = self._generate_output(run_id, games, team_stats, random_layouts, fixed_layouts, max_steps,
-                                         stats_file_url, replays_file_url, logs_file_url, avg_secs_game, max_secs_game)
+                                         stats_file_url, replays_file_url, logs_file_url)
 
         html_full_path = os.path.join(html_parent_path, 'results.html')
         with open(html_full_path, "w") as f:
@@ -229,7 +227,7 @@ class HtmlGenerator:
             print(main_html, file=f)
 
     def _generate_output(self, run_id, games, team_stats, random_layouts, fixed_layouts, max_steps,
-                         stats_url, replays_url, logs_url, avg_secs_game=0, max_secs_game=0):
+                         stats_url, replays_url, logs_url):
         """
         Generates the HTML of the report of the run.
         """
@@ -297,12 +295,14 @@ class HtmlGenerator:
                 output += """</tr>"""
             output += "</table>"
 
+
             # Second, print each game result
             output += "<br/><br/><h2>Games</h2>"
 
+            times_taken = [time_game for (_, _, _, _, _, time_game) in games]
             output += """<h3>No. of games: %d / Avg. game length: %s / Max game length: %s</h3>""" \
-                      % (len(games), str(datetime.timedelta(seconds=avg_secs_game)),
-                         str(datetime.timedelta(seconds=max_secs_game)))
+                      % (len(games), str(datetime.timedelta(seconds=round(sum(times_taken) / len(times_taken),0))),
+                         str(datetime.timedelta(seconds=max(times_taken))))
 
             if replays_url:
                 output += """<a href="%s">DOWNLOAD REPLAYS</a><br/>""" % replays_url

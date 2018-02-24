@@ -305,7 +305,6 @@ class ContestRunner:
         self.upload_replays = upload_replays
         self.upload_logs = upload_logs
 
-        self.avg_secs_game = 0
         # self.maxTimeTaken = Null
 
 
@@ -645,9 +644,7 @@ class ContestRunner:
                 'team_stats': self.team_stats,
                 'random_layouts': [l for l in self.layouts if l.startswith('RANDOM')],
                 'fixed_layouts': [l for l in self.layouts if not l.startswith('RANDOM')],
-                'max_steps': self.max_steps,
-                'avg_secs_game': self.avg_secs_game,
-                'max_secs_game': self.max_secs_game
+                'max_steps': self.max_steps
             }
             json.dump(data, f)
         if self.upload_stats:
@@ -677,7 +674,7 @@ class ContestRunner:
         else:
             logs_file_url = os.path.relpath(logs_archive_full_path, self.www_dir)
 
-        return stats_file_url, replays_file_url, logs_file_url, self.avg_secs_game, self.max_secs_game
+        return stats_file_url, replays_file_url, logs_file_url
 
     # prepare local direcotires to store replays, logs, etc.
     def prepare_dirs(self):
@@ -724,12 +721,10 @@ class ContestRunner:
         # create cluster with hots and jobs and run it by starting it, and then analyze output results
         # results will contain all outputs from every game played
         cm = ClusterManager(hosts, jobs)
-        results, avg_secs_game, max_secs_game = cm.start()
+        results = cm.start()
 
         self._analyse_all_outputs(results)
         self._calculate_team_stats()
-        self.avg_secs_game = avg_secs_game
-        self.max_secs_game = max_secs_game
 
     def _calculate_team_stats(self):
         """
@@ -806,7 +801,7 @@ if __name__ == '__main__':
     runner = ContestRunner(**settings)  # Setup ContestRunner
     runner.run_contest_remotely(hosts)  # Now run ContestRunner with the hosts!
 
-    stats_file_url, replays_file_url, logs_file_url, avg_secs_game, max_secs_game = runner.store_results()
+    stats_file_url, replays_file_url, logs_file_url = runner.store_results()
 
     # Now genearte HTM output
     html_generator = HtmlGenerator(settings['www_dir'], organizer)

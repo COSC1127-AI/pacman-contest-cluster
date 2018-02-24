@@ -41,10 +41,10 @@ TransferableFile = namedtuple('TransferableFile', ['local_path', 'remote_path'],
 
 # Keep track of the number of total jobs to run and number of jobs completed (for reporting)
 no_total_jobs = 0
-no_finished_jobs = 0
+no_successful_jobs = 0
 no_failed_jobs = 0
-total_secs_taken = 0
-max_secs_game = 0
+time_games = [] # list of seconds, one per game finished
+time_start = datetime.datetime.now()
 
 CORE_PACKAGE_DIR = '/tmp/pacman_files'
 NO_RETRIES = 3  # Number of retries when a remote command failed (e.g., connection lost)
@@ -81,16 +81,19 @@ class ClusterManager:
             self.pool.put(worker)
 
     def start(self):
+        global time_start
+        time_start = datetime.datetime.now()
+
         results = Parallel(self.pool.qsize(), backend='threading')(delayed(run_job)(self.pool, job)
                                                                    for job in self.jobs)
 
-        avg_secs_game = round(total_secs_taken / no_finished_jobs, 0)
-        max_secs_game2 = round(max_secs_game, 0)
+        avg_secs_game = round(sum(time_games) / len(time_games), 0)
+        max_secs_game = round(max(time_games), 0)
         logging.info("STATISTICS: {} games played / {} per game / {} the longest game"
-                     .format(no_finished_jobs,
+                     .format(no_successful_jobs,
                              str(datetime.timedelta(seconds=avg_secs_game)),
-                             str(datetime.timedelta(seconds=max_secs_game2)) ))
-        return (results, avg_secs_game, max_secs_game2)
+                             str(datetime.timedelta(seconds=max_secs_game))))
+        return results
 
 
 def create_worker(host):
@@ -147,7 +150,7 @@ def transfer_core_package(hostname, workers, required_files):
 
 
 def run_job(pool, job):
-    global no_finished_jobs
+    global no_successful_jobs
     global no_failed_jobs
     global no_total_jobs
 
@@ -161,19 +164,23 @@ def run_job(pool, job):
         # TODO: this captures any error that may happen when doing the job in the worker. Is it enough?
         except Exception as e:
             logging.error("The following job FAILED to execute (will reconnect & retry): %s" % str(job.id))
-            no_failed_jobs += 1
             worker.close()
             worker.connect(hostname=worker.hostname, username=worker.username, password=worker.password,
                            pkey=worker.pkey, sock=worker.proxy)
             if i < NO_RETRIES - 1:  # i is zero indexed
                 continue
             else:
+                no_failed_jobs += 1
                 logging.error("I am giving up on job %s" % str(job.id))
                 raise
         break
-    no_finished_jobs += 1
-    logging.info("Number of jobs COMPLETED so far: (%d successful, %d failed) of %d total games (%d games left)" % (
-        no_finished_jobs, no_failed_jobs, no_total_jobs, no_total_jobs - no_finished_jobs))
+    no_successful_jobs += 1
+    games_left = no_total_jobs - no_successful_jobs
+    secs_so_far = (datetime.datetime.now() - time_start).total_seconds()
+    est_time_left = round((games_left * secs_so_far) / no_successful_jobs, 0)
+    logging.info(
+        "Jobs COMPLETED: (%d successful, %d failed) of %d total games (%d games left; estimated time left: %s)"
+        % (no_successful_jobs, no_failed_jobs, no_total_jobs, games_left, str(datetime.timedelta(seconds=est_time_left))))
 
     pool.put(worker)
     return result_job_on_worker
@@ -191,7 +198,6 @@ def report_match(job):
 
 
 def run_job_on_worker(worker, job):
-    global total_secs_taken
     global max_secs_game
 
     #  worker is an SSHClient
@@ -228,13 +234,11 @@ def run_job_on_worker(worker, job):
         exit_code = ssh_stdout.channel.recv_exit_status()  # Blocking call but only after reading it all
     except Exception as e:
         job_secs_taken = datetime.datetime.now() - startTime
-        logging.warning('TIME OUT in host %s (%s time taken; %s): %s' % (
-        worker.hostname, job_secs_taken, dest_dir, report_match(job)))
+        logging.warning('TIME OUT in host %s (%s secs. taken; %s): %s' % (
+            worker.hostname, job_secs_taken, dest_dir, report_match(job)))
         raise
     job_secs_taken = (datetime.datetime.now().replace(microsecond=0) - startTime.replace(microsecond=0)).total_seconds()
-    total_secs_taken = total_secs_taken + job_secs_taken
-    # print("Max no: %d - This game: %d - New Max: %d" %(max_secs_game, job_secs_taken.total_seconds(), max(max_secs_game, job_secs_taken.total_seconds())))
-    max_secs_game = max(max_secs_game, job_secs_taken)
+    time_games.append(job_secs_taken)
 
     logging.debug(
         'END OF GAME in host %s (%s) - START COPYING BACK RESULT: %s' % (worker.hostname, dest_dir, report_match(job)))
