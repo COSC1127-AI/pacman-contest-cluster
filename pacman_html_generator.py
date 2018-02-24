@@ -311,40 +311,55 @@ class HtmlGenerator:
             if stats_url:
                 output += """<a href="%s">DOWNLOAD STATS</a><br/>""" % stats_url
             output += """<table border="1">"""
-            output += """<tr><th>Team1</th>"""
-            output += """<th>Team2</th>"""
+            output += """<tr>"""
+            output += """<th>Team 1</th>"""
+            output += """<th>Team 2</th>"""
             output += """<th>Layout</th>"""
+            output += """<th>Time</th>"""
             output += """<th>Score</th>"""
-            output += """<th>Winner</th></tr>"""
-            for (n1, n2, layout, score, winner) in games:
-                output += """<tr><td align="center">"""
+            output += """<th>Winner</th>"""
+            output += """</tr>"""
+            for (n1, n2, layout, score, winner, time_taken) in games:
+                output += """<tr>"""
+
+                # Team 1
+                output += """<td align="center">"""
                 if winner == n1:
                     output += "<b>%s</b>" % n1
                 else:
                     output += "%s" % n1
-                output += """</td><td align="center">"""
+                output += """</td>"""
+
+                # Team 2
+                output += """<td align="center">"""
                 if winner == n2:
                     output += "<b>%s</b>" % n2
                 else:
                     output += "%s" % n2
                 output += """</td>"""
+
+                # Layout
+                output += """<td>%s</td>""" % layout
+
+                # Time taken in the game
+                output += """<td>%s</td>""" % str(datetime.timedelta(seconds=time_taken))
+
+                # Score and Winner
                 if score == self.ERROR_SCORE:
                     if winner == n1:
-                        output += """<td>%s</td>""" % layout
                         output += """<td >--</td>"""
-                        output += """<td><b>ONLY FAILED: %s</b></td></tr>""" % n2
+                        output += """<td><b>ONLY FAILED: %s</b></td>""" % n2
                     elif winner == n2:
-                        output += """<td>%s</td>""" % layout
                         output += """<td >--</td>"""
-                        output += """<td><b>ONLY FAILED: %s</b></td></tr>""" % n1
+                        output += """<td><b>ONLY FAILED: %s</b></td>""" % n1
                     else:
-                        output += """<td>%s</td>""" % layout
                         output += """<td >--</td>"""
-                        output += """<td><b>FAILED BOTH</b></td></tr>"""
+                        output += """<td><b>FAILED BOTH</b></td>"""
                 else:
-                    output += """<td>%s</td>""" % layout
-                    output += """<td >%d</td>""" % score
-                    output += """<td><b>%s</b></td></tr>""" % winner
+                    output += """<td>%d</td>""" % score
+                    output += """<td><b>%s</b></td>""" % winner
+
+                output += """</tr>"""
 
         output += "</table></body></html>"
 

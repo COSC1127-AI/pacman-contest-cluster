@@ -161,19 +161,19 @@ def run_job(pool, job):
         # TODO: this captures any error that may happen when doing the job in the worker. Is it enough?
         except Exception as e:
             logging.error("The following job FAILED to execute (will reconnect & retry): %s" % str(job.id))
+            no_failed_jobs += 1
             worker.close()
             worker.connect(hostname=worker.hostname, username=worker.username, password=worker.password,
                            pkey=worker.pkey, sock=worker.proxy)
-            if i < tries - 1:  # i is zero indexed
+            if i < NO_RETRIES - 1:  # i is zero indexed
                 continue
             else:
-                no_failed_jobs += 1
                 logging.error("I am giving up on job %s" % str(job.id))
                 raise
         break
     no_finished_jobs += 1
-    logging.info("Number of jobs COMPLETED so far: (%d successful, %d failed) of %d total games" % (
-        no_finished_jobs, no_failed_jobs, no_total_jobs))
+    logging.info("Number of jobs COMPLETED so far: (%d successful, %d failed) of %d total games (%d games left)" % (
+        no_finished_jobs, no_failed_jobs, no_total_jobs, no_total_jobs - no_finished_jobs))
 
     pool.put(worker)
     return result_job_on_worker
@@ -231,9 +231,10 @@ def run_job_on_worker(worker, job):
         logging.warning('TIME OUT in host %s (%s time taken; %s): %s' % (
         worker.hostname, job_secs_taken, dest_dir, report_match(job)))
         raise
-    job_secs_taken = datetime.datetime.now().replace(microsecond=0) - startTime.replace(microsecond=0)
-    total_secs_taken = total_secs_taken + job_secs_taken.total_seconds()
-    max_secs_game = max(max_secs_game, job_secs_taken.total_seconds())
+    job_secs_taken = (datetime.datetime.now().replace(microsecond=0) - startTime.replace(microsecond=0)).total_seconds()
+    total_secs_taken = total_secs_taken + job_secs_taken
+    # print("Max no: %d - This game: %d - New Max: %d" %(max_secs_game, job_secs_taken.total_seconds(), max(max_secs_game, job_secs_taken.total_seconds())))
+    max_secs_game = max(max_secs_game, job_secs_taken)
 
     logging.debug(
         'END OF GAME in host %s (%s) - START COPYING BACK RESULT: %s' % (worker.hostname, dest_dir, report_match(job)))
@@ -250,7 +251,7 @@ def run_job_on_worker(worker, job):
     logging.debug(
         'FINISHED SUCCESSFULLY EXECUTING command in host %s dir %s: %s' % (worker.hostname, dest_dir, job.command))
 
-    return job.id, exit_code, result_out, result_err
+    return job.id, exit_code, result_out, result_err, job_secs_taken
 
 
 if __name__ == '__main__':

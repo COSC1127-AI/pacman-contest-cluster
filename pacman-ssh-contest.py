@@ -572,7 +572,7 @@ class ContestRunner:
             layout=layout, steps=self.max_steps)
         return command
 
-    def _analyse_output(self, red_team, blue_team, layout, exit_code, output):
+    def _analyse_output(self, red_team, blue_team, layout, exit_code, output, total_secs_taken):
         """
         Analyzes the output of a match and updates self.games accordingly.
         """
@@ -610,9 +610,9 @@ class ContestRunner:
             # results/results_<run_id>/{red_team_name}_vs_{blue_team_name}_{layout}.replay
             shutil.move(replays[0], os.path.join(self.TMP_REPLAYS_DIR, replay_file_name))
         if not bug:
-            self.games.append((red_team_name, blue_team_name, layout, score, winner))
+            self.games.append((red_team_name, blue_team_name, layout, score, winner, total_secs_taken))
         else:
-            self.games.append((red_team_name, blue_team_name, layout, self.ERROR_SCORE, winner))
+            self.games.append((red_team_name, blue_team_name, layout, self.ERROR_SCORE, winner, total_secs_taken))
 
     def _run_match(self, red_team, blue_team, layout):
         red_team_name, _ = red_team
@@ -688,6 +688,7 @@ class ContestRunner:
 
         return stats_file_url, replays_file_url, logs_file_url, self.avg_secs_game, self.max_secs_game
 
+    # prepare local direcotires to store replays, logs, etc.
     def prepare_dirs(self):
         if not os.path.exists(self.stats_archive_dir):
             os.makedirs(self.stats_archive_dir)
@@ -724,8 +725,8 @@ class ContestRunner:
                    id=(red_team, blue_team, layout))
 
     def _analyse_all_outputs(self, results):
-        for (red_team, blue_team, layout), exit_code, output, error in results:
-            self._analyse_output(red_team, blue_team, layout, exit_code, output + error)
+        for (red_team, blue_team, layout), exit_code, output, error, total_secs_taken in results:
+            self._analyse_output(red_team, blue_team, layout, exit_code, output + error, total_secs_taken)
 
     def run_contest_remotely(self, hosts):
         self.prepare_dirs()
@@ -736,8 +737,10 @@ class ContestRunner:
                 jobs.append(self._generate_job(red_team, blue_team, layout))
 
         # create cluster with hots and jobs and run it by starting it, and then analyze output results
+        # results will contain all outputs from every game played
         cm = ClusterManager(hosts, jobs)
         results, avg_secs_game, max_secs_game = cm.start()
+
         self._analyse_all_outputs(results)
         self._calculate_team_stats()
         self.avg_secs_game = avg_secs_game
@@ -810,7 +813,7 @@ if __name__ == '__main__':
                   key_filename=w['private_key_file'], key_password=w['private_key_password']) for w in workers_details]
     del settings['workers_file']
 
-    html_generator = HtmlGenerator(settings['www_dir'], settings['organizer'])
+    organizer = settings['organizer']
     del settings['organizer']
 
 
@@ -819,6 +822,9 @@ if __name__ == '__main__':
     runner.run_contest_remotely(hosts)  # Now run ContestRunner with the hosts!
 
     stats_file_url, replays_file_url, logs_file_url, avg_secs_game, max_secs_game = runner.store_results()
+
+    # Now genearte HTM output
+    html_generator = HtmlGenerator(settings['www_dir'], organizer)
     html_generator.add_run(runner.contest_run_id, stats_file_url, replays_file_url, logs_file_url)
 
     runner.clean_up()
