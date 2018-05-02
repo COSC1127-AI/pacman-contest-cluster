@@ -62,10 +62,10 @@ python pacman_html_generator.py --help
 
 * In the cluster:
     * unzip & zip (to pack and unpack submissions and files for transfer)
+        * Run: `sudo apt-get install -y unzip zip vim`
     * Python >=2.7 with standard libraries.
-    * Set the sshd server to accept as many connections as you want to run concurrently. This is done by changing 
-    option MaxStartups in file /etc/ssh/sshd_config. By default sshd has up to 10 connections.
-        * For example, set "MaxStartups 20:30:60" to accept up to 20 simultanous connections.
+    * Set the sshd server to accept as many connections as you want to run concurrently. This is done by changing option `MaxStartups` in file `/etc/ssh/sshd_config`. By default sshd has up to 10 connections.
+        * For example, set `MaxStartups 20:30:60` to accept up to 20 simultanous connections. Remember to restart the ssh server: `sudo service sshd restart`
         * For more info on this, see issue #22.
         
 * In the local machine dispatching jobs to the cluster:
