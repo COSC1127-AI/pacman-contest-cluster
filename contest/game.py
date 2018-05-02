@@ -651,7 +651,8 @@ class Game:
                             raise TimeoutFunctionException()
                         action = timed_func( observation )
                     except TimeoutFunctionException:
-                        print >>sys.stderr, "Agent %d timed out on a single move!" % agentIndex
+                        print >> sys.stderr, "Agent %d timed out on a single move (more than %d secs.), the game is forfeit!" % (
+                            agentIndex, int(self.rules.getMoveTimeout(agentIndex)))
                         self.agentTimeout = True
                         self._agentCrash(agentIndex, quiet=True)
                         self.unmute()
