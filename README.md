@@ -6,6 +6,11 @@ Developed for RMIT COSC1125/1127 AI course in 2017 (lecturer A/Prof. Sebastian S
 
 **CONTACT:** Sebastian Sardina (ssardina@gmail.com) and Nir Lipovetzky (nirlipo@gmail.com)
 
+----------------------
+
+[TOC]
+
+
 ## OVERVIEW ##
 
 This system allows to run a full Pacman Conquer the Flag tournament among many teams using a cluster of machines. This means that it allows to run many games at the same time, depending how many total cpu cores are available.
@@ -57,15 +62,15 @@ python pacman_html_generator.py --help
 
 * In the cluster:
     * unzip & zip (to pack and unpack submissions and files for transfer)
+        * Run: `sudo apt-get install -y unzip zip vim`
     * Python >=2.7 with standard libraries.
-    * Set the sshd server to accept as many connections as you want to run concurrently. This is done by changing 
-    option MaxStartups in file /etc/ssh/sshd_config. By default sshd has up to 10 connections.
-        * For example, set "MaxStartups 20:30:60" to accept up to 20 simultanous connections.
+    * Set the sshd server to accept as many connections as you want to run concurrently. This is done by changing option `MaxStartups` in file `/etc/ssh/sshd_config`. By default sshd has up to 10 connections.
+        * For example, set `MaxStartups 20:30:60` to accept up to 20 simultanous connections. Remember to restart the ssh server: `sudo service sshd restart`
         * For more info on this, see issue #22.
         
 * In the local machine dispatching jobs to the cluster:
     * unzip & zip (to pack and unpack submissions and files for transfer)
-    * Python >=2.7 with:
+    * Python >= 3.5 with:
        * setuptools
        * python-future
        * future
@@ -101,7 +106,6 @@ sudo apt-get update
 sudo apt-get install python-pip unzip
 sudo pip install setuptools
 sudo pip install -r requirements.txt
-sudo pip install -U  paramiko
 ```
 
 
@@ -302,3 +306,7 @@ This program is free software: you can redistribute it and/or modify it under th
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with this program. If not, see http://www.gnu.org/licenses/.
+
+## SCREENSHOT
+
+![Contest Result](extras/screenshot01.png)

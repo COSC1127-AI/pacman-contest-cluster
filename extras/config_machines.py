@@ -80,7 +80,7 @@ def config_host(sudoer_user, hostname):
         return_files=[],
         id=None
     )
-    _, _, out_pt1, err_pt1 = run_job_on_worker(worker_as_sudoer, job1)
+    _, _, out_pt1, err_pt1, _ = run_job_on_worker(worker_as_sudoer, job1)
     with open('log_{hostname}_pt1.txt'.format(hostname=hostname), 'w') as f:
         f.write(out_pt1 + err_pt1)
 
@@ -95,7 +95,7 @@ def config_host(sudoer_user, hostname):
         return_files=[],
         id=None
     )
-    _, _, out_pt2, err_pt2 = run_job_on_worker(worker_as_new_user, job2)
+    _, _, out_pt2, err_pt2, _ = run_job_on_worker(worker_as_new_user, job2)
     with open('log_{hostname}_pt2.txt'.format(hostname=hostname), 'w') as f:
         f.write(out_pt2 + err_pt2)
 

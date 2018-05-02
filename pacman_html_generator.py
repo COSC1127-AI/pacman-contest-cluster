@@ -1,17 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
 """
 Generates the HTML output given logs of the past tournament runs.
 """
-
-#  ----------------------------------------------------------------------------------------------------------------------
-# Import future stuff (syntax equivalent to Python 3)
-from __future__ import print_function
-
 __author__      = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
 __copyright__   = "Copyright 2017-2018"
 __license__     = "GPLv3"
+
 
 
 #  ----------------------------------------------------------------------------------------------------------------------
@@ -25,6 +20,7 @@ import shutil
 import zipfile
 import logging
 import re
+import datetime
 from pytz import timezone
 
 # logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG, datefmt='%a, %d %b %Y %H:%M:%S')
@@ -168,12 +164,7 @@ class HtmlGenerator:
         html_parent_path = os.path.join(self.www_dir, 'results_%s' % run_id)
 
         if stats_file_url.startswith('http'):  # http url
-            try:
-                # Python 2.x
-                import urllib.request as request
-            except ImportError:
-                # Python 3.x
-                from urllib2 import urlopen as request
+            import urllib.request as request
             content = request(stats_file_url).read()
             data = json.loads(content)
 
@@ -285,8 +276,9 @@ class HtmlGenerator:
             output += """<th>Score Balance</th>"""
             output += """</tr>"""
 
-            # Sort teams by points v[0], then
-            sorted_team_stats = sorted(team_stats.items(), key=lambda (k, v): (v[0], v[1], v[5]), reverse=True)
+            # Sort teams by points v[1][0] first, then no. of wins, then score points.
+            # example list(team_stats.items() = [('TYGA_THUG', [6, 2, 0, 0, 0, 2]), ('RationalAgents_', [0, 0, 0, 2, 2, -2])]
+            sorted_team_stats = sorted(list(team_stats.items()), key=lambda v: (v[1][0], v[1][1], v[1][5]), reverse=True)
             position = 0
             for key, (points, wins, draws, losses, errors, sum_score) in sorted_team_stats:
                 position += 1
@@ -303,8 +295,15 @@ class HtmlGenerator:
                 output += """</tr>"""
             output += "</table>"
 
+
             # Second, print each game result
-            output += "<br/><br/><h2>Games</h2><br/>"
+            output += "<br/><br/><h2>Games</h2>"
+
+            times_taken = [time_game for (_, _, _, _, _, time_game) in games]
+            output += """<h3>No. of games: %d / Avg. game length: %s / Max game length: %s</h3>""" \
+                      % (len(games), str(datetime.timedelta(seconds=round(sum(times_taken) / len(times_taken),0))),
+                         str(datetime.timedelta(seconds=max(times_taken))))
+
             if replays_url:
                 output += """<a href="%s">DOWNLOAD REPLAYS</a><br/>""" % replays_url
             if logs_url:
@@ -312,40 +311,55 @@ class HtmlGenerator:
             if stats_url:
                 output += """<a href="%s">DOWNLOAD STATS</a><br/>""" % stats_url
             output += """<table border="1">"""
-            output += """<tr><th>Team1</th>"""
-            output += """<th>Team2</th>"""
+            output += """<tr>"""
+            output += """<th>Team 1</th>"""
+            output += """<th>Team 2</th>"""
             output += """<th>Layout</th>"""
+            output += """<th>Time</th>"""
             output += """<th>Score</th>"""
-            output += """<th>Winner</th></tr>"""
-            for (n1, n2, layout, score, winner) in games:
-                output += """<tr><td align="center">"""
+            output += """<th>Winner</th>"""
+            output += """</tr>"""
+            for (n1, n2, layout, score, winner, time_taken) in games:
+                output += """<tr>"""
+
+                # Team 1
+                output += """<td align="center">"""
                 if winner == n1:
                     output += "<b>%s</b>" % n1
                 else:
                     output += "%s" % n1
-                output += """</td><td align="center">"""
+                output += """</td>"""
+
+                # Team 2
+                output += """<td align="center">"""
                 if winner == n2:
                     output += "<b>%s</b>" % n2
                 else:
                     output += "%s" % n2
                 output += """</td>"""
+
+                # Layout
+                output += """<td>%s</td>""" % layout
+
+                # Time taken in the game
+                output += """<td>%s</td>""" % str(datetime.timedelta(seconds=time_taken))
+
+                # Score and Winner
                 if score == self.ERROR_SCORE:
                     if winner == n1:
-                        output += """<td>%s</td>""" % layout
                         output += """<td >--</td>"""
-                        output += """<td><b>ONLY FAILED: %s</b></td></tr>""" % n2
+                        output += """<td><b>ONLY FAILED: %s</b></td>""" % n2
                     elif winner == n2:
-                        output += """<td>%s</td>""" % layout
                         output += """<td >--</td>"""
-                        output += """<td><b>ONLY FAILED: %s</b></td></tr>""" % n1
+                        output += """<td><b>ONLY FAILED: %s</b></td>""" % n1
                     else:
-                        output += """<td>%s</td>""" % layout
                         output += """<td >--</td>"""
-                        output += """<td><b>FAILED BOTH</b></td></tr>"""
+                        output += """<td><b>FAILED BOTH</b></td>"""
                 else:
-                    output += """<td>%s</td>""" % layout
-                    output += """<td >%d</td>""" % score
-                    output += """<td><b>%s</b></td></tr>""" % winner
+                    output += """<td>%d</td>""" % score
+                    output += """<td><b>%s</b></td>""" % winner
+
+                output += """</tr>"""
 
         output += "</table></body></html>"
 

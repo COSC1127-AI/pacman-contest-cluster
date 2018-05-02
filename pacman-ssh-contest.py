@@ -11,16 +11,14 @@ uploaded to a specified server via scp.
 The script was developed for RMIT COSC1125/1127 AI course in Semester 1, 2017 by A/Prof. Sebastian Sardina and PhD
 student Marco Tamassia. The script is in turn based on an original script from Dr. Nir Lipovetzky.
 """
-
-#  ----------------------------------------------------------------------------------------------------------------------
-# Import future stuff (syntax equivalent to Python 3)
-
-from __future__ import print_function
-from future.utils import iteritems
+#from __future__ import print_function
 
 __author__ = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
 __copyright__ = "Copyright 2017-2018"
 __license__ = "GPLv3"
+
+from future.utils import iteritems
+
 
 #  ----------------------------------------------------------------------------------------------------------------------
 # Import standard stuff
@@ -38,7 +36,7 @@ import glob
 import csv
 import random
 # noinspection PyCompatibility
-import commands
+#import commands
 import tarfile
 import subprocess
 from itertools import combinations
@@ -46,7 +44,7 @@ from cluster_manager import ClusterManager, Job, Host, TransferableFile
 import iso8601
 from pytz import timezone
 
-import cluster_manager
+#import cluster_manager
 from pacman_html_generator import HtmlGenerator
 
 # logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG, datefmt='%a, %d %b %Y %H:%M:%S')
@@ -312,6 +310,9 @@ class ContestRunner:
         self.upload_replays = upload_replays
         self.upload_logs = upload_logs
 
+        # self.maxTimeTaken = Null
+
+
         # unique id for this execution of the contest; used to label logs
         self.contest_run_id = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
 
@@ -360,13 +361,20 @@ class ContestRunner:
                 self._setup_team(submission_path, teams_dir, ignore_file_name_format,
                                  allow_non_registered_students=allow_non_registered_students)
 
-        # Add the staff team, if necessary
+
         if include_staff_team:
-            for STAFF_TEAM in [os.path.join(staff_teams_dir, staff_file) for staff_file in self.STAFF_TEAM_ZIP_FILE]:
-                if not os.path.exists(STAFF_TEAM):
-                    logging.error('Staff team file %s could not be found. Aborting.' % STAFF_TEAM)
-                    sys.exit(1)
-                self._setup_team(STAFF_TEAM, teams_dir, True)
+            for submission in os.listdir(staff_teams_dir):
+                submission_path = os.path.join(staff_teams_dir, submission)
+                if submission.endswith(".zip") or os.path.isdir(submission_path):
+                    self._setup_team(submission_path, teams_dir, True)
+
+        # # Add the staff team, if necessary
+        # if include_staff_team:
+        #     for STAFF_TEAM in [os.path.join(staff_teams_dir, staff_file) for staff_file in self.STAFF_TEAM_ZIP_FILE]:
+        #         if not os.path.exists(STAFF_TEAM):
+        #             logging.error('Staff team file %s could not be found. Aborting.' % STAFF_TEAM)
+        #             sys.exit(1)
+        #         self._setup_team(STAFF_TEAM, teams_dir, True)
 
         # zip directory for transfer to remote workers
         shutil.make_archive(self.ENV_ZIP_READY[:-4], 'zip', self.TMP_CONTEST_DIR)
@@ -400,6 +408,8 @@ class ContestRunner:
         bug = False
         tied = False
 
+
+        output = output.decode()    # convert byte into string
         if output.find("Traceback") != -1 or output.find("agent crashed") != -1:
             bug = True
             # if both teams fail to load, no one wins
@@ -568,12 +578,12 @@ class ContestRunner:
         (red_team_name, red_team_agent_factory) = red_team
         (blue_team_name, blue_team_agent_factory) = blue_team
         # TODO: make the -c an option at the meta level to "Catch exceptions and enforce time limits"
-        command = 'python capture.py -c -r "{red_team_agent_factory}" -b "{blue_team_agent_factory}" -l {layout} -i {steps} -q --record'.format(
+        command = 'python2 capture.py -c -r "{red_team_agent_factory}" -b "{blue_team_agent_factory}" -l {layout} -i {steps} -q --record'.format(
             red_team_agent_factory=red_team_agent_factory, blue_team_agent_factory=blue_team_agent_factory,
             layout=layout, steps=self.max_steps)
         return command
 
-    def _analyse_output(self, red_team, blue_team, layout, exit_code, output):
+    def _analyse_output(self, red_team, blue_team, layout, exit_code, output, total_secs_taken):
         """
         Analyzes the output of a match and updates self.games accordingly.
         """
@@ -585,7 +595,7 @@ class ContestRunner:
             layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
         # results/results_<run_id>/{red_team_name}_vs_{blue_team_name}_{layout}.log
         with open(os.path.join(self.TMP_LOGS_DIR, log_file_name), 'w') as f:
-            print(output, file=f)
+            print(output.decode('utf-8'), file=f)
 
         if exit_code == 0:
             print(
@@ -611,9 +621,9 @@ class ContestRunner:
             # results/results_<run_id>/{red_team_name}_vs_{blue_team_name}_{layout}.replay
             shutil.move(replays[0], os.path.join(self.TMP_REPLAYS_DIR, replay_file_name))
         if not bug:
-            self.games.append((red_team_name, blue_team_name, layout, score, winner))
+            self.games.append((red_team_name, blue_team_name, layout, score, winner, total_secs_taken))
         else:
-            self.games.append((red_team_name, blue_team_name, layout, self.ERROR_SCORE, winner))
+            self.games.append((red_team_name, blue_team_name, layout, self.ERROR_SCORE, winner, total_secs_taken))
 
     def _run_match(self, red_team, blue_team, layout):
         red_team_name, _ = red_team
@@ -687,6 +697,7 @@ class ContestRunner:
 
         return stats_file_url, replays_file_url, logs_file_url
 
+    # prepare local direcotires to store replays, logs, etc.
     def prepare_dirs(self):
         if not os.path.exists(self.stats_archive_dir):
             os.makedirs(self.stats_archive_dir)
@@ -723,8 +734,8 @@ class ContestRunner:
                    id=(red_team, blue_team, layout))
 
     def _analyse_all_outputs(self, results):
-        for (red_team, blue_team, layout), exit_code, output, error in results:
-            self._analyse_output(red_team, blue_team, layout, exit_code, output + error)
+        for (red_team, blue_team, layout), exit_code, output, error, total_secs_taken in results:
+            self._analyse_output(red_team, blue_team, layout, exit_code, output + error, total_secs_taken)
 
     def run_contest_remotely(self, hosts):
         self.prepare_dirs()
@@ -735,8 +746,10 @@ class ContestRunner:
                 jobs.append(self._generate_job(red_team, blue_team, layout))
 
         # create cluster with hots and jobs and run it by starting it, and then analyze output results
+        # results will contain all outputs from every game played
         cm = ClusterManager(hosts, jobs)
         results = cm.start()
+
         self._analyse_all_outputs(results)
         self._calculate_team_stats()
 

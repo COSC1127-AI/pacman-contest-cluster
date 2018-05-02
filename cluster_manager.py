@@ -1,6 +1,5 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
 """
 ClusterManager manages a set of remote workers and distributes a list of jobs using a greedy policy (jobs are assigned,
 in order, to the first free worker. Transfers and communications are done over SSH.
@@ -9,14 +8,13 @@ paths) or anywhere else (via absolute paths).
 
 Extreme care is recommended to both commands and file paths passed: this script performs no checks whatsoever - it's on
 you!
-
 """
-__author__      = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
-__copyright__   = "Copyright 2017-2018"
-__license__     = "GPLv3"
+__author__ = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
+__copyright__ = "Copyright 2017-2018"
+__license__ = "GPLv3"
 
 from collections import namedtuple
-from Queue import Queue
+from queue import Queue
 import random
 from time import sleep
 import os
@@ -43,8 +41,10 @@ TransferableFile = namedtuple('TransferableFile', ['local_path', 'remote_path'],
 
 # Keep track of the number of total jobs to run and number of jobs completed (for reporting)
 no_total_jobs = 0
-no_finished_jobs = 0
+no_successful_jobs = 0
 no_failed_jobs = 0
+time_games = [] # list of seconds, one per game finished
+time_start = datetime.datetime.now()
 
 CORE_PACKAGE_DIR = '/tmp/pacman_files'
 NO_RETRIES = 3  # Number of retries when a remote command failed (e.g., connection lost)
@@ -81,10 +81,19 @@ class ClusterManager:
             self.pool.put(worker)
 
     def start(self):
+        global time_start
+        time_start = datetime.datetime.now()
+
         results = Parallel(self.pool.qsize(), backend='threading')(delayed(run_job)(self.pool, job)
                                                                    for job in self.jobs)
-        return results
 
+        avg_secs_game = round(sum(time_games) / len(time_games), 0)
+        max_secs_game = round(max(time_games), 0)
+        logging.info("STATISTICS: {} games played / {} per game / {} the longest game"
+                     .format(no_successful_jobs,
+                             str(datetime.timedelta(seconds=avg_secs_game)),
+                             str(datetime.timedelta(seconds=max_secs_game))))
+        return results
 
 
 def create_worker(host):
@@ -141,11 +150,11 @@ def transfer_core_package(hostname, workers, required_files):
 
 
 def run_job(pool, job):
-    global no_finished_jobs
+    global no_successful_jobs
     global no_failed_jobs
     global no_total_jobs
 
-    #  worker is an SSHClient
+    #  worker is a SSHClient
     worker = pool.get()
 
     for i in range(NO_RETRIES):
@@ -158,16 +167,20 @@ def run_job(pool, job):
             worker.close()
             worker.connect(hostname=worker.hostname, username=worker.username, password=worker.password,
                            pkey=worker.pkey, sock=worker.proxy)
-            if i < tries - 1:  # i is zero indexed
+            if i < NO_RETRIES - 1:  # i is zero indexed
                 continue
             else:
                 no_failed_jobs += 1
                 logging.error("I am giving up on job %s" % str(job.id))
                 raise
         break
-    no_finished_jobs += 1
-    logging.info("Number of jobs COMPLETED so far: (%d successful, %d failed) of %d total games" % (
-        no_finished_jobs, no_failed_jobs, no_total_jobs))
+    no_successful_jobs += 1
+    games_left = no_total_jobs - no_successful_jobs
+    secs_so_far = (datetime.datetime.now() - time_start).total_seconds()
+    est_time_left = round((games_left * secs_so_far) / no_successful_jobs, 0)
+    logging.info(
+        "Jobs COMPLETED: (%d successful, %d failed) of %d total games (%d games left; estimated time left: %s)"
+        % (no_successful_jobs, no_failed_jobs, no_total_jobs, games_left, str(datetime.timedelta(seconds=est_time_left))))
 
     pool.put(worker)
     return result_job_on_worker
@@ -185,6 +198,8 @@ def report_match(job):
 
 
 def run_job_on_worker(worker, job):
+    global max_secs_game
+
     #  worker is an SSHClient
 
     # create remote env
@@ -205,22 +220,25 @@ def run_job_on_worker(worker, job):
     #     #          callback=lambda x, y: report_progress_bytes_transfered(x, y, str(job.id)))
     #     sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
 
+
     logging.debug('ABOUT TO EXECUTE command in host %s dir %s: %s' % (worker.hostname, dest_dir, job.command))
     # run job
-    startTime = datetime.datetime.now().replace(microsecond=0)
+    startTime = datetime.datetime.now()
     actual_command = """cd %s ; sh -c '%s'""" % (dest_dir, job.command)
     try:
-        #TODO: do we want to put a timeout here in case the call does not return? some pacman games take 3 min eh
+        # TODO: do we want to put a timeout here in case the call does not return? some pacman games take 3 min eh
         # _, ssh_stdout, ssh_stderr = worker.exec_command(actual_command, timeout=60, get_pty=True)  # Non-blocking call
         _, ssh_stdout, ssh_stderr = worker.exec_command(actual_command, get_pty=True)  # Non-blocking call
         result_out = ssh_stdout.read()
         result_err = ssh_stderr.read()
         exit_code = ssh_stdout.channel.recv_exit_status()  # Blocking call but only after reading it all
     except Exception as e:
-        totalTimeTaken = datetime.datetime.now().replace(microsecond=0) - startTime
-        logging.warning('TIME OUT in host %s (%s time taken; %s): %s' % (worker.hostname, totalTimeTaken, dest_dir, report_match(job)))
+        job_secs_taken = datetime.datetime.now() - startTime
+        logging.warning('TIME OUT in host %s (%s secs. taken; %s): %s' % (
+            worker.hostname, job_secs_taken, dest_dir, report_match(job)))
         raise
-    totalTimeTaken = datetime.datetime.now().replace(microsecond=0) - startTime
+    job_secs_taken = (datetime.datetime.now().replace(microsecond=0) - startTime.replace(microsecond=0)).total_seconds()
+    time_games.append(job_secs_taken)
 
     logging.debug(
         'END OF GAME in host %s (%s) - START COPYING BACK RESULT: %s' % (worker.hostname, dest_dir, report_match(job)))
@@ -232,11 +250,12 @@ def run_job_on_worker(worker, job):
     # clean temporary directory for game
     worker.exec_command('rm -rf %s' % dest_dir)
 
-    logging.info('FINISHED GAME in host %s (%s time taken; %s): %s' % (worker.hostname, totalTimeTaken, dest_dir, report_match(job)))
+    logging.info('FINISHED GAME in host %s (%s time taken; %s): %s' % (
+        worker.hostname, job_secs_taken, dest_dir, report_match(job)))
     logging.debug(
         'FINISHED SUCCESSFULLY EXECUTING command in host %s dir %s: %s' % (worker.hostname, dest_dir, job.command))
 
-    return job.id, exit_code, result_out, result_err
+    return job.id, exit_code, result_out, result_err, job_secs_taken
 
 
 if __name__ == '__main__':
