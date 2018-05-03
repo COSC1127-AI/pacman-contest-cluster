@@ -79,36 +79,38 @@ def load_settings():
 
     parser.add_argument(
         '--config-file',
-        help='configuration file to use (default: {default})'.format(default=DEFAULT_CONFIG_FILE),
+        help='configuration file to use (default: %(default)s).',
+        default = DEFAULT_CONFIG_FILE
     )
     parser.add_argument(
         '--organizer',
-        help='name of the organizer of the contest'
+        help='name of contest organizer (default: %(default)s).',
+        default = 'Uni Pacman'
     )
     parser.add_argument(
         '--www-dir',
-        help='www output directory'
+        help='www output directory.'
     )
     parser.add_argument(
         '--stats-archive-dir',
-        help='stats archive output directory'
+        help='stats archive output directory.'
     )
     parser.add_argument(
         '--replays-archive-dir',
-        help='replays archive output directory'
+        help='replays archive output directory.'
     )
     parser.add_argument(
         '--logs-archive-dir',
-        help='logs archive output directory'
+        help='logs archive output directory.'
     )
     parser.add_argument(
         '--compress-logs',
-        help='if passed, the logs will be compressed in a tar.gz file; otherwise, they will just be archived in a tar file',
+        help='compress logs in a tar.gz file (otherwise, logs will be archived in a tar file).',
         action='store_true'
     )
     parser.add_argument(
         '--workers-file',
-        help='json file with workers details'
+        help='json file with workers details.'
     )
     parser.add_argument(
         '--teams-root',
@@ -126,18 +128,17 @@ def load_settings():
     )
     parser.add_argument(
         '--max-steps',
-        help='the limit on the number of steps for each game (default: {default})'.format(default=DEFAULT_MAX_STEPS),
+        help='the limit on the number of steps for each game (default: %(default)s).',
         default=DEFAULT_MAX_STEPS
     )
     parser.add_argument(
         '--no-fixed-layouts',
-        help='number of (random) layouts to use from a given fix set (default: {default})'.format(
-            default=DEFAULT_FIXED_LAYOUTS),
+        help='number of (random) layouts to use from a given fix set (default: %(default)s).',
         default=DEFAULT_FIXED_LAYOUTS,
     )
     parser.add_argument(
         '--no-random-layouts',
-        help='number of random layouts to use (default: {default})'.format(default=DEFAULT_RANDOM_LAYOUTS),
+        help='number of random layouts to use (default: %(default)s).',
         default=DEFAULT_RANDOM_LAYOUTS,
     )
     parser.add_argument(
@@ -152,26 +153,31 @@ def load_settings():
     )
     parser.add_argument(
         '--upload-stats',
-        help='if passed it uploads the stats into https://transfer.sh. This avoids filling up your personal www available space where data is uploaded',
+        help='upload stats to https://transfer.sh',
         action='store_true',
     )
     parser.add_argument(
         '--upload-replays',
-        help='if passed it uploads the replays into https://transfer.sh. This avoids filling up your personal www available space where data is uploaded',
+        help='upload replays to https://transfer.sh',
         action='store_true',
     )
     parser.add_argument(
         '--upload-logs',
-        help='if passed it uploads the logs into https://transfer.sh. This avoids filling up your personal www available space where data is uploaded',
+        help='upload logs to https://transfer.sh',
         action='store_true',
     )
     parser.add_argument(
         '--upload-all',
-        help='if passed, uploads logs, replays, stats into https://transfer.sh.',
+        help='uploads logs, replays, stats into https://transfer.sh.',
         action='store_true',
     )
 
     args = parser.parse_args()
+
+    # If no arguments are given, stop
+    if len(sys.argv) == 1:
+        print('No arguments given. Use -h fo help')
+        sys.exit(0)
 
     # First get the options from the configuration file if available
     if not args.config_file is None:
@@ -239,7 +245,7 @@ def load_settings():
 
     settings['allow_non_registered_students'] = args.allow_non_registered_students
 
-    missing_parameters = {'organizer'} - set(settings.keys())
+    missing_parameters = set({}) - set(settings.keys())
     if missing_parameters:
         logging.error('Missing parameters: %s. Aborting.' % list(sorted(missing_parameters)))
         parser.print_help()

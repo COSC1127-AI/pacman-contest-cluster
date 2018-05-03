@@ -76,6 +76,8 @@ python pacman_html_generator.py --help
             sudo apt-get install python-pip unzip
             sudo pip install setuptools
             sudo pip install -r requirements.txt
+            
+        If you do not have root access you can use `pip install -r requirements.txt --user` to do a user install.
 
     * Many students benefit from the availability of **TensorFlow** and **scikit-learn**: 
         * `pip2 install tensorflow sklearn sklearn --user` or
