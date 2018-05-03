@@ -287,7 +287,7 @@ class ContestRunner:
 
     # submissions file format: s???????[_datetime].zip
     # submissions folder format: s???????[_datetime]
-    # datetime in ISO8601 format:  https: // en.wikipedia.org / wiki / ISO_8601
+    # datetime in ISO8601 format:  https://en.wikipedia.org/wiki/ISO_8601
 
 
     def __init__(self, teams_root, include_staff_team, staff_teams_dir, compress_logs,
@@ -625,15 +625,7 @@ class ContestRunner:
         else:
             self.games.append((red_team_name, blue_team_name, layout, self.ERROR_SCORE, winner, total_secs_taken))
 
-    def _run_match(self, red_team, blue_team, layout):
-        red_team_name, _ = red_team
-        blue_team_name, _ = blue_team
-        print('Running game %s vs %s (layout: %s).' % (red_team_name, blue_team_name, layout), end='')
-        sys.stdout.flush()
-        command = self._generate_command(red_team, blue_team, layout)
-        logging.info(command)
-        exit_code, output = commands.getstatusoutput('cd %s && %s' % (self.TMP_CONTEST_DIR, command))
-        self._analyse_output(red_team, blue_team, layout, exit_code, output)
+
 
     @staticmethod
     def upload_file(file_full_path, remote_name=None, remove_local=False):
@@ -706,12 +698,6 @@ class ContestRunner:
         if not os.path.exists(self.logs_archive_dir):
             os.makedirs(self.logs_archive_dir)
 
-    def run_contest(self):
-        self.prepare_dirs()
-        for red_team, blue_team in combinations(self.teams, r=2):
-            for layout in self.layouts:
-                self._run_match(red_team, blue_team, layout)
-        self._calculate_team_stats()
 
     def _generate_job(self, red_team, blue_team, layout):
         red_team_name, _ = red_team
@@ -736,6 +722,26 @@ class ContestRunner:
     def _analyse_all_outputs(self, results):
         for (red_team, blue_team, layout), exit_code, output, error, total_secs_taken in results:
             self._analyse_output(red_team, blue_team, layout, exit_code, output + error, total_secs_taken)
+
+
+    def run_contest_local(self):
+        """
+        This script runs the tournament in the local machine. This is NOT used anymore, as everything is run
+        remotely via workers. The remote script can be used to run also in localhost
+        """
+        self.prepare_dirs()
+        for red_team, blue_team in combinations(self.teams, r=2):
+            for layout in self.layouts:
+                red_team_name, _ = red_team
+                blue_team_name, _ = blue_team
+                print('Running game %s vs %s (layout: %s).' % (red_team_name, blue_team_name, layout), end='')
+                sys.stdout.flush()
+                command = self._generate_command(red_team, blue_team, layout)
+                logging.info(command)
+                exit_code, output = commands.getstatusoutput('cd %s && %s' % (self.TMP_CONTEST_DIR, command))
+                self._analyse_output(red_team, blue_team, layout, exit_code, output)
+        self._calculate_team_stats()
+
 
     def run_contest_remotely(self, hosts):
         self.prepare_dirs()
