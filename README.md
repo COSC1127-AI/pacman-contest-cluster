@@ -60,9 +60,12 @@ python pacman_html_generator.py --help
     
 ## PRE-REQUISITES ##
 
-* In the cluster:
+
+### Software requirements in cluster and local machines
+
+* In **each machine in the cluster**:
     * unzip & zip (to pack and unpack submissions and files for transfer)
-        * Run: `sudo apt-get install -y unzip zip vim`
+        * `sudo apt-get install -y unzip zip vim`
     * Python >=2.7 with standard libraries (the UC Pacman Contest runs under Python 2 version, not 3).
     * Set the sshd server to accept as many connections as you want to run concurrently. This is done by changing option `MaxStartups` in file `/etc/ssh/sshd_config`. By default sshd has up to 10 connections.
         * For example, set `MaxStartups 20:30:60` to accept up to 20 simultaneous connections. Remember to restart the ssh server: `sudo service sshd restart`
@@ -73,17 +76,26 @@ python pacman_html_generator.py --help
             sudo apt-get install python-pip unzip
             sudo pip install setuptools
             sudo pip install -r requirements.txt
-                
-* In the local machine, everything needed to dispatch jobs to the cluster:
-    * unzip & zip (to pack and unpack submissions and files for transfer)
+
+    * Many students benefit from the availability of **TensorFlow** and **scikit-learn**: 
+        * `pip2 install tensorflow sklearn sklearn --user` or
+        * `sudo pip install tensorflow sklearn  scipy`
+
+* In the **local machine** that will dispatch jobs to the cluster via `pacman-ssh-contest.py` script:
+    * unzip & zip (to pack and unpack submissions and files for transfer): `sudo apt-get install -y unzip zip`
     * Python >= 3.5 with:
-       * setuptools
-       * python-future
-       * future
-       * iso8601
-       * pytz
-       * paramiko
+           * setuptools
+           * python-future
+           * future
+           * iso8601
+           * pytz
+           * paramiko
     * Simply run: `pip3 install -r requirements.txt --user`
+
+
+
+
+In addition to that:
 
 * Each submission is a .zip file or a directory; they should all go in a directory (e.g., teams/)
     * The agent system is in the root of the team zip file or team directory.
@@ -102,9 +114,7 @@ mapped to team names using mapping .csv file provided. Otherwise submission file
         - WeWillWin-05-13
     * The student number will be mapped to a team and the timestamp will be used to pick the latest team submission.
 
-* The cluster to be used is specified with option `--workers-file-path`, to point to a `.json` file containing the workers
-available (including no of cores, IP, username, password, and private key file if needed)
-
+* The cluster to be used is specified with option `--workers-file-path`, to point to a `.json` file containing the workers available (including no of cores, IP, username, password, and private key file if needed)
 
 Hence, user must provide:
 
@@ -115,15 +125,6 @@ Hence, user must provide:
     - Main columns are: STUDENT_ID and TEAM_NAME
     - If **no file provided**, teamnames are taken from the submitted zip files (this is the option used at unimelb)
 
-## OPTIONAL PACKAGES ##
-
-Many students benefit from the availability of **TensorFlow** and **scikit-learn**. To install theses tools execute the following commands in the environment where the contest will run:
-
-```
-sudo pip install tensorflow
-sudo pip install sklearn 
-sudo pip install scipy
-```
 
 ## HOW THE SCRIPT WORKS ##
 
