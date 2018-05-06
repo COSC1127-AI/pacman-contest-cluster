@@ -7,8 +7,6 @@ __author__      = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
 __copyright__   = "Copyright 2017-2018"
 __license__     = "GPLv3"
 
-
-
 #  ----------------------------------------------------------------------------------------------------------------------
 # Import standard stuff
 
@@ -62,13 +60,13 @@ def load_settings():
         '--www-dir',
         help='output directory'
     )
-    parser.add_argument(
-        '--upload-www-replays',
-        help='if passed it uploads recorded_games.tar into https://transfer.sh. This avoids filling up your personal www available space where data is uploaded',
-        action='store_true',
-    )
-
     args = parser.parse_args()
+
+
+    # If no arguments are given, stop
+    if len(sys.argv) == 1:
+        print('No arguments given. Use -h fo help')
+        sys.exit(0)
 
     # First get the options from the configuration file if available
     if not args.config_file is None:
@@ -88,6 +86,7 @@ def load_settings():
     if args.www_dir:
         settings['www_dir'] = args.www_dir
 
+    # Check mandatory parameters are there, otherwise quit
     missing_parameters = {'organizer', 'www_dir'} - set(settings.keys())
     if missing_parameters:
         logging.error('Missing parameters: %s. Aborting.' % list(sorted(missing_parameters)))
@@ -143,12 +142,12 @@ class HtmlGenerator:
         """
         shutil.rmtree(self.www_dir)
 
-    def add_run(self, run_id, stats_file_full_path, replays_url, logs_url):
+    def add_run(self, run_id, stats_url, replays_url, logs_url):
         """
         (Re)Generates the HTML for the given run and updates the HTML index.
         :return:
         """
-        self._save_run_html(run_id, stats_file_full_path, replays_url, logs_url)
+        self._save_run_html(run_id, stats_url, replays_url, logs_url)
         self._generate_main_html()
 
     def _save_run_html(self, run_id, stats_file_url, replays_file_url, logs_file_url):
@@ -161,8 +160,24 @@ class HtmlGenerator:
 
         No checks are done, so mind your parameters.
         """
+        # The URLs may be in byte format - convert them to strings if needed
+        try:
+            stats_file_url = stats_file_url.decode()
+        except AttributeError:
+            pass
+        try:
+            replays_file_url= replays_file_url.decode()
+        except AttributeError:
+            pass
+        try:
+            logs_file_url= logs_file_url.decode()
+        except AttributeError:
+            pass
+
+
         html_parent_path = os.path.join(self.www_dir, 'results_%s' % run_id)
 
+        # Get the information in the stats file
         if stats_file_url.startswith('http'):  # http url
             import urllib.request as request
             content = request(stats_file_url).read()
@@ -181,7 +196,13 @@ class HtmlGenerator:
         random_layouts = data['random_layouts']
         fixed_layouts = data['fixed_layouts']
 
-        # prepend ../ to local URLs so the files can be linked to from www/results_xxx/results.html
+        #  check if json data file contains the links to the replays and logs, if so, used them!
+        if 'url_replays' in data:
+            replays_file_url = data['url_replays']
+        if 'url_logs' in data:
+            logs_file_url = data['url_logs']
+
+        # If not HTTP URLs, prepend ../ to so the files can be linked to from www/...
         if not stats_file_url.startswith('http'):  # http url
             stats_file_url = os.path.join('..', stats_file_url)
         if not replays_file_url.startswith('http'):  # http url
@@ -370,25 +391,22 @@ if __name__ == '__main__':
     settings = load_settings()
 
     stats_dir = settings['stats_archive_dir']
-    replays_dir = settings['replays_archive_dir']
-    logs_dir = settings['logs_archive_dir']
+    replays_url = settings['replays_archive_dir']
+    logs_url = settings['logs_archive_dir']
 
-    settings = {
-        'www_dir': settings['www_dir'],
-        'organizer': settings['organizer'],
-    }
-    generator = HtmlGenerator(**settings)
+    html_generator = HtmlGenerator(settings['www_dir'], settings['organizer'])
 
     if stats_dir is not None:
         pattern = re.compile(r'stats_([-+0-9T:.]+)\.json')
 
+        # Collect all files in stats directory
         all_files = [f for f in os.listdir(stats_dir) if os.path.isfile(os.path.join(stats_dir, f))]
 
         # make paths relative to www_dir
         www_dir = settings['www_dir']
         stats_dir = os.path.relpath(stats_dir, www_dir)
-        replays_dir = os.path.relpath(replays_dir, www_dir) if replays_dir else None
-        logs_dir = os.path.relpath(logs_dir, www_dir) if logs_dir else None
+        replays_url = os.path.relpath(replays_url, www_dir) if replays_url else None
+        logs_url = os.path.relpath(logs_url, www_dir) if logs_url else None
 
         for stats_file_name in all_files:
             match = pattern.match(stats_file_name)
@@ -399,10 +417,10 @@ if __name__ == '__main__':
             logs_file_name = 'logs_%s.tar' % run_id
 
             stats_file_full_path = os.path.join(stats_dir, stats_file_name)
-            replays_file_full_path = os.path.join(replays_dir, replays_file_name) if replays_dir else None
-            logs_file_full_path = os.path.join(logs_dir, logs_file_name) if logs_dir else None
+            replays_file_full_path = os.path.join(replays_url, replays_file_name) if replays_url else None
+            logs_file_full_path = os.path.join(logs_url, logs_file_name) if logs_url else None
 
             replays_file_full_path += '.gz' if not os.path.exists(replays_file_full_path) else ''
             logs_file_full_path += '.gz' if not os.path.exists(logs_file_full_path) else ''
 
-            generator.add_run(run_id, stats_file_full_path, replays_file_full_path, logs_file_full_path)
+            html_generator.add_run(run_id, stats_file_full_path, replays_file_full_path, logs_file_full_path)

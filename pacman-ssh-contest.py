@@ -47,6 +47,7 @@ from pytz import timezone
 #import cluster_manager
 from pacman_html_generator import HtmlGenerator
 
+# check https://stackoverflow.com/questions/10677721/advantages-of-logging-vs-print-logging-best-practices
 # logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG, datefmt='%a, %d %b %Y %H:%M:%S')
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO,
                     datefmt='%a, %d %b %Y %H:%M:%S')
@@ -60,7 +61,6 @@ def load_settings():
     DEFAULT_FIXED_LAYOUTS = 3
     DEFAULT_RANDOM_LAYOUTS = 3
     DEFAULT_CONFIG_FILE = 'config.json'
-    DEFAULT_STAFF_TEAMS_DIR = './'
 
 
     parser = argparse.ArgumentParser(
@@ -124,7 +124,7 @@ def load_settings():
     )
     parser.add_argument(
         '--staff-teams-dir',
-        help='if given, include staff teams in the given directory (staff_team_basic.zip, staff_team_medium.zip, and staff_team_top.zip).'
+        help='if given, include staff teams in the given directory (with name staff_team_xxxx.zip).'
     )
     parser.add_argument(
         '--max-steps',
@@ -152,11 +152,6 @@ def load_settings():
         action='store_true',
     )
     parser.add_argument(
-        '--upload-stats',
-        help='upload stats to https://transfer.sh',
-        action='store_true',
-    )
-    parser.add_argument(
         '--upload-replays',
         help='upload replays to https://transfer.sh',
         action='store_true',
@@ -168,7 +163,7 @@ def load_settings():
     )
     parser.add_argument(
         '--upload-all',
-        help='uploads logs, replays, stats into https://transfer.sh.',
+        help='uploads logs and replays into https://transfer.sh.',
         action='store_true',
     )
 
@@ -235,11 +230,9 @@ def load_settings():
         settings['max_steps'] = DEFAULT_MAX_STEPS
 
     if args.upload_all:
-        settings['upload_stats'] = True
         settings['upload_replays'] = True
         settings['upload_logs'] = True
     else:
-        settings['upload_stats'] = args.upload_stats
         settings['upload_replays'] = args.upload_replays
         settings['upload_logs'] = args.upload_logs
 
@@ -285,6 +278,7 @@ class ContestRunner:
     CONTEST_ZIP_FILE = 'contest.zip'
     LAYOUTS_ZIP_FILE = 'layouts.zip'
     STAFF_TEAM_ZIP_FILE = ['staff_team_basic.zip', 'staff_team_medium.zip', 'staff_team_top.zip']
+    STAFF_TEAM_FILENAME_PATTERN = re.compile(r'^staff\_team\_.+\.zip$')
     TEAMS_SUBDIR = 'teams'
     RESULTS_DIR = 'results'
     TIMEZONE = timezone('Australia/Melbourne')
@@ -300,7 +294,7 @@ class ContestRunner:
                  max_steps, no_fixed_layouts, no_random_layouts, team_names_file,
                  allow_non_registered_students, ignore_file_name_format, www_dir,
                  stats_archive_dir=None, logs_archive_dir=None, replays_archive_dir=None,
-                 upload_stats=False, upload_replays=False, upload_logs=False):
+                 upload_replays=False, upload_logs=False):
 
         self.max_steps = max_steps
 
@@ -312,7 +306,6 @@ class ContestRunner:
         self.replays_archive_dir = \
             os.path.join(self.www_dir, replays_archive_dir or self.DEFAULT_REPLAYS_ARCHIVE_DIR)
 
-        self.upload_stats = upload_stats
         self.upload_replays = upload_replays
         self.upload_logs = upload_logs
 
@@ -361,18 +354,21 @@ class ContestRunner:
         # setup all team directories under contest/team subdir for contest (copy content in .zip to team dirs)
         self.teams = []
         self.submission_times = {}
-        for submission in os.listdir(teams_root):
-            submission_path = os.path.join(teams_root, submission)
-            if submission.endswith(".zip") or os.path.isdir(submission_path):
+        for submission_file in os.listdir(teams_root):
+            submission_path = os.path.join(teams_root, submission_file)
+            if submission_file.endswith(".zip") or os.path.isdir(submission_path):
                 self._setup_team(submission_path, teams_dir, ignore_file_name_format,
                                  allow_non_registered_students=allow_non_registered_students)
 
 
+        # Include staff teams if available (ones with pattern STAFF_TEAM_FILENAME_PATTERN)
         if include_staff_team:
-            for submission in os.listdir(staff_teams_dir):
-                submission_path = os.path.join(staff_teams_dir, submission)
-                if submission.endswith(".zip") or os.path.isdir(submission_path):
-                    self._setup_team(submission_path, teams_dir, True)
+            for staff_team_submission_file in os.listdir(staff_teams_dir):
+                match = re.match(self.STAFF_TEAM_FILENAME_PATTERN, os.path.basename(staff_team_submission_file))
+                if match:
+                    submission_path = os.path.join(staff_teams_dir, staff_team_submission_file)
+                    if staff_team_submission_file.endswith(".zip") or os.path.isdir(submission_path):
+                        self._setup_team(submission_path, teams_dir, True)
 
         # # Add the staff team, if necessary
         # if include_staff_team:
@@ -641,10 +637,13 @@ class ContestRunner:
         logging.info('Transferring %s to transfer.sh service...' % file_name)
         transfer_cmd = 'curl --upload-file %s https://transfer.sh/%s' % (file_full_path, remote_name)
         try:
+            # This will yield a byte, not a str (at least in Python 3)
             transfer_url = subprocess.check_output(transfer_cmd, shell=True)
             if remove_local:
                 print('rm %s' % file_full_path)
                 os.system('rm %s' % file_full_path)
+            logging.info(
+                'File %s transfered successfully to transfer.sh service; URL: %s' % (file_name, transfer_url))
         except Exception as e:
             # If transfer failed, use the standard server
             logging.error("Transfer-url failed, using local copy to store games. Exception: %s" % str(e))
@@ -653,47 +652,50 @@ class ContestRunner:
         return transfer_url
 
     def store_results(self):
-        # Store stats in a json file
-        stats_file_name = 'stats_%s.json' % self.contest_run_id  # stats_xxx.json
-        stats_file_full_path = os.path.join(self.stats_archive_dir,
-                                            stats_file_name)  # test/www/stats-archive/stats_xxx.json
-        with open(stats_file_full_path, "w") as f:
-            data = {
-                'games': self.games,
-                'team_stats': self.team_stats,
-                'random_layouts': [l for l in self.layouts if l.startswith('RANDOM')],
-                'fixed_layouts': [l for l in self.layouts if not l.startswith('RANDOM')],
-                'max_steps': self.max_steps
-            }
-            json.dump(data, f)
-        if self.upload_stats:
-            stats_file_url = self.upload_file(stats_file_full_path)
-        else:
-            stats_file_url = os.path.relpath(stats_file_full_path, self.www_dir)
+        # Basic data stats
+        data_stats = {
+            'games': self.games,
+            'team_stats': self.team_stats,
+            'random_layouts': [l for l in self.layouts if l.startswith('RANDOM')],
+            'fixed_layouts': [l for l in self.layouts if not l.startswith('RANDOM')],
+            'max_steps': self.max_steps
+        }
 
-        # Compress all replays
+        # Process replays: compress and upload
         replays_archive_name = 'replays_%s.tar' % self.contest_run_id
         replays_archive_name += '.gz' if self.compress_logs else ''
         replays_archive_full_path = os.path.join(self.replays_archive_dir, replays_archive_name)
         with tarfile.open(replays_archive_full_path, 'w:gz' if self.compress_logs else 'w') as tar:
             tar.add(self.TMP_REPLAYS_DIR, arcname='/')
         if self.upload_replays:
-            replays_file_url = self.upload_file(replays_archive_full_path, remove_local=True)
+            replays_file_url = self.upload_file(replays_archive_full_path, remove_local=False)
+            data_stats['url_replays'] = replays_file_url.decode()
         else:
             replays_file_url = os.path.relpath(replays_archive_full_path, self.www_dir)  # stats-archive/stats_xxx.json
 
-        # Compress all logs
+        # Process replays: compress and upload
         logs_archive_name = 'logs_%s.tar' % self.contest_run_id
         logs_archive_name += '.gz' if self.compress_logs else ''
         logs_archive_full_path = os.path.join(self.logs_archive_dir, logs_archive_name)
         with tarfile.open(logs_archive_full_path, 'w:gz' if self.compress_logs else 'w') as tar:
             tar.add(self.TMP_LOGS_DIR, arcname='/')
         if self.upload_logs:
-            logs_file_url = self.upload_file(logs_archive_full_path)
+            logs_file_url = self.upload_file(logs_archive_full_path, remove_local=False)
+            data_stats['url_logs'] = logs_file_url.decode()
         else:
             logs_file_url = os.path.relpath(logs_archive_full_path, self.www_dir)
 
-        return stats_file_url, replays_file_url, logs_file_url
+
+        # Store stats in a json file
+        stats_file_name = 'stats_%s.json' % self.contest_run_id  # stats_xxx.json
+        stats_file_full_path = os.path.join(self.stats_archive_dir, stats_file_name) # www/stats-archive/stats_xxx.json
+        stats_file_rel_path = os.path.relpath(stats_file_full_path, self.www_dir)
+        with open(stats_file_full_path, "w") as f:
+            json.dump(data_stats, f)
+
+        return stats_file_rel_path, replays_file_url, logs_file_url
+
+
 
     # prepare local direcotires to store replays, logs, etc.
     def prepare_dirs(self):

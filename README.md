@@ -45,9 +45,7 @@ python pacman_html_generator.py --help
     * Via student-team mapping file; option `--team-names`
     * Mapping each filename.zip submission as teamname=filename; option `--ignore-file-name-format`
 * Generate HTML page with tournament results and list of replay files.
-    * option `--www-path` to specify where HTML should be placed.
-    * option `--upload-replays` to uploads tar file into https://transfer.sh to avoid filling your local www space
-    * option `--upload-logs` and `--upload-stats` to uploads logs and stats into https://transfer.sh to avoid filling your local www space
+    * ability to store replays and logs into https://transfer.sh to avoid filling your local www space
     * Ranking generation:
         * 3 points per win; 1 point per tie. Failed games are loses.
         * Order by: points first, no. of wins second, score points third.
@@ -141,7 +139,7 @@ Hence, user must provide:
 - `staff_team_{basic,medium,top}.zip`: the teams from staff, used for `--include-staff-team` option. 
     - You can point to the directory containing all three staff agents using `--staff-teams-dir` (default is current dir)
 	- You can use your own basic, medium, top agents, as long as they are named accordingly.  
-	- If you want to use our agents, contact us. These teams are not shared as they are used for marking purposes. So, if
+	- If you want to use our agents, co ntact us. These teams are not shared as they are used for marking purposes. So, if
 	    you get access to them, please do not distribute.
 - `contest/` subdir: developing place for `contest.zip`. The .zip file should contain all files in the root of the .zip
 - `TEAMS-STUDENT-MAPPING.csv`: example of a mapping file
@@ -150,7 +148,7 @@ Hence, user must provide:
 ### Overview of marking process: ###
 
 1. The script authenticate to all workers.
-2. Then the script will collect all the teams, as per _--teams-root_ option. 
+2. Then the script will collect all the teams. 
 - If option **--ignore-file-name-format** is given, then it will simply collect the teamnames from the <teamname>.zip files, otherwise:
     - Will collect each file with pattern s<student number>_<timestamp>.zip
     - If student number is not registered in any team as per mapping given by _--team-names-file_ then the file is 
@@ -175,6 +173,7 @@ Hence, user must provide:
 
 
 ### Example of a run: ###
+
 Using a csv file to specify team names, include staff teams:
 ````
 python pacman-ssh-contest.py --compress-log \
@@ -184,7 +183,7 @@ python pacman-ssh-contest.py --compress-log \
         --www-dir www/ \
         --max-steps 1200 \
         --no-fixed-layouts 5 --no-random-layouts 10 \
-        -workers-file AI1-contest/workers/nectar-workers.jason  
+        --workers-file AI1-contest/workers/nectar-workers.jason  
         --staff-teams-dir AI17-contest/staff-teams/
 ````
 Collecting submitted files in teams, and using the zip filename as teamname, and uploading the replays file only into a sharing file service instead of your local directory:
@@ -195,7 +194,7 @@ python pacman-ssh-contest.py --compress-log \
         --www-dir www/ \
         --max-steps 1200 \
         --no-fixed-layouts 5 --no-random-layouts 10 \
-        -workers-file AI1-contest/workers/nectar-workers.jason  
+        --workers-file AI1-contest/workers/nectar-workers.jason  
         --staff-teams-dir AI17-contest/staff-teams/
         --upload-www-replays
 ````
@@ -205,9 +204,9 @@ python pacman-ssh-contest.py --compress-log \
 Build web page in www/ from stats, replays, and logs dirs:
 ````
 python pacman_html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" \
-    --www-dir www/ 
-    --stats-archive-dir stats-archive/ 
-    --replays-archive-dir replays-archive/ 
+    --www-dir www/ \
+    --stats-archive-dir stats-archive/  \
+    --replays-archive-dir replays-archive/ \ 
     --logs-archive-dir logs-archive/
 ````
 
@@ -216,6 +215,8 @@ or if all stats, replays, and logs are within <www-dir> then just:
 ````
 python pacman_html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" --www-dir www/
 ````
+
+**Observation:** If the stats file for a run has the transfer.sh URL for logs/replays, those will be used.
 
 ## SCHEDULE COMPETITION ##
 
