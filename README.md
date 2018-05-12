@@ -90,7 +90,8 @@ python pacman_html_generator.py --help
            * iso8601
            * pytz
            * paramiko
-    * Simply run: `pip3 install -r requirements.txt --user`
+    * Simply run: `pip install -r requirements.txt --user`
+        * Observe we use pip (Python 2.7+) because the server will run the actual Pacman capture.py script (which uses Python 2.7)
 
 
 
