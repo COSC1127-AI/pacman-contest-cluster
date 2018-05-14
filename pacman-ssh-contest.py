@@ -56,6 +56,9 @@ logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logg
 # ----------------------------------------------------------------------------------------------------------------------
 # Load settings either from config.json or from the command line
 
+def default(str):
+    return str + ' [Default: %default]'
+
 def load_settings():
     DEFAULT_MAX_STEPS = 1200
     DEFAULT_FIXED_LAYOUTS = 3
