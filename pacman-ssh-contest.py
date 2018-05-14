@@ -354,6 +354,7 @@ class ContestRunner:
         # setup all team directories under contest/team subdir for contest (copy content in .zip to team dirs)
         self.teams = []
         self.submission_times = {}
+
         for submission_file in os.listdir(teams_root):
             submission_path = os.path.join(teams_root, submission_file)
             if submission_file.endswith(".zip") or os.path.isdir(submission_path):
@@ -464,7 +465,11 @@ class ContestRunner:
                     "Something went wrong in the contest script - there is no traceback and no clear winner: %s vs %s" % (
                     red_team_name, blue_team_name))
                 print(output)
-                sys.exit(1)
+                winner = None
+                loser = None
+                tied = True
+                score = -1
+                # sys.exit(1)
 
         return score, winner, loser, bug
 
@@ -836,7 +841,6 @@ if __name__ == '__main__':
 
     html_generator = HtmlGenerator(settings['www_dir'], settings['organizer'])
     del settings['organizer']
-
 
     logging.info("Will create contest runner with options: {}".format(settings))
     runner = ContestRunner(**settings)  # Setup ContestRunner
