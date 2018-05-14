@@ -71,15 +71,14 @@ python pacman_html_generator.py --help
     * Cluster should have all the Python and Unix packages to run the contest. For example, in the NeCTAR cluster:
 
             sudo apt-get update
-            sudo apt-get install python-pip unzip
+            sudo apt-get install python-pip unzip vim
             sudo pip install setuptools
             sudo pip install -r requirements.txt
             
-        If you do not have root access you can use `pip install -r requirements.txt --user` to do a user install.
+        If you do not have root access you can use `pip install -r requirements.txt --user` to do a user install. Get [requirements.txt](requirements.txt) with wget.
 
-    * Many students benefit from the availability of **TensorFlow** and **scikit-learn**: 
-        * `pip2 install tensorflow sklearn sklearn --user` or
-        * `sudo pip install tensorflow sklearn  scipy`
+    * Many students benefit from the availability other tools, like [TensorFlow](https://www.tensorflow.org/), [scikit-learn](http://scikit-learn.org/), [neat-python](https://github.com/CodeReclaimers/neat-python): 
+        * `pip install tensorflow sklearn sklearn scipy neat-python --user` or `sudo pip install tensorflow sklearn scipy neat-python`
 
 * In the **local machine** that will dispatch jobs to the cluster via `pacman-ssh-contest.py` script:
     * unzip & zip (to pack and unpack submissions and files for transfer): `sudo apt-get install -y unzip zip`
