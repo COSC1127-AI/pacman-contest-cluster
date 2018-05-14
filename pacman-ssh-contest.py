@@ -650,12 +650,14 @@ class ContestRunner:
             if remove_local:
                 print('rm %s' % file_full_path)
                 os.system('rm %s' % file_full_path)
+                transfer_url = transfer_url.decode() # convert to string
             logging.info(
                 'File %s transfered successfully to transfer.sh service; URL: %s' % (file_name, transfer_url))
         except Exception as e:
             # If transfer failed, use the standard server
             logging.error("Transfer-url failed, using local copy to store games. Exception: %s" % str(e))
-            transfer_url = file_name
+            raise
+            # transfer_url = file_name
 
         return transfer_url
 
@@ -676,8 +678,11 @@ class ContestRunner:
         with tarfile.open(replays_archive_full_path, 'w:gz' if self.compress_logs else 'w') as tar:
             tar.add(self.TMP_REPLAYS_DIR, arcname='/')
         if self.upload_replays:
-            replays_file_url = self.upload_file(replays_archive_full_path, remove_local=False)
-            data_stats['url_replays'] = replays_file_url.decode()
+            try:
+                replays_file_url = self.upload_file(replays_archive_full_path, remove_local=False)
+                data_stats['url_replays'] = replays_file_url.decode()
+            except Exception as e:
+                replays_file_url = os.path.relpath(replays_archive_full_path, self.www_dir)
         else:
             replays_file_url = os.path.relpath(replays_archive_full_path, self.www_dir)  # stats-archive/stats_xxx.json
 
@@ -688,8 +693,11 @@ class ContestRunner:
         with tarfile.open(logs_archive_full_path, 'w:gz' if self.compress_logs else 'w') as tar:
             tar.add(self.TMP_LOGS_DIR, arcname='/')
         if self.upload_logs:
-            logs_file_url = self.upload_file(logs_archive_full_path, remove_local=False)
-            data_stats['url_logs'] = logs_file_url.decode()
+            try:
+                logs_file_url = self.upload_file(logs_archive_full_path, remove_local=False)
+                data_stats['url_logs'] = logs_file_url.decode()
+            except Exception as e:
+                logs_file_url = os.path.relpath(logs_archive_full_path, self.www_dir)
         else:
             logs_file_url = os.path.relpath(logs_archive_full_path, self.www_dir)
 
@@ -714,17 +722,22 @@ class ContestRunner:
         if not os.path.exists(self.logs_archive_dir):
             os.makedirs(self.logs_archive_dir)
 
-
+    # Generates a job to play red_tam vs blue_team in layout
     def _generate_job(self, red_team, blue_team, layout):
         red_team_name, _ = red_team
         blue_team_name, _ = blue_team
+
         game_command = self._generate_command(red_team, blue_team, layout)
+
         deflate_command = 'mkdir -p {contest_dir} ; unzip {zip_file} -d {contest_dir} ; chmod +x -R *'.format(
             zip_file=self.ENV_ZIP_READY, contest_dir=self.TMP_CONTEST_DIR)
+
         command = '{deflate_command} ; cd {contest_dir} ; {game_command} ; touch {replay_filename}'.format(
             deflate_command=deflate_command, contest_dir=self.TMP_CONTEST_DIR, game_command=game_command,
             replay_filename='replay-0')
+
         req_file = TransferableFile(local_path=self.ENV_ZIP_READY, remote_path=self.ENV_ZIP_READY)
+
         replay_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.replay'.format(layout=layout,
                                                                                         run_id=self.contest_run_id,
                                                                                         red_team_name=red_team_name,
@@ -851,5 +864,6 @@ if __name__ == '__main__':
 
     stats_file_url, replays_file_url, logs_file_url = runner.store_results()
     html_generator.add_run(runner.contest_run_id, stats_file_url, replays_file_url, logs_file_url)
+    logging.info("Web pages generated. Now cleaning up and closing... Thank you!")
 
     runner.clean_up()
