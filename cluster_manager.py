@@ -160,6 +160,8 @@ def run_job(pool, job):
     for i in range(NO_RETRIES):
         try:
             # time.sleep(randint(1, 10))
+            # TODO: does not work when filename has a ' like Sebcant'code
+            # print(job)
             result_job_on_worker = run_job_on_worker(worker, job)
         # TODO: this captures any error that may happen when doing the job in the worker. Is it enough?
         except Exception as e:
