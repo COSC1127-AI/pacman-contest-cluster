@@ -37,11 +37,7 @@ def load_settings():
     )
 
     parser.add_argument(
-        '--config-file',
-        help='configuration file to use (default: {default})'.format(default=DEFAULT_CONFIG_FILE),
-    )
-    parser.add_argument(
-        '--organizer',
+        dest='organizer', type=str,
         help='name of the organizer of the contest'
     )
     parser.add_argument(
@@ -57,7 +53,7 @@ def load_settings():
         help='logs directory (default <www-dir>/logs-archive)'
     )
     parser.add_argument(
-        '--www-dir',
+        dest='www_dir', type=str,
         help='output directory'
     )
     args = parser.parse_args()
@@ -69,16 +65,15 @@ def load_settings():
         sys.exit(0)
 
     # First get the options from the configuration file if available
-    if not args.config_file is None:
-        if os.path.exists(args.config_file):
-            with open(args.config_file, 'r') as f:
-                settings = json.load(f)
-                logging.debug('Configuration file loaded')
-        else:
-            logging.error('Configuration file selected not available')
-            settings = {}
-    else:
-        settings = {}
+    settings = {}
+    # if not args.config_file is None:
+    #     if os.path.exists(args.config_file):
+    #         with open(args.config_file, 'r') as f:
+    #             settings = json.load(f)
+    #             logging.debug('Configuration file loaded')
+    #     else:
+    #         logging.error('Configuration file selected not available')
+    #         settings = {}
 
     # if given, set the parameters as per command line options (may override config file)
     if args.organizer:
@@ -244,7 +239,7 @@ class HtmlGenerator:
                 continue
             main_html += """<a href="%s/results.html"> %s  </a> <br/>""" % (d, d)
         main_html += "<br/></body></html>"
-        with open(os.path.join(self.www_dir, 'results.html'), "w") as f:
+        with open(os.path.join(self.www_dir, 'index.html'), "w") as f:
             print(main_html, file=f)
 
     def _generate_output(self, run_id, games, team_stats, random_layouts, fixed_layouts, max_steps,
