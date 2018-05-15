@@ -184,7 +184,7 @@ def load_settings():
                 settings = json.load(f)
                 logging.debug('Configuration file loaded')
         else:
-            logging.error('Configuration file selected not available')
+            logging.warning('Configuration file not available.')
             settings = {}
     else:
         settings = {}
