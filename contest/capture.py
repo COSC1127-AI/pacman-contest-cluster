@@ -804,8 +804,8 @@ def readCommand( argv ):
                     help='Writes game histories to a file (named by the time they were played)', default=False)
   parser.add_option('--replay', default=None,
                     help='Replays a recorded game file.')
-  parser.add_option('--replay-delay', type='float', dest='delay',
-                    help=default('Delay step in a replay'), default=0.03)
+  parser.add_option('--delay-step', type='float', dest='delay_step',
+                    help=default('Delay step in a play or replay.'), default=0.03)
   parser.add_option('-x', '--numTraining', dest='numTraining', type='int',
                     help=default('How many episodes are training (suppresses output)'), default=0)
   parser.add_option('-c', '--catchExceptions', action='store_true', default=False,
@@ -849,7 +849,7 @@ def readCommand( argv ):
     import cPickle
     recorded = cPickle.load(open(options.replay))
     recorded['display'] = args['display']
-    recorded['delay'] = options.delay
+    recorded['delay'] = options.delay_step
     recorded['redTeamName'] = options.red
     recorded['blueTeamName'] = options.blue
 
@@ -909,6 +909,7 @@ def readCommand( argv ):
   args['numTraining'] = options.numTraining
   args['record'] = options.record
   args['catchExceptions'] = options.catchExceptions
+  args['delay_step'] = options.delay_step
   return args
 
 def randomLayout(seed = None):
@@ -984,7 +985,7 @@ def replayGame( layout, agents, actions, display, length, redTeamName, blueTeamN
 
     display.finish()
 
-def runGames( layouts, agents, display, length, numGames, record, numTraining, redTeamName, blueTeamName, muteAgents=False, catchExceptions=False ):
+def runGames( layouts, agents, display, length, numGames, record, numTraining, redTeamName, blueTeamName, muteAgents=False, catchExceptions=False, delay_step=0):
 
   rules = CaptureRules()
   games = []
@@ -1004,7 +1005,7 @@ def runGames( layouts, agents, display, length, numGames, record, numTraining, r
         gameDisplay = display
         rules.quiet = False
     g = rules.newGame( layout, agents, gameDisplay, length, muteAgents, catchExceptions )
-    g.run()
+    g.run(delay=delay_step)
     if not beQuiet: games.append(g)
 
     g.record = None
