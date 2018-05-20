@@ -608,8 +608,9 @@ class ContestRunner:
             print(output.decode('utf-8'), file=f)
 
         if exit_code == 0:
-            print(
-                ' Successful. Log in {output_file}.'.format(output_file=os.path.join(self.TMP_LOGS_DIR, log_file_name)))
+            pass
+            # print(
+            #     ' Successful. Log in {output_file}.'.format(output_file=os.path.join(self.TMP_LOGS_DIR, log_file_name)))
         else:
             print(' Failed. Log in {output_file}.'.format(output_file=log_file_name))
 
