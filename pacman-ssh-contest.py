@@ -394,11 +394,8 @@ class ContestRunner:
         pass
 
     def clean_up(self):
-        shutil.rmtree(self.TMP_DIR)
-        # shutil.rmtree(self.TMP_REPLAYS_DIR)
-        # shutil.rmtree(self.TMP_LOGS_DIR)
-        # shutil.rmtree(self.TMP_CONTEST_DIR)
-        # os.remove(self.ENV_ZIP_READY)
+        pass
+        # shutil.rmtree(self.TMP_DIR)
 
     def _parse_result(self, output, red_team_name, blue_team_name):
         """
@@ -415,7 +412,10 @@ class ContestRunner:
         tied = False
 
 
-        output = output.decode()    # convert byte into string
+        try:
+            output = output.decode()    # convert byte into string
+        except:
+            pass    # it is already a string
         if output.find("Traceback") != -1 or output.find("agent crashed") != -1:
             bug = True
             # if both teams fail to load, no one wins
@@ -605,7 +605,10 @@ class ContestRunner:
             layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
         # results/results_<run_id>/{red_team_name}_vs_{blue_team_name}_{layout}.log
         with open(os.path.join(self.TMP_LOGS_DIR, log_file_name), 'w') as f:
-            print(output.decode('utf-8'), file=f)
+            try:
+                print(output.decode('utf-8'), file=f)
+            except:
+                print(output, file=f)
 
         if exit_code == 0:
             pass
@@ -723,21 +726,23 @@ class ContestRunner:
         if not os.path.exists(self.logs_archive_dir):
             os.makedirs(self.logs_archive_dir)
 
-    # Generates a job to play red_tam vs blue_team in layout
+    # Generates a job to play read_team vs blue_team in layout
     def _generate_job(self, red_team, blue_team, layout):
         red_team_name, _ = red_team
         blue_team_name, _ = blue_team
 
         game_command = self._generate_command(red_team, blue_team, layout)
 
-        deflate_command = 'mkdir -p {contest_dir} ; unzip {zip_file} -d {contest_dir} ; chmod +x -R *'.format(
+        deflate_command = 'mkdir -p {contest_dir} ; unzip -o {zip_file} -d {contest_dir} ; chmod +x -R *'.format(
             zip_file=self.ENV_ZIP_READY, contest_dir=self.TMP_CONTEST_DIR)
 
         command = '{deflate_command} ; cd {contest_dir} ; {game_command} ; touch {replay_filename}'.format(
             deflate_command=deflate_command, contest_dir=self.TMP_CONTEST_DIR, game_command=game_command,
             replay_filename='replay-0')
 
-        req_file = TransferableFile(local_path=self.ENV_ZIP_READY, remote_path=self.ENV_ZIP_READY)
+        #  we used to transfer contest_and_teams.zip at every job, but not anymore
+        # we transfered it once at the start per machine, and just copy+unzip there directly
+        # req_file = TransferableFile(local_path=self.ENV_ZIP_READY, remote_path=self.ENV_ZIP_READY)
 
         replay_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.replay'.format(layout=layout,
                                                                                         run_id=self.contest_run_id,
@@ -746,11 +751,18 @@ class ContestRunner:
         ret_file = TransferableFile(local_path=os.path.join(self.TMP_REPLAYS_DIR, replay_file_name),
                                     remote_path=os.path.join(self.TMP_CONTEST_DIR, 'replay-0'))
 
-        return Job(command=command, required_files=[req_file], return_files=[ret_file],
-                   id=(red_team, blue_team, layout))
+        return Job(command=command, required_files=[], return_files=[ret_file], id=(red_team, blue_team, layout))
 
     def _analyse_all_outputs(self, results):
         for (red_team, blue_team, layout), exit_code, output, error, total_secs_taken in results:
+            if not exit_code == 0:
+                print('===================================')
+                print(red_team)
+                print(blue_team)
+                print(layout)
+                print(exit_code)
+                print(output)
+                print('===================================')
             self._analyse_output(red_team, blue_team, layout, exit_code, output + error, total_secs_taken)
 
 

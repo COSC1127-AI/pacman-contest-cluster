@@ -28,6 +28,7 @@ from paramiko.proxy import ProxyCommand
 from paramiko import AutoAddPolicy
 
 import logging
+import traceback
 
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO,
                     datefmt='%a, %d %b %Y %H:%M:%S')
@@ -49,6 +50,8 @@ time_start = datetime.datetime.now()
 CORE_PACKAGE_DIR = '/tmp/pacman_files'
 NO_RETRIES = 3  # Number of retries when a remote command failed (e.g., connection lost)
 
+class ErrorInGame(Exception):
+    '''raise this when there's a lookup error for my app'''
 
 class ClusterManager:
     def __init__(self, hosts, jobs):
@@ -87,8 +90,12 @@ class ClusterManager:
         results = Parallel(self.pool.qsize(), backend='threading')(delayed(run_job)(self.pool, job)
                                                                    for job in self.jobs)
 
-        avg_secs_game = round(sum(time_games) / len(time_games), 0)
-        max_secs_game = round(max(time_games), 0)
+        if len(time_games) > 0:
+            avg_secs_game = round(sum(time_games) / len(time_games), 0)
+            max_secs_game = round(max(time_games), 0)
+        else:
+            avg_secs_game = 0
+            max_secs_game = 0
         logging.info("STATISTICS: {} games played / {} per game / {} the longest game"
                      .format(no_successful_jobs,
                              str(datetime.timedelta(seconds=avg_secs_game)),
@@ -127,7 +134,7 @@ def create_worker(host):
 
     return worker
 
-
+# Transfer the core package and leave it in /tmp/pacman_files
 def transfer_core_package(hostname, workers, required_files):
     dest_dir = '/tmp/pacman_files'
 
@@ -157,15 +164,28 @@ def run_job(pool, job):
     #  worker is a SSHClient
     worker = pool.get()
 
+    # We tried NO_RETRIES time - and then give up....
     for i in range(NO_RETRIES):
         try:
             # time.sleep(randint(1, 10))
             # TODO: does not work when filename has a ' like Sebcant'code
             # print(job)
             result_job_on_worker = run_job_on_worker(worker, job)
+            no_successful_jobs += 1
         # TODO: this captures any error that may happen when doing the job in the worker. Is it enough?
+        except ErrorInGame as e:
+            # Somehoe some games the zip does no uncompress well.....
+            logging.error("A game has FAILED (will retry): %s" % str(e))
+            if i < NO_RETRIES - 1:  # i is zero indexed
+                sleep(4)
+                continue
+            else:
+                no_failed_jobs += 1
+                logging.error("I am giving up, too many failures, on job %s" % str(job.id))
+                result_job_on_worker = job.id, -1, '', 'Match did not work', 1
         except Exception as e:
-            logging.error("The following job FAILED to execute (will reconnect & retry): %s" % str(job.id))
+            logging.error("Somehow the following game job FAILED to execute (will reconnect & retry): %s" % str(job.id))
+            traceback.print_exc()
             worker.close()
             worker.connect(hostname=worker.hostname, username=worker.username, password=worker.password,
                            pkey=worker.pkey, sock=worker.proxy)
@@ -174,12 +194,12 @@ def run_job(pool, job):
             else:
                 no_failed_jobs += 1
                 logging.error("I am giving up on job %s" % str(job.id))
-                raise
+                result_job_on_worker = job.id, -1, '', 'Match did not work', 1
         break
-    no_successful_jobs += 1
-    games_left = no_total_jobs - no_successful_jobs
+    games_played = no_successful_jobs + no_failed_jobs
+    games_left = no_total_jobs - games_played
     secs_so_far = (datetime.datetime.now() - time_start).total_seconds()
-    est_time_left = round((games_left * secs_so_far) / no_successful_jobs, 0)
+    est_time_left = round((games_left * secs_so_far) / games_played, 0)
     logging.info(
         "Jobs COMPLETED: (%d successful, %d failed) of %d total games (%d games left; estimated time left: %s)"
         % (no_successful_jobs, no_failed_jobs, no_total_jobs, games_left, str(datetime.timedelta(seconds=est_time_left))))
@@ -234,12 +254,19 @@ def run_job_on_worker(worker, job):
         result_out = ssh_stdout.read()
         result_err = ssh_stderr.read()
         exit_code = ssh_stdout.channel.recv_exit_status()  # Blocking call but only after reading it all
+        if not exit_code == 0:
+            raise ErrorInGame('Error in running game - cmd: {}'.format(actual_command))
+    except ErrorInGame:
+        raise
     except Exception as e:
         job_secs_taken = datetime.datetime.now() - startTime
         logging.warning('TIME OUT in host %s (%s secs. taken; %s): %s' % (
             worker.hostname, job_secs_taken, dest_dir, report_match(job)))
         raise
     job_secs_taken = (datetime.datetime.now().replace(microsecond=0) - startTime.replace(microsecond=0)).total_seconds()
+    if job_secs_taken < 3:
+        print('Strange, game too short, something bad happened, failing it....')
+        raise ErrorInGame('Error in running game - cmd: {}'.format(actual_command))
     time_games.append(job_secs_taken)
 
     logging.debug(
