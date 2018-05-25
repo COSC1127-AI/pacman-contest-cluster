@@ -54,7 +54,7 @@ class ErrorInGame(Exception):
     '''raise this when there's a lookup error for my app'''
 
 class ClusterManager:
-    def __init__(self, hosts, jobs):
+    def __init__(self, hosts, jobs, core_req_file = None):
         self.hosts = hosts  # type: 'List[Host]'
         self.jobs = jobs  # type: 'List[Job]'
         self.workers = []  # type: 'List[SSHClient]'
@@ -74,10 +74,12 @@ class ClusterManager:
                                                                        for host in self.hosts
                                                                        for _ in range(host.no_cpu))
 
-        # Second, transfer the required core files to each hostname (there will be much less than workers, one per IP)
-        Parallel(len(self.hosts), backend='threading')(
-            delayed(transfer_core_package)(host.hostname, self.workers, jobs[0].required_files)
-            for host in self.hosts)
+        # Second, transfer the required core files to each hostname, if any
+        #  (this is good because there there will be many less than workers, just one per IP)
+        if not core_req_file is None:
+            Parallel(len(self.hosts), backend='threading')(
+                delayed(transfer_core_package)(host.hostname, self.workers, core_req_file)
+                for host in self.hosts)
 
         # Put all workers in pool
         for worker in self.workers:
@@ -136,18 +138,10 @@ def create_worker(host):
 
 # Transfer the core package and leave it in /tmp/pacman_files
 def transfer_core_package(hostname, workers, required_files):
-    dest_dir = '/tmp/pacman_files'
-
-    # TODO: ugly handling of the case where the dir exists by passing the exception?
     # Find a worker for this hostname and transfer the required files to des_dir
     for worker in workers:
         if worker.hostname == hostname:
             sftp = worker.open_sftp()
-            try:
-                sftp.mkdir(dest_dir)
-            except Exception as e:
-                pass  # if it exists, continue
-            sftp.chdir(dest_dir)
             for tf in required_files:
                 sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
             sftp.close()
@@ -169,7 +163,6 @@ def run_job(pool, job):
         try:
             # time.sleep(randint(1, 10))
             # TODO: does not work when filename has a ' like Sebcant'code
-            print(job)
             result_job_on_worker = run_job_on_worker(worker, job)
             no_successful_jobs += 1
         # TODO: this captures any error that may happen when doing the job in the worker. Is it enough?
@@ -226,15 +219,16 @@ def run_job_on_worker(worker, job):
 
     # create remote env
     instance_id = ''.join(random.choice('0123456789abcdef') for _ in range(30))
-    dest_dir = '/tmp/cluster_instance_%s' % instance_id
+    dest_dir = '/tmp/cluster_instance_%s' % job.id.replace(' ','_')
 
     logging.info('ABOUT TO PLAY GAME in host %s (%s): %s' % (worker.hostname, dest_dir, report_match(job)))
     sftp = worker.open_sftp()
     sftp.mkdir(dest_dir)
     sftp.chdir(dest_dir)
+
     # copy core package into the temporary dir for this particular job
-    worker.exec_command('cp -a %s/* %s' % (CORE_PACKAGE_DIR, dest_dir))
-    logging.debug('GAME PREPARED AND COPIED in host %s (%s): %s' % (worker.hostname, dest_dir, report_match(job)))
+    # worker.exec_command('cp -a %s/* %s' % (CORE_PACKAGE_DIR, dest_dir))
+    # logging.debug('GAME PREPARED AND COPIED in host %s (%s): %s' % (worker.hostname, dest_dir, report_match(job)))
 
     # If the job requires files transfer them to the remote path
     # (for pacman now, required files is empty, as we transfer the core package once at the start and then copy it)
@@ -285,7 +279,7 @@ def run_job_on_worker(worker, job):
     logging.debug(
         'FINISHED SUCCESSFULLY EXECUTING command in host %s dir %s: %s' % (worker.hostname, dest_dir, job.command))
 
-    return job.id, exit_code, result_out, result_err, job_secs_taken
+    return job.data, exit_code, result_out, result_err, job_secs_taken
 
 
 if __name__ == '__main__':

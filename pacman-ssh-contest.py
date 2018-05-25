@@ -285,14 +285,12 @@ class ContestRunner:
     TEAMS_SUBDIR = 'teams'
     RESULTS_DIR = 'results'
     TIMEZONE = timezone('Australia/Melbourne')
-    ENV_ZIP_READY = 'contest_and_teams.zip'
+    CORE_CONTEST_TEAM_ZIP_FILE = 'contest_and_teams.zip'
     SUBMISSION_FILENAME_PATTERN = re.compile(r'^(s\d+)(_([-+0-9T:.]+))?(\.zip)?$')
 
     # submissions file format: s???????[_datetime].zip
     # submissions folder format: s???????[_datetime]
     # datetime in ISO8601 format:  https://en.wikipedia.org/wiki/ISO_8601
-
-
     def __init__(self, teams_root, include_staff_team, staff_teams_dir, compress_logs,
                  max_steps, no_fixed_layouts, no_random_layouts, team_names_file,
                  allow_non_registered_students, ignore_file_name_format, www_dir,
@@ -383,7 +381,7 @@ class ContestRunner:
         #         self._setup_team(STAFF_TEAM, teams_dir, True)
 
         # zip directory for transfer to remote workers
-        shutil.make_archive(self.ENV_ZIP_READY[:-4], 'zip', self.TMP_CONTEST_DIR)
+        shutil.make_archive(self.CORE_CONTEST_TEAM_ZIP_FILE[:-4], 'zip', self.TMP_CONTEST_DIR)
 
         self.ladder = {n: [] for n, _ in self.teams}
         self.games = []
@@ -734,15 +732,15 @@ class ContestRunner:
         game_command = self._generate_command(red_team, blue_team, layout)
 
         deflate_command = 'mkdir -p {contest_dir} ; unzip -o {zip_file} -d {contest_dir} ; chmod +x -R *'.format(
-            zip_file=self.ENV_ZIP_READY, contest_dir=self.TMP_CONTEST_DIR)
+            zip_file=os.path.join('/tmp', self.CORE_CONTEST_TEAM_ZIP_FILE), contest_dir=self.TMP_CONTEST_DIR)
 
         command = '{deflate_command} ; cd {contest_dir} ; {game_command} ; touch {replay_filename}'.format(
             deflate_command=deflate_command, contest_dir=self.TMP_CONTEST_DIR, game_command=game_command,
             replay_filename='replay-0')
 
-        #  we used to transfer contest_and_teams.zip at every job, but not anymore
+        # We used to transfer contest_and_teams.zip at every job, but not anymore
         # we transfered it once at the start per machine, and just copy+unzip there directly
-        # req_file = TransferableFile(local_path=self.ENV_ZIP_READY, remote_path=self.ENV_ZIP_READY)
+        # req_file = TransferableFile(local_path=self.CORE_CONTEST_TEAM_ZIP_FILE, remote_path=self.CORE_CONTEST_TEAM_ZIP_FILE)
 
         replay_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.replay'.format(layout=layout,
                                                                                         run_id=self.contest_run_id,
@@ -752,7 +750,7 @@ class ContestRunner:
                                     remote_path=os.path.join(self.TMP_CONTEST_DIR, 'replay-0'))
 
         return Job(command=command, required_files=[], return_files=[ret_file], data=(red_team, blue_team, layout),
-                   id='{}-vs-{}-in-{}'.format(red_team_name, blue_team_name, layout)
+                   id='{}-vs-{}-in-{}'.format(red_team_name, blue_team_name, layout))
 
     def _analyse_all_outputs(self, results):
         for (red_team, blue_team, layout), exit_code, output, error, total_secs_taken in results:
@@ -794,9 +792,14 @@ class ContestRunner:
             for layout in self.layouts:
                 jobs.append(self._generate_job(red_team, blue_team, layout))
 
+        #  This is the core package to be transferable to each host
+        core_req_file = TransferableFile(local_path=self.CORE_CONTEST_TEAM_ZIP_FILE,
+                                         remote_path=os.path.join('/tmp', self.CORE_CONTEST_TEAM_ZIP_FILE))
+
         # create cluster with hots and jobs and run it by starting it, and then analyze output results
         # results will contain all outputs from every game played
-        cm = ClusterManager(hosts, jobs)
+        cm = ClusterManager(hosts, jobs, [core_req_file])
+        # sys.exit(0)
         results = cm.start()
 
         self._analyse_all_outputs(results)
