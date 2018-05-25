@@ -37,7 +37,7 @@ logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logg
 # Import class from helper module
 
 Host = namedtuple('Host', ['no_cpu', 'hostname', 'username', 'password', 'key_filename', 'key_password'], verbose=False)
-Job = namedtuple('Job', ['command', 'required_files', 'return_files', 'id'], verbose=False)
+Job = namedtuple('Job', ['command', 'required_files', 'return_files', 'id', 'data'], verbose=False)
 TransferableFile = namedtuple('TransferableFile', ['local_path', 'remote_path'], verbose=False)
 
 # Keep track of the number of total jobs to run and number of jobs completed (for reporting)
@@ -169,7 +169,7 @@ def run_job(pool, job):
         try:
             # time.sleep(randint(1, 10))
             # TODO: does not work when filename has a ' like Sebcant'code
-            # print(job)
+            print(job)
             result_job_on_worker = run_job_on_worker(worker, job)
             no_successful_jobs += 1
         # TODO: this captures any error that may happen when doing the job in the worker. Is it enough?
@@ -182,7 +182,7 @@ def run_job(pool, job):
             else:
                 no_failed_jobs += 1
                 logging.error("I am giving up, too many failures, on job %s" % str(job.id))
-                result_job_on_worker = job.id, -1, '', 'Match did not work', 1
+                result_job_on_worker = job.id, -1, '', 'Match did not work: {}'.format(str(e)), 1
         except Exception as e:
             logging.error("Somehow the following game job FAILED to execute (will reconnect & retry): %s" % str(job.id))
             traceback.print_exc()
@@ -208,11 +208,11 @@ def run_job(pool, job):
     return result_job_on_worker
 
 
-def report_progress_bytes_transfered(xfer, to_be_xfer, data):
+def report_progress_bytes_transfered(xfer, to_be_xfer, job_id):
     remains_per = 0.000
     remains_per = (xfer / to_be_xfer) * 100
     logging.debug(
-        'Complete percent for job %s: %.2f%% - (%d bytes transfered out of %d)' % (data, remains_per, xfer, to_be_xfer))
+        'Complete percent for job %s: %.2f%% - (%d bytes transfered out of %d)' % (job_id, remains_per, xfer, to_be_xfer))
 
 
 def report_match(job):
@@ -236,11 +236,12 @@ def run_job_on_worker(worker, job):
     worker.exec_command('cp -a %s/* %s' % (CORE_PACKAGE_DIR, dest_dir))
     logging.debug('GAME PREPARED AND COPIED in host %s (%s): %s' % (worker.hostname, dest_dir, report_match(job)))
 
-    # Old alternative: transfer core package to the host via sftp
-    # for tf in job.required_files:
-    #     # sftp.put(localpath=tf.local_path, remotepath=tf.remote_path,
-    #     #          callback=lambda x, y: report_progress_bytes_transfered(x, y, str(job.id)))
-    #     sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
+    # If the job requires files transfer them to the remote path
+    # (for pacman now, required files is empty, as we transfer the core package once at the start and then copy it)
+    for tf in job.required_files:
+        # sftp.put(localpath=tf.local_path, remotepath=tf.remote_path,
+        #          callback=lambda x, y: report_progress_bytes_transfered(x, y, str(job.id)))
+        sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
 
 
     logging.debug('ABOUT TO EXECUTE command in host %s dir %s: %s' % (worker.hostname, dest_dir, job.command))
@@ -314,7 +315,7 @@ if __name__ == '__main__':
         req_file = TransferableFile(local_path='cluster_manager.py', remote_path=test_file)
         ret_file = TransferableFile(local_path=test_file, remote_path=test_file)
 
-        jobs.append(Job(command=command, required_files=[req_file], return_files=[ret_file], id=None))
+        jobs.append(Job(command=command, required_files=[req_file], return_files=[ret_file], data=None, id='test'))
 
     cm = ClusterManager(hosts=hosts, jobs=jobs)
     os.chdir(os.path.dirname(os.path.abspath(__file__)))

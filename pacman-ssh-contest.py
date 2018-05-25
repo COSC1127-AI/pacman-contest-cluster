@@ -751,7 +751,8 @@ class ContestRunner:
         ret_file = TransferableFile(local_path=os.path.join(self.TMP_REPLAYS_DIR, replay_file_name),
                                     remote_path=os.path.join(self.TMP_CONTEST_DIR, 'replay-0'))
 
-        return Job(command=command, required_files=[], return_files=[ret_file], id=(red_team, blue_team, layout))
+        return Job(command=command, required_files=[], return_files=[ret_file], data=(red_team, blue_team, layout),
+                   id='{}-vs-{}-in-{}'.format(red_team_name, blue_team_name, layout)
 
     def _analyse_all_outputs(self, results):
         for (red_team, blue_team, layout), exit_code, output, error, total_secs_taken in results:
