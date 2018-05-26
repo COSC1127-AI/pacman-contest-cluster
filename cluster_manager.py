@@ -21,6 +21,7 @@ import os
 import datetime
 from joblib import Parallel, delayed
 from getpass import getpass, getuser
+# doc for paramiko: http://docs.paramiko.org/en/2.4/api/client.html
 from paramiko.config import SSHConfig
 from paramiko.client import SSHClient
 from paramiko.rsakey import RSAKey
@@ -212,6 +213,18 @@ def report_match(job):
     return job.id[0][0] + " vs " + job.id[1][0] + " in map " + job.id[2]
 
 
+def _rmdir(sftp, path):
+    files = sftp.listdir(path)
+
+    for f in files:
+        filepath = os.path.join(path, f)
+        try:
+            sftp.remove(filepath)
+        except IOError:
+            rm(filepath)
+
+    sftp.rmdir(path)
+
 def run_job_on_worker(worker, job):
     global max_secs_game
 
@@ -219,11 +232,18 @@ def run_job_on_worker(worker, job):
 
     # create remote env
     instance_id = ''.join(random.choice('0123456789abcdef') for _ in range(30))
-    dest_dir = '/tmp/cluster_instance_%s' % job.id.replace(' ','_')
+    instance_id = '{}-{}'.format(job.id.replace(' ','_'), datetime.datetime.now().strftime("%Y-%m-%d-%H-%M"))
+    dest_dir = '/tmp/cluster_instance_{}'.format(instance_id)
 
     logging.info('ABOUT TO PLAY GAME in host %s (%s): %s' % (worker.hostname, dest_dir, report_match(job)))
     sftp = worker.open_sftp()
-    sftp.mkdir(dest_dir)
+    try:
+        sftp.mkdir(dest_dir)
+    except IOError: # dir already exists!
+        worker.exec_command('rm -rf %s' % dest_dir)
+        # _rmdir(sftp, dest_dir)
+        sftp.mkdir(dest_dir)
+
     sftp.chdir(dest_dir)
 
     # copy core package into the temporary dir for this particular job
