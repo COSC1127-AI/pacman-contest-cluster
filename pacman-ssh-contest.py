@@ -395,7 +395,7 @@ class ContestRunner:
         pass
         # shutil.rmtree(self.TMP_DIR)
 
-    def _parse_result(self, output, red_team_name, blue_team_name):
+    def _parse_result(self, output, red_team_name, blue_team_name, layout):
         """
         Parses the result log of a match.
         :param output: an iterator of the lines of the result log
@@ -436,8 +436,9 @@ class ContestRunner:
                 loser = blue_team_name
                 score = 1
             else:
-                logging.error("Something went wrong in the contest script - Traceback but no winner: %s vs %s" % (
-                red_team_name, blue_team_name))
+                logging.error(
+                    "Note able to parse out for game {} vs {} in {} (traceback available, but couldn't get winner!)".format(
+                        red_team_name, blue_team_name, layout))
         else:
             for line in output.splitlines():
                 if line.find("wins by") != -1:
@@ -463,8 +464,8 @@ class ContestRunner:
             # signal strange case where script was unable to find outcome of game - should never happen!
             if winner is None and loser is None and not tied:
                 logging.error(
-                    "Something went wrong in the contest script - there is no traceback and no clear winner: %s vs %s" % (
-                    red_team_name, blue_team_name))
+                    "Note able to parse out for game {} vs {} in {} (no traceback available)".format(
+                        red_team_name, blue_team_name, layout))
                 print(output)
                 winner = None
                 loser = None
@@ -611,11 +612,11 @@ class ContestRunner:
         if exit_code == 0:
             pass
             # print(
-            #     ' Successful. Log in {output_file}.'.format(output_file=os.path.join(self.TMP_LOGS_DIR, log_file_name)))
+            #     ' Successful: Log in {output_file}.'.format(output_file=os.path.join(self.TMP_LOGS_DIR, log_file_name)))
         else:
-            print(' Failed. Log in {output_file}.'.format(output_file=log_file_name))
+            print('Game Failed: Check log in {output_file}.'.format(output_file=log_file_name))
 
-        score, winner, loser, bug = self._parse_result(output, red_team_name, blue_team_name)
+        score, winner, loser, bug = self._parse_result(output, red_team_name, blue_team_name, layout)
 
         if winner is None:
             self.ladder[red_team_name].append(score)
@@ -753,15 +754,13 @@ class ContestRunner:
                    id='{}-vs-{}-in-{}'.format(red_team_name, blue_team_name, layout))
 
     def _analyse_all_outputs(self, results):
-        for (red_team, blue_team, layout), exit_code, output, error, total_secs_taken in results:
+        logging.info('About to analyze game result outputs. Number of result output to analyze: {}'.format(len(results)))
+        for result in results:
+            (red_team, blue_team, layout), exit_code, output, error, total_secs_taken = result
             if not exit_code == 0:
-                print('===================================')
-                print(red_team)
-                print(blue_team)
-                print(layout)
-                print(exit_code)
-                print(output)
-                print('===================================')
+                print('Game {} VS {} in {} exited with code {} and here is the output:'.format(red_team[0],
+                                                                                               blue_team[0], layout,
+                                                                                               exit_code, output))
             self._analyse_output(red_team, blue_team, layout, exit_code, output + error, total_secs_taken)
 
 
@@ -802,6 +801,7 @@ class ContestRunner:
         # sys.exit(0)
         results = cm.start()
 
+        print('========================= GAMES FINISHED - NEXT ANALYSING OUTPUT OF GAMES ========================= ')
         self._analyse_all_outputs(results)
         self._calculate_team_stats()
 

@@ -33,6 +33,7 @@ import traceback
 
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO,
                     datefmt='%a, %d %b %Y %H:%M:%S')
+logging.getLogger("paramiko").setLevel(logging.WARNING)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Import class from helper module
@@ -49,7 +50,7 @@ time_games = [] # list of seconds, one per game finished
 time_start = datetime.datetime.now()
 
 CORE_PACKAGE_DIR = '/tmp/pacman_files'
-NO_RETRIES = 3  # Number of retries when a remote command failed (e.g., connection lost)
+NO_RETRIES = 1  # Number of retries when a remote command failed (e.g., connection lost)
 
 class ErrorInGame(Exception):
     '''raise this when there's a lookup error for my app'''
@@ -89,9 +90,19 @@ class ClusterManager:
     def start(self):
         global time_start
         time_start = datetime.datetime.now()
+        jobs_list = self.jobs
 
-        results = Parallel(self.pool.qsize(), backend='threading')(delayed(run_job)(self.pool, job)
-                                                                   for job in self.jobs)
+
+        results = [] # list of results: job.data, exit_code, result_out, result_err, job_secs_taken
+        while jobs_list:
+            results_run = Parallel(self.pool.qsize(), backend='threading')(delayed(run_job)(self.pool, job)
+                                                                       for job in jobs_list)
+            games_failed = [job_data for job_data, exit_code, _, _, _ in results_run if exit_code == -1]
+            jobs_list = [j for j in jobs_list if j.data in games_failed]    # extract failed jobs (to retry)
+            good_results = [tuple(result) for result  in results_run if not result[1] == -1]
+            results = results + good_results  # keep non error results
+            print('============================ ONE FULL PASS ON JOBS COMPELTED ============================')
+
 
         if len(time_games) > 0:
             avg_secs_game = round(sum(time_games) / len(time_games), 0)
@@ -166,19 +177,19 @@ def run_job(pool, job):
             # TODO: does not work when filename has a ' like Sebcant'code
             result_job_on_worker = run_job_on_worker(worker, job)
             no_successful_jobs += 1
-        # TODO: this captures any error that may happen when doing the job in the worker. Is it enough?
+        #TODO: this captures any error that may happen when doing the job in the worker. Is it enough?
         except ErrorInGame as e:
-            # Somehoe some games the zip does no uncompress well.....
-            logging.error("A game has FAILED (will retry): %s" % str(e))
+            # Somehow some games the zip does no uncompress well.....
+            logging.error("Job with ID {} has FAILED (will retry) with exception: {}".format(job.id, str(e)))
             if i < NO_RETRIES - 1:  # i is zero indexed
-                sleep(4)
+                # sleep(4)
                 continue
             else:
                 no_failed_jobs += 1
                 logging.error("I am giving up, too many failures, on job %s" % str(job.id))
-                result_job_on_worker = job.id, -1, '', 'Match did not work: {}'.format(str(e)), 1
+                result_job_on_worker = job.data, -1, '', 'Match did not work: {}'.format(str(e)), 1
         except Exception as e:
-            logging.error("Somehow the following game job FAILED to execute (will reconnect & retry): %s" % str(job.id))
+            logging.error("Somehow the following job FAILED to execute (will reconnect & retry): %s" % str(job.id))
             traceback.print_exc()
             worker.close()
             worker.connect(hostname=worker.hostname, username=worker.username, password=worker.password,
@@ -188,10 +199,10 @@ def run_job(pool, job):
             else:
                 no_failed_jobs += 1
                 logging.error("I am giving up on job %s" % str(job.id))
-                result_job_on_worker = job.id, -1, '', 'Match did not work', 1
+                result_job_on_worker = job.data, -1, '', 'Match did not work', 1
         break
     games_played = no_successful_jobs + no_failed_jobs
-    games_left = no_total_jobs - games_played
+    games_left = no_total_jobs - no_successful_jobs
     secs_so_far = (datetime.datetime.now() - time_start).total_seconds()
     est_time_left = round((games_left * secs_so_far) / games_played, 0)
     logging.info(
@@ -221,7 +232,7 @@ def _rmdir(sftp, path):
         try:
             sftp.remove(filepath)
         except IOError:
-            rm(filepath)
+            _rmdir(sftp, filepath)
 
     sftp.rmdir(path)
 
@@ -232,7 +243,7 @@ def run_job_on_worker(worker, job):
 
     # create remote env
     instance_id = ''.join(random.choice('0123456789abcdef') for _ in range(30))
-    instance_id = '{}-{}'.format(job.id.replace(' ','_'), datetime.datetime.now().strftime("%Y-%m-%d-%H-%M"))
+    instance_id = '{}-{}'.format(job.id.replace(' ','_'), datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
     dest_dir = '/tmp/cluster_instance_{}'.format(instance_id)
 
     logging.info('ABOUT TO PLAY GAME in host %s (%s): %s' % (worker.hostname, dest_dir, report_match(job)))
@@ -240,8 +251,13 @@ def run_job_on_worker(worker, job):
     try:
         sftp.mkdir(dest_dir)
     except IOError: # dir already exists!
-        worker.exec_command('rm -rf %s' % dest_dir)
-        # _rmdir(sftp, dest_dir)
+        logging.debug('Directory {} seems to exist in {}. Deleting it... '.format(dest_dir, worker.hostname))
+        _rmdir(sftp, dest_dir)
+        # worker.exec_command('rm -rf %s' % dest_dir)
+        sftp.mkdir(dest_dir)
+    except: # dir already exists!
+        logging.debug('Error creating directory {} in host {}.'.format(dest_dir, worker.hostname))
+        _rmdir(sftp, dest_dir)
         sftp.mkdir(dest_dir)
 
     sftp.chdir(dest_dir)
@@ -269,6 +285,8 @@ def run_job_on_worker(worker, job):
         result_out = ssh_stdout.read()
         result_err = ssh_stderr.read()
         exit_code = ssh_stdout.channel.recv_exit_status()  # Blocking call but only after reading it all
+        # if random.randint(0, 10) > 5: # to force failure!
+        #     exit_code = -1
         if not exit_code == 0:
             raise ErrorInGame('Error in running game - cmd: {}'.format(actual_command))
     except ErrorInGame:
