@@ -50,7 +50,8 @@ time_games = [] # list of seconds, one per game finished
 time_start = datetime.datetime.now()
 
 CORE_PACKAGE_DIR = '/tmp/pacman_files'
-NO_RETRIES = 1  # Number of retries when a remote command failed (e.g., connection lost)
+NO_LOCAL_RETRIES = 1  # Number of retries when a remote command failed (e.g., connection lost)
+NO_GLOBAL_TRIES = 2
 
 class ErrorInGame(Exception):
     '''raise this when there's a lookup error for my app'''
@@ -61,14 +62,14 @@ class ClusterManager:
         self.jobs = jobs  # type: 'List[Job]'
         self.workers = []  # type: 'List[SSHClient]'
         self.pool = Queue()  # type: 'Queue[SSHClient]'
-        self.no_tries = NO_RETRIES
+        self.no_tries = NO_LOCAL_RETRIES
 
         total_no_workers = sum(host.no_cpu for host in hosts)
         # https: // pythonhosted.org / joblib / generated / joblib.Parallel.html
 
         global no_total_jobs
         no_total_jobs = len(self.jobs)
-        logging.info("ABOUT TO RUN %d jobs in %d hosts (%d CPUs) #####################" % \
+        logging.info('ABOUT TO RUN %d jobs in %d hosts (%d CPUs) #####################' % \
                      (no_total_jobs, len(hosts), total_no_workers))
 
         # Firsts, authenticate abd build all workers (each Hostname + core gives a worker)
@@ -78,6 +79,7 @@ class ClusterManager:
 
         # Second, transfer the required core files to each hostname, if any
         #  (this is good because there there will be many less than workers, just one per IP)
+        logging.info('FIRST COPYING REQUIRED FILES TO HOSTS....')
         if not core_req_file is None:
             Parallel(len(self.hosts), backend='threading')(
                 delayed(transfer_core_package)(host.hostname, self.workers, core_req_file)
@@ -94,14 +96,24 @@ class ClusterManager:
 
 
         results = [] # list of results: job.data, exit_code, result_out, result_err, job_secs_taken
+        try_no = 0
         while jobs_list:
+            try_no = try_no + 1
             results_run = Parallel(self.pool.qsize(), backend='threading')(delayed(run_job)(self.pool, job)
                                                                        for job in jobs_list)
-            games_failed = [job_data for job_data, exit_code, _, _, _ in results_run if exit_code == -1]
-            jobs_list = [j for j in jobs_list if j.data in games_failed]    # extract failed jobs (to retry)
-            good_results = [tuple(result) for result  in results_run if not result[1] == -1]
-            results = results + good_results  # keep non error results
-            print('============================ ONE FULL PASS ON JOBS COMPELTED ============================')
+
+            if try_no < NO_GLOBAL_TRIES:
+                games_failed = [job_data for job_data, exit_code, _, _, _ in results_run if exit_code == -1]
+                jobs_list = [j for j in jobs_list if j.data in games_failed]    # extract failed jobs (to retry)
+                good_results = [tuple(result) for result  in results_run if not result[1] == -1]
+                results = results + good_results  # keep non-error results only (rest will be re-tried)
+                print('============================ ONE FULL PASS ON JOBS COMPELTED ============================')
+            else:
+                # tough luck, include failed jobs in results as they came with score = -1 (failed)...
+                results = results + results_run
+                break
+
+
 
 
         if len(time_games) > 0:
@@ -171,7 +183,7 @@ def run_job(pool, job):
     worker = pool.get()
 
     # We tried NO_RETRIES time - and then give up....
-    for i in range(NO_RETRIES):
+    for i in range(NO_LOCAL_RETRIES):
         try:
             # time.sleep(randint(1, 10))
             # TODO: does not work when filename has a ' like Sebcant'code
@@ -181,12 +193,14 @@ def run_job(pool, job):
         except ErrorInGame as e:
             # Somehow some games the zip does no uncompress well.....
             logging.error("Job with ID {} has FAILED (will retry) with exception: {}".format(job.id, str(e)))
-            if i < NO_RETRIES - 1:  # i is zero indexed
+            if i < NO_LOCAL_RETRIES - 1:  # i is zero indexed
                 # sleep(4)
                 continue
             else:
                 no_failed_jobs += 1
-                logging.error("I am giving up, too many failures, on job %s" % str(job.id))
+                logging.error(
+                    "I am giving up local retying job {} in worker {}, too many local failures...".format(job.id,
+                                                                                                          worker.hostname))
                 result_job_on_worker = job.data, -1, '', 'Match did not work: {}'.format(str(e)), 1
         except Exception as e:
             logging.error("Somehow the following job FAILED to execute (will reconnect & retry): %s" % str(job.id))
@@ -194,7 +208,7 @@ def run_job(pool, job):
             worker.close()
             worker.connect(hostname=worker.hostname, username=worker.username, password=worker.password,
                            pkey=worker.pkey, sock=worker.proxy)
-            if i < NO_RETRIES - 1:  # i is zero indexed
+            if i < NO_LOCAL_RETRIES - 1:  # i is zero indexed
                 continue
             else:
                 no_failed_jobs += 1
@@ -297,9 +311,9 @@ def run_job_on_worker(worker, job):
             worker.hostname, job_secs_taken, dest_dir, report_match(job)))
         raise
     job_secs_taken = (datetime.datetime.now().replace(microsecond=0) - startTime.replace(microsecond=0)).total_seconds()
-    if job_secs_taken < 3:
-        print('Strange, game too short, something bad happened, failing it....')
-        raise ErrorInGame('Error in running game - cmd: {}'.format(actual_command))
+    # if job_secs_taken < 3:
+    #     print('Strange, game too short, something bad happened, failing it....')
+    #     raise ErrorInGame('Error in running game - cmd: {}'.format(actual_command))
     time_games.append(job_secs_taken)
 
     logging.debug(
