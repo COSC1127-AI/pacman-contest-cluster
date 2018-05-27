@@ -266,9 +266,9 @@ class ContestRunner:
     # Output directories:
     #  run_replays/{red_team_name}_vs_{blue_team_name}_{layout}.replay
     #  run_logs/{red_team_name}_vs_{blue_team_name}_{layout}.log
-    #  replays_archive/replays_{run_id}.tar.gz  # lots of .replay files
-    #  logs_archive/replays_{run_id}.tar.gz  # lots of .log files
-    #  stats_archive/replays_{run_id}.json
+    #  replays_archive/replays_{contest_timestamp_id}.tar.gz  # lots of .replay files
+    #  logs_archive/replays_{contest_timestamp_id}.tar.gz  # lots of .log files
+    #  stats_archive/replays_{contest_timestamp_id}.json
     DEFAULT_STATS_ARCHIVE_DIR = 'stats-archive'
     DEFAULT_LOGS_ARCHIVE_DIR = 'logs-archive'
     DEFAULT_REPLAYS_ARCHIVE_DIR = 'replays-archive'
@@ -291,12 +291,13 @@ class ContestRunner:
     # submissions file format: s???????[_datetime].zip
     # submissions folder format: s???????[_datetime]
     # datetime in ISO8601 format:  https://en.wikipedia.org/wiki/ISO_8601
-    def __init__(self, teams_root, include_staff_team, staff_teams_dir, compress_logs,
+    def __init__(self, organizer, teams_root, include_staff_team, staff_teams_dir, compress_logs,
                  max_steps, no_fixed_layouts, no_random_layouts, team_names_file,
                  allow_non_registered_students, ignore_file_name_format, www_dir,
                  stats_archive_dir=None, logs_archive_dir=None, replays_archive_dir=None,
                  upload_replays=False, upload_logs=False):
 
+        self.organizer = organizer
         self.max_steps = max_steps
 
         self.www_dir = www_dir
@@ -314,7 +315,7 @@ class ContestRunner:
 
 
         # unique id for this execution of the contest; used to label logs
-        self.contest_run_id = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
+        self.contest_timestamp_id = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
 
         # a flag indicating whether to compress the logs
         self.compress_logs = compress_logs
@@ -601,7 +602,7 @@ class ContestRunner:
 
         # dump the log of the game into file for the game: red vs blue in layout
         log_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.log'.format(
-            layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
+            layout=layout, run_id=self.contest_timestamp_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
         # results/results_<run_id>/{red_team_name}_vs_{blue_team_name}_{layout}.log
         with open(os.path.join(self.TMP_LOGS_DIR, log_file_name), 'w') as f:
             try:
@@ -627,11 +628,11 @@ class ContestRunner:
 
         # Next handle replay file
         replay_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.replay'.format(
-            layout=layout, run_id=self.contest_run_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
+            layout=layout, run_id=self.contest_timestamp_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
 
         replays = glob.glob(os.path.join(self.TMP_CONTEST_DIR, 'replay*'))
         if replays:
-            # results/results_<run_id>/{red_team_name}_vs_{blue_team_name}_{layout}.replay
+            # results/results_<contest_timestamp_id>/{red_team_name}_vs_{blue_team_name}_{layout}.replay
             shutil.move(replays[0], os.path.join(self.TMP_REPLAYS_DIR, replay_file_name))
         if not bug:
             self.games.append((red_team_name, blue_team_name, layout, score, winner, total_secs_taken))
@@ -671,11 +672,13 @@ class ContestRunner:
             'team_stats': self.team_stats,
             'random_layouts': [l for l in self.layouts if l.startswith('RANDOM')],
             'fixed_layouts': [l for l in self.layouts if not l.startswith('RANDOM')],
-            'max_steps': self.max_steps
+            'max_steps': self.max_steps,
+            'organizer' : self.organizer,
+            'timestamp_id' : self.contest_timestamp_id
         }
 
         # Process replays: compress and upload
-        replays_archive_name = 'replays_%s.tar' % self.contest_run_id
+        replays_archive_name = 'replays_%s.tar' % self.contest_timestamp_id
         replays_archive_name += '.gz' if self.compress_logs else ''
         replays_archive_full_path = os.path.join(self.replays_archive_dir, replays_archive_name)
         with tarfile.open(replays_archive_full_path, 'w:gz' if self.compress_logs else 'w') as tar:
@@ -690,7 +693,7 @@ class ContestRunner:
             replays_file_url = os.path.relpath(replays_archive_full_path, self.www_dir)  # stats-archive/stats_xxx.json
 
         # Process replays: compress and upload
-        logs_archive_name = 'logs_%s.tar' % self.contest_run_id
+        logs_archive_name = 'logs_%s.tar' % self.contest_timestamp_id
         logs_archive_name += '.gz' if self.compress_logs else ''
         logs_archive_full_path = os.path.join(self.logs_archive_dir, logs_archive_name)
         with tarfile.open(logs_archive_full_path, 'w:gz' if self.compress_logs else 'w') as tar:
@@ -706,7 +709,7 @@ class ContestRunner:
 
 
         # Store stats in a json file
-        stats_file_name = 'stats_%s.json' % self.contest_run_id  # stats_xxx.json
+        stats_file_name = 'stats_%s.json' % self.contest_timestamp_id  # stats_xxx.json
         stats_file_full_path = os.path.join(self.stats_archive_dir, stats_file_name) # www/stats-archive/stats_xxx.json
         stats_file_rel_path = os.path.relpath(stats_file_full_path, self.www_dir)
         with open(stats_file_full_path, "w") as f:
@@ -744,7 +747,7 @@ class ContestRunner:
         # req_file = TransferableFile(local_path=self.CORE_CONTEST_TEAM_ZIP_FILE, remote_path=self.CORE_CONTEST_TEAM_ZIP_FILE)
 
         replay_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.replay'.format(layout=layout,
-                                                                                        run_id=self.contest_run_id,
+                                                                                        run_id=self.contest_timestamp_id,
                                                                                         red_team_name=red_team_name,
                                                                                         blue_team_name=blue_team_name)
         ret_file = TransferableFile(local_path=os.path.join(self.TMP_REPLAYS_DIR, replay_file_name),
@@ -778,7 +781,7 @@ class ContestRunner:
                 sys.stdout.flush()
                 command = self._generate_command(red_team, blue_team, layout)
                 logging.info(command)
-                exit_code, output = commands.getstatusoutput('cd %s && %s' % (self.TMP_CONTEST_DIR, command))
+                exit_code, output = subprocess.getstatusoutput('cd %s && %s' % (self.TMP_CONTEST_DIR, command))
                 self._analyse_output(red_team, blue_team, layout, exit_code, output)
         self._calculate_team_stats()
 
@@ -807,7 +810,7 @@ class ContestRunner:
 
     def _calculate_team_stats(self):
         """
-        Compute ladder and create html with results. The html is saved in results_<run_id>/results.html.
+        Compute ladder and create html with results. The html is saved in results_<contest_timestamp_id>/results.html.
         """
         for team, scores in iteritems(self.ladder):
             wins = 0
@@ -872,15 +875,14 @@ if __name__ == '__main__':
                   key_filename=w['private_key_file'], key_password=w['private_key_password']) for w in workers_details]
     del settings['workers_file']
 
-    html_generator = HtmlGenerator(settings['www_dir'], settings['organizer'])
-    del settings['organizer']
 
     logging.info("Will create contest runner with options: {}".format(settings))
     runner = ContestRunner(**settings)  # Setup ContestRunner
     runner.run_contest_remotely(hosts)  # Now run ContestRunner with the hosts!
 
     stats_file_url, replays_file_url, logs_file_url = runner.store_results()
-    html_generator.add_run(runner.contest_run_id, stats_file_url, replays_file_url, logs_file_url)
+    html_generator = HtmlGenerator(settings['www_dir'], settings['organizer'])
+    html_generator.add_run(runner.contest_timestamp_id, stats_file_url, replays_file_url, logs_file_url)
     logging.info("Web pages generated. Now cleaning up and closing... Thank you!")
 
     runner.clean_up()

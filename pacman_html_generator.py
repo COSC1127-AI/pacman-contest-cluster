@@ -190,6 +190,14 @@ class HtmlGenerator:
         team_stats = data['team_stats']
         random_layouts = data['random_layouts']
         fixed_layouts = data['fixed_layouts']
+        if 'organizer' in data.keys():
+            organizer = data['organizer']
+        else:
+            organizer = None
+        if 'timestamp_id' in data.keys():
+            date_run = data['timestamp_id']
+        else:
+            date_run = run_id
 
         #  check if json data file contains the links to the replays and logs, if so, used them!
         if 'url_replays' in data:
@@ -213,7 +221,7 @@ class HtmlGenerator:
 
         if not os.path.exists(html_parent_path):
             os.makedirs(html_parent_path)
-        run_html = self._generate_output(run_id, games, team_stats, random_layouts, fixed_layouts, max_steps,
+        run_html = self._generate_output(run_id, date_run, organizer, games, team_stats, random_layouts, fixed_layouts, max_steps,
                                          stats_file_url, replays_file_url, logs_file_url)
 
         html_full_path = os.path.join(html_parent_path, 'results.html')
@@ -242,17 +250,22 @@ class HtmlGenerator:
         with open(os.path.join(self.www_dir, 'index.html'), "w") as f:
             print(main_html, file=f)
 
-    def _generate_output(self, run_id, games, team_stats, random_layouts, fixed_layouts, max_steps,
+    def _generate_output(self, run_id, date_run, organizer, games, team_stats, random_layouts, fixed_layouts, max_steps,
                          stats_url, replays_url, logs_url):
         """
         Generates the HTML of the report of the run.
         """
 
+        if organizer is None:
+            organizer = self.organizer
+
         output = """<html><head><title>Results for the tournament round</title>"""
         output += """<link rel="stylesheet" type="text/css" href="../style.css"/></head>"""
         output += """<body><h1>PACMAN Capture the Flag Tournament</h1>"""
-        output += """<body><h2>Tournament Organizer: %s </h1>""" % self.organizer
-        output += """<body><h2>Date of Tournament: %s </h1>""" % run_id
+        output += """<body><h2>Tournament Organizer: %s </h1>""" % organizer
+        if not run_id == date_run:
+            output += """<body><h2>Name of Tournament: %s </h1>""" % run_id
+        output += """<body><h2>Date of Tournament: %s </h1>""" % date_run
 
         output += """<h2>Configuration: %d teams in %d (%d fixed + %d random) layouts for %d steps</h2>""" \
                   % (len(team_stats), len(fixed_layouts) + len(random_layouts), len(fixed_layouts), len(random_layouts),
@@ -403,11 +416,14 @@ if __name__ == '__main__':
         replays_url = os.path.relpath(replays_url, www_dir) if replays_url else None
         logs_url = os.path.relpath(logs_url, www_dir) if logs_url else None
 
+        # Process each .json stat file - 1 per contest ran
         for stats_file_name in all_files:
             match = pattern.match(stats_file_name)
             if not match:
                 continue
+            # Extract the id for that particular content from the stat file stats_<ID-TIMESTAMP>
             run_id = match.group(1)
+
             replays_file_name = 'replays_%s.tar' % run_id
             logs_file_name = 'logs_%s.tar' % run_id
 
