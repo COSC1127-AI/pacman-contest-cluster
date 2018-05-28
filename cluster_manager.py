@@ -235,7 +235,8 @@ def report_progress_bytes_transfered(xfer, to_be_xfer, job_id):
 
 
 def report_match(job):
-    return job.id[0][0] + " vs " + job.id[1][0] + " in map " + job.id[2]
+    return job.id
+    return job.data[0][0] + " vs " + job.data[1][0] + " in map " + job.data[2]  # this is particular to games
 
 
 def _rmdir(sftp, path):
@@ -260,7 +261,7 @@ def run_job_on_worker(worker, job):
     instance_id = '{}-{}'.format(job.id.replace(' ','_'), datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
     dest_dir = '/tmp/cluster_instance_{}'.format(instance_id)
 
-    logging.info('ABOUT TO PLAY GAME in host %s (%s): %s' % (worker.hostname, dest_dir, report_match(job)))
+    logging.info('ABOUT TO RUN JOB in host %s (%s): %s' % (worker.hostname, dest_dir, report_match(job)))
     sftp = worker.open_sftp()
     try:
         sftp.mkdir(dest_dir)
