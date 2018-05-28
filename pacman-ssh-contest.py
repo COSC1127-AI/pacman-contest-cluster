@@ -62,6 +62,7 @@ def default(str):
 def load_settings():
     DEFAULT_MAX_STEPS = 1200
     DEFAULT_FIXED_LAYOUTS = 3
+    DEFAULT_LAYOUTS_ZIP_FILE = 'layouts.zip'
     DEFAULT_RANDOM_LAYOUTS = 3
     DEFAULT_CONFIG_FILE = 'config.json'
 
@@ -138,6 +139,11 @@ def load_settings():
         '--no-fixed-layouts',
         help='number of (random) layouts to use from a given fix set (default: %(default)s).',
         default=DEFAULT_FIXED_LAYOUTS,
+    )
+    parser.add_argument(
+        '--fixed-layouts-file',
+        help='zip file where all fixed layouts are stored (default: %(default)s).',
+        default=DEFAULT_LAYOUTS_ZIP_FILE,
     )
     parser.add_argument(
         '--no-random-layouts',
@@ -240,6 +246,7 @@ def load_settings():
         settings['upload_logs'] = args.upload_logs
 
     settings['allow_non_registered_students'] = args.allow_non_registered_students
+    settings['fixed_layouts_file'] = args.fixed_layouts_file
 
     missing_parameters = set({}) - set(settings.keys())
     if missing_parameters:
@@ -279,7 +286,6 @@ class ContestRunner:
     TMP_LOGS_DIR = os.path.join(TMP_DIR, 'logs-run')
 
     CONTEST_ZIP_FILE = 'contest.zip'
-    LAYOUTS_ZIP_FILE = 'layouts.zip'
     STAFF_TEAM_ZIP_FILE = ['staff_team_basic.zip', 'staff_team_medium.zip', 'staff_team_top.zip']
     STAFF_TEAM_FILENAME_PATTERN = re.compile(r'^staff\_team\_.+\.zip$')
     TEAMS_SUBDIR = 'teams'
@@ -292,7 +298,7 @@ class ContestRunner:
     # submissions folder format: s???????[_datetime]
     # datetime in ISO8601 format:  https://en.wikipedia.org/wiki/ISO_8601
     def __init__(self, organizer, teams_root, include_staff_team, staff_teams_dir, compress_logs,
-                 max_steps, no_fixed_layouts, no_random_layouts, team_names_file,
+                 max_steps, no_fixed_layouts, fixed_layouts_file, no_random_layouts, team_names_file,
                  allow_non_registered_students, ignore_file_name_format, www_dir,
                  stats_archive_dir=None, logs_archive_dir=None, replays_archive_dir=None,
                  upload_replays=False, upload_logs=False):
@@ -324,13 +330,13 @@ class ContestRunner:
             logging.error('File %s could not be found. Aborting.' % self.CONTEST_ZIP_FILE)
             sys.exit(1)
 
-        if not os.path.exists(self.LAYOUTS_ZIP_FILE):
-            logging.error('File %s could not be found. Aborting.' % self.LAYOUTS_ZIP_FILE)
+        if not os.path.exists(fixed_layouts_file):
+            logging.error('File %s could not be found. Aborting.' % fixed_layouts_file)
             sys.exit(1)
 
         # Setup Pacman CTF environment by extracting it from a clean zip file
         self.layouts = None
-        self._prepare_platform(self.CONTEST_ZIP_FILE, self.LAYOUTS_ZIP_FILE, self.TMP_CONTEST_DIR, no_fixed_layouts,
+        self._prepare_platform(self.CONTEST_ZIP_FILE, fixed_layouts_file, self.TMP_CONTEST_DIR, no_fixed_layouts,
                                no_random_layouts)
 
         # Setup all of the TEAMS
