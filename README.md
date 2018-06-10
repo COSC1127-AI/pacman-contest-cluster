@@ -1,8 +1,10 @@
-# PACMAN CONQUER THE FLAG - CONTEST SUPPORT SCRIPT #
+# PACMAN CAPTURE THE FLAG - CONTEST SUPPORT SCRIPT #
 
-This script can be used to run a Berkley Pacman Conquer the Flag Contest (http://ai.berkeley.edu/contest.html)
+This script can be used to run a Berkley Pacman Conquer the Flag Contest (http://ai.berkeley.edu/contest.html).
 
-Developed for RMIT COSC1125/1127 AI course in 2017 (lecturer A/Prof. Sebastian Sardina; support: Marco Tamassia), based on an original script from Dr. Nir Lipovetzky developed for UNIMELB COMP90054 AI course in 2014, and adapted in 2017 to work at Unimelb after RMIT refactoring and extensions.
+Designed & developed for RMIT COSC1125/1127 AI course in 2017 by lecturer A/Prof. Sebastian Sardina (with programming support by Marco Tamassia), 
+based on an original script from Dr. Nir Lipovetzky developed for UNIMELB COMP90054 AI course in 2014. 
+Since then, the tool has been continously improved and extended by Nir and Sebatsian to fit both subjects' needs.
 
 **CONTACT:** Sebastian Sardina (ssardina@gmail.com) and Nir Lipovetzky (nirlipo@gmail.com)
 
@@ -13,9 +15,11 @@ Developed for RMIT COSC1125/1127 AI course in 2017 (lecturer A/Prof. Sebastian S
 
 ## OVERVIEW ##
 
-This system allows to run a full Pacman Conquer the Flag tournament among many teams using a cluster of machines. This means that it allows to run many games at the same time, depending how many total cpu cores are available.
+This system allows to run a full Pacman Capture the Flag tournament among many teams using a cluster of machines. 
+This means that it allows to run many games at the same time, depending how many total cpu cores are available.
 
-The system takes the set of teams, set of workers in a cluster, and tournament configuration (which layouts and how many steps per game), runs games for every pair of teams and layouts, and produces files and html web page with the results.
+The system takes the set of teams, set of workers in a cluster, and tournament configuration (which layouts and how many steps per game), 
+runs games for every pair of teams and layouts (round-robin type of tournament), and produces files and html web page with the results.
 
 The system contains two main scripts:
 
