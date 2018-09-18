@@ -78,7 +78,8 @@ def load_settings():
                     'if they have to be updated.\n'
                     '\n'
                     'The script was developed for RMIT COSC1125/1127 AI course in 2017 (A/Prof. Sebastian Sardina), '
-                    'and is based on an original script from Dr. Nir Lipovetzky.'
+                    'and is based on an original script from Dr. Nir Lipovetzky for UoM COMP90054.'
+                    'From 2017 both have been developing futher this tool.'
     )
 
     parser.add_argument(

@@ -4,3 +4,4 @@ future
 iso8601
 pytz
 tabulate
+gitpython
