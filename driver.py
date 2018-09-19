@@ -7,7 +7,8 @@ import argparse
 import datetime
 from scp import SCPClient
 
-
+import subprocess
+import re
 import shutil
 import csv
 import logging
@@ -28,7 +29,8 @@ It also produces a file submission_timestamp.csv with all timestamp of the tag f
 """
 class GitSubmissions():
 
-    def __init__(self):
+    def __init__(self, username, password):
+        self.use_git_ssh = False
         self.min_teams_for_competition = 5
         self.competition_is_on = False
         self.add_timestamps = True
@@ -38,6 +40,9 @@ class GitSubmissions():
         self.timestamps_file = 'submission_logs/submissions_timestamps_{}.csv'.format(time.strftime('%-d_%-m_%Y_%-H_%-M_%-S', time.localtime() ))
         logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO, datefmt='%a, %d %b %Y %H:%M:%S')
         self.logging = logging.getLogger()
+        self.username = username
+        self.password = password
+
         
     def clone_repos( self, team_csv_file ):
         
@@ -74,15 +79,36 @@ class GitSubmissions():
         team_missing = []
         team_unchanged = []
         team_updated = []
+        team_names_set = set()
         for c, row in enumerate(list_teams, 1):
             print('\n')
             self.logging.info('Processing {}/{} team **{}** in git url {}.'.format(c, no_teams, row['TEAM'], row['GitLab SSH repository link']))
 
-            team_name = row['TEAM']
+            #Remove spaces and strip bad characters
+            team_name = row['TEAM'].replace(' ', '-').rstrip()
+            re.sub(r'\W+', '',team_name)
+
+            #Check if the name exists, if so, add the student numbers
+            if team_name in team_names_set:
+                team_name = "{}-{}-{}-{}".format(team_name,row['Student number of member 1'],row['Student number of member 2'],row['Student number of member 3'])
+                if row['Student number of member 4 (if any)'] != '':
+                    team_name = "{}-{}".format(team_name,row['Student number of member 4 (if any)'])
+
+            team_names_set.add(team_name)
+                        
+            
             git_url = row['GitLab SSH repository link']
+            if self.use_git_ssh is False:
+                if self.username is not None:
+                    git_url_rebase = row['GitLab repository link'].split('://')
+                    git_url = "{}://{}:{}@{}".format(git_url_rebase[0],self.username,self.password,git_url_rebase[1])
+                else:
+                    git_url = row['GitLab repository link']
+
+                
             git_local_dir = os.path.join(self.output_folder, team_name)
 
-
+            #time.sleep(1) # Time in seconds.
             if not os.path.exists(git_local_dir):   # if there is already a local repo for the team
                 print('\t Trying to clone NEW team repo from URL {}.'.format(git_url))
                 try:
@@ -95,9 +121,15 @@ class GitSubmissions():
                 except KeyboardInterrupt:
                     self.logging.warning('Script terminated via Keyboard Interrupt; finishing...')
                     sys.exit("keyboard interrupted!")
+                    
                 submission_time, submission_commit, tagged_time = self.get_tag_time(repo, self.submission_tag)
-                print('\t\t Team {} cloned successfully with tag date {}.'.format(team_name, submission_time))
-                team_new.append(team_name)
+
+                if submission_commit is None:
+                    team_missing.append(team_name)                    
+                    print('\t\t Team {} is Missing the tag {}.'.format(team_name, self.submission_tag))
+                else:
+                    print('\t\t Team {} cloned successfully with tag date {}.'.format(team_name, submission_time))
+                    team_new.append(team_name)
             else:   # OK, so there is already a directory for this team in local repo, check if there is an update
                 try:
                     # First get the timestamp of the local repository for the team
@@ -176,9 +208,9 @@ class GitSubmissions():
     def get_tag_time(self, repo, tag_str):
         tag = next((tag for tag in repo.tags if tag.name == tag_str), None)
 
-        # tag_commit = next((tag.commit for tag in repo.tags if tag.name == tag_str), None)
+        # tag_commit = next((tag.commit for tag in repo.tags if tag.name == tag_str), None)        
         if tag is None:
-            return None
+            return None,None,None
         else:
             tag_commit = tag.commit
             tag_commit_date = time.localtime(tag_commit.committed_date)
@@ -275,8 +307,8 @@ if __name__ == '__main__':
     parser.add_argument('--dest-www',  help='Destination folder to publish www data in a web server. (it is recommended to map a web-server folder using smb)', nargs='?' )
 
     server_group = parser.add_argument_group('Download submission from a server using ssh connections', 'Submission options')
-    server_group.add_argument('--username',  help='username for --teams-server-url', nargs='?' )
-    server_group.add_argument('--password',  help='password for --teams-server-url', nargs='?' )
+    server_group.add_argument('--username',  help='username for --teams-server-url or for https git connection', nargs='?' )
+    server_group.add_argument('--password',  help='password for --teams-server-url or for https git connection', nargs='?' )
     server_group.add_argument('--teams-server-folder',  help='folder containing all the teams submitted at the server specified at --teams-server-name', nargs='?' )
     server_group.add_argument('--teams-server-url',  help='server address containing the teams submitted', nargs='?' )
 
@@ -317,7 +349,11 @@ if __name__ == '__main__':
 
     if 'teams_git_csv' in args:
 
-        git_run = GitSubmissions()
+        username = args['username']
+        password = args['password']
+        
+        git_run = GitSubmissions( username, password )
+        
         git_run.clone_repos( args['teams_git_csv'] )
 
         '''
