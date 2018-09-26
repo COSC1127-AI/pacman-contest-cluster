@@ -31,7 +31,7 @@ class GitSubmissions():
 
     def __init__(self, username, password):
         self.use_git_ssh = False
-        self.min_teams_for_competition = 5
+        self.min_teams_for_competition = 1
         self.competition_is_on = False
         self.add_timestamps = True
         self.submission_tag = 'submission-contest'
@@ -384,6 +384,11 @@ if __name__ == '__main__':
                     print( "mv %s %s"%(fullpathslash,fullpathclean))
 
                 retval = os.getcwd()
+                if os.path.isdir('{}/pacman-contest/'.format(fullpathclean)) is False:
+                    fullpathclean+='/comp90054-pacman'
+                if os.path.isdir('{}/pacman-contest/'.format(fullpathclean)) is False:
+                    print('Incorrect folder structure {}. Cannot find submission folder'.format(fullpathclean))
+                    continue
                 os.chdir('{}/pacman-contest/'.format(fullpathclean))
                 print('cd {}/pacman-contest/'.format(fullpathclean))
                 os.system('zip -r {}/{}.zip *'.format(retval,fullpathclean))
