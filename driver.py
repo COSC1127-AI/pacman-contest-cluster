@@ -82,7 +82,7 @@ class GitSubmissions():
         team_names_set = set()
         for c, row in enumerate(list_teams, 1):
             print('\n')
-            self.logging.info('Processing {}/{} team **{}** in git url {}.'.format(c, no_teams, row['TEAM'], row['GitLab SSH repository link']))
+            self.logging.info('Processing {}/{} team **{}** in git url {}.'.format(c, no_teams, row['TEAM'], row['GitLab HTTPS repository link']))
 
             #Remove spaces and strip bad characters
             team_name = row['TEAM'].replace(' ', '-').rstrip()
@@ -100,11 +100,14 @@ class GitSubmissions():
             git_url = row['GitLab SSH repository link']
             if self.use_git_ssh is False:
                 if self.username is not None:
-                    git_url_rebase = row['GitLab repository link'].split('://')
+                    git_url_rebase = row['GitLab HTTPS repository link'].split('://')
                     git_url = "{}://{}:{}@{}".format(git_url_rebase[0],self.username,self.password,git_url_rebase[1])
+                    #If students forgot to enter .git at the end of the address, just append it.
+                    if git_url.endswith(".git") is False:
+                        git_url+=".git"
                 else:
                     git_url = row['GitLab repository link']
-
+                   
                 
             git_local_dir = os.path.join(self.output_folder, team_name)
 
