@@ -400,7 +400,7 @@ class CaptureRules:
             redCount += agentState.numReturned
           else:
             blueCount += agentState.numReturned
-        
+
         if blueCount >= foodToWin:#state.getRedFood().count() == MIN_FOOD:
           print 'The Blue team has returned at least %d of the opponents\' dots.' % foodToWin
         elif redCount >= foodToWin:#state.getBlueFood().count() == MIN_FOOD:
@@ -802,8 +802,13 @@ def readCommand( argv ):
                     help='Fixes the random seed to always play the same game', default=False)
   parser.add_option('--record', action='store_true',
                     help='Writes game histories to a file (named by the time they were played)', default=False)
+
+  parser.add_option('--recordLog', action='store_true',
+                    help='Writes game log  to a file (named by the time they were played)', default=False)
   parser.add_option('--replay', default=None,
                     help='Replays a recorded game file.')
+  parser.add_option('--replayq', default=None,
+                    help='Replays a recorded game file without display to generate result log.')
   parser.add_option('--delay-step', type='float', dest='delay_step',
                     help=default('Delay step in a play or replay.'), default=0.03)
   parser.add_option('-x', '--numTraining', dest='numTraining', type='int',
@@ -822,7 +827,7 @@ def readCommand( argv ):
   if options.textgraphics:
     import textDisplay
     args['display'] = textDisplay.PacmanGraphics()
-  elif options.quiet:
+  elif options.quiet or options.replayq:
     import textDisplay
     args['display'] = textDisplay.NullGraphics()
   elif options.super_quiet:
@@ -843,6 +848,10 @@ def readCommand( argv ):
 
   if options.fixRandomSeed: random.seed('cs188')
 
+  if options.recordLog:
+    sys.stdout = open('log-0', 'w')
+    sys.stderr = sys.stdout
+    
   # Special case: recorded games don't use the runGames method or args structure
   if options.replay != None:
     print 'Replaying recorded game %s.' % options.replay
@@ -852,6 +861,20 @@ def readCommand( argv ):
     recorded['delay'] = options.delay_step
     recorded['redTeamName'] = options.red
     recorded['blueTeamName'] = options.blue
+
+    replayGame(**recorded)
+    sys.exit(0)
+
+  # Special case: recorded games don't use the runGames method or args structure
+  if options.replayq != None:
+    print 'Replaying recorded game %s.' % options.replay
+    import cPickle
+    recorded = cPickle.load(open(options.replayq))
+    recorded['display'] = args['display']
+    recorded['delay'] = 0.0
+    recorded['redTeamName'] = options.red
+    recorded['blueTeamName'] = options.blue
+    recorded['waitEnd'] = False
 
     replayGame(**recorded)
     sys.exit(0)
@@ -960,7 +983,7 @@ def loadAgents(isRed, factory, textgraphics, cmdLineArgs):
   indices = [2*i + indexAddend for i in range(2)]
   return createTeamFunc(indices[0], indices[1], isRed, **args)
 
-def replayGame( layout, agents, actions, display, length, redTeamName, blueTeamName, delay=1):
+def replayGame( layout, agents, actions, display, length, redTeamName, blueTeamName, waitEnd=True, delay=1):
     rules = CaptureRules()
     game = rules.newGame( layout, agents, display, length, False, False )
     state = game.state
@@ -977,14 +1000,40 @@ def replayGame( layout, agents, actions, display, length, redTeamName, blueTeamN
       rules.process(state, game)
       time.sleep(delay)
 
-    print("END")
-    try:
-      wait = input("PRESS ENTER TO CONTINUE")
-    except:
+    game.gameOver = True
+    if not game.rules.quiet:
+      redCount = 0
+      blueCount = 0
+      foodToWin = (TOTAL_FOOD/2) - MIN_FOOD
+      for index in range(state.getNumAgents()):
+        agentState = state.data.agentStates[index]
+        if index in state.getRedTeamIndices():
+          redCount += agentState.numReturned
+        else:
+          blueCount += agentState.numReturned
+
+      if blueCount >= foodToWin:#state.getRedFood().count() == MIN_FOOD:
+        print 'The Blue team has returned at least %d of the opponents\' dots.' % foodToWin
+      elif redCount >= foodToWin:#state.getBlueFood().count() == MIN_FOOD:
+        print 'The Red team has returned at least %d of the opponents\' dots.' % foodToWin
+      else:#if state.getBlueFood().count() > MIN_FOOD and state.getRedFood().count() > MIN_FOOD:
+        print 'Time is up.'
+        if state.data.score == 0: print 'Tie game!'
+        else:
+          winner = 'Red'
+          if state.data.score < 0: winner = 'Blue'
+          print 'The %s team wins by %d points.' % (winner, abs(state.data.score))
+
+    if waitEnd == True:
       print("END")
+      try:
+        wait = input("PRESS ENTER TO CONTINUE")
+      except:
+        print("END")
 
     display.finish()
 
+  
 def runGames( layouts, agents, display, length, numGames, record, numTraining, redTeamName, blueTeamName, muteAgents=False, catchExceptions=False, delay_step=0):
 
   rules = CaptureRules()
@@ -1035,6 +1084,7 @@ def save_score(game):
     with open('score', 'w') as f:
         print >>f, game.state.data.score
 
+    
 if __name__ == '__main__':
   """
   The main function called when pacman.py is run
