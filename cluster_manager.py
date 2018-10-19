@@ -165,11 +165,15 @@ def transfer_core_package(hostname, workers, required_files):
     # Find a worker for this hostname and transfer the required files to des_dir
     for worker in workers:
         if worker.hostname == hostname:
+            # clean temporary directory of worker
+            worker.exec_command('rm -rf /tmp/cluster_instance*')
+
+            logging.info("[START] CORE PACKAGE TRANSFERED TO HOST %s\n" % hostname)
             sftp = worker.open_sftp()
             for tf in required_files:
                 sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
             sftp.close()
-            logging.info("CORE PACKAGE TRANSFERED TO HOST %s\n" % hostname)
+            logging.info("[END] CORE PACKAGE TRANSFERED TO HOST %s\n" % hostname)
             break
     return
 

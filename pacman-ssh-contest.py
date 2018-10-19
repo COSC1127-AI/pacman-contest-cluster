@@ -142,6 +142,12 @@ def load_settings():
         default=DEFAULT_FIXED_LAYOUTS,
     )
     parser.add_argument(
+        '--fixed-layout-seeds',
+        help='Layout seeds for set of fixed layouts to use, 01-20. Ex. 01,02,16 (default: %(default)s).',
+        default='',
+    )
+
+    parser.add_argument(
         '--fixed-layouts-file',
         help='zip file where all fixed layouts are stored (default: %(default)s).',
         default=DEFAULT_LAYOUTS_ZIP_FILE,
@@ -150,6 +156,11 @@ def load_settings():
         '--no-random-layouts',
         help='number of random layouts to use (default: %(default)s).',
         default=DEFAULT_RANDOM_LAYOUTS,
+    )
+    parser.add_argument(
+        '--random-seeds',
+        help='random seeds for random layouts to use. Ex. 1,2,3 (default: %(default)s).',
+        default='',
     )
     parser.add_argument(
         '--allow-non-registered-students',
@@ -232,8 +243,12 @@ def load_settings():
 
     if args.no_fixed_layouts:
         settings['no_fixed_layouts'] = int(args.no_fixed_layouts)
+    if args.fixed_layout_seeds:
+        settings['fixed_layout_seeds'] = [int(x) for x in args.fixed_layout_seeds.split(',')]
     if args.no_random_layouts:
         settings['no_random_layouts'] = int(args.no_random_layouts)
+    if args.random_seeds:
+        settings['random_seeds'] = [int(x) for x in args.random_seeds.split(',')]
     if args.max_steps:
         settings['max_steps'] = int(args.max_steps)
     elif 'max_steps' not in set(settings.keys()):
@@ -299,7 +314,8 @@ class ContestRunner:
     # submissions folder format: s???????[_datetime]
     # datetime in ISO8601 format:  https://en.wikipedia.org/wiki/ISO_8601
     def __init__(self, organizer, teams_root, include_staff_team, staff_teams_dir, compress_logs,
-                 max_steps, no_fixed_layouts, fixed_layouts_file, no_random_layouts, team_names_file,
+                 max_steps, no_fixed_layouts, fixed_layout_seeds, random_seeds,
+                 fixed_layouts_file, no_random_layouts, team_names_file,
                  allow_non_registered_students, ignore_file_name_format, www_dir,
                  stats_archive_dir=None, logs_archive_dir=None, replays_archive_dir=None,
                  upload_replays=False, upload_logs=False):
@@ -338,7 +354,7 @@ class ContestRunner:
         # Setup Pacman CTF environment by extracting it from a clean zip file
         self.layouts = None
         self._prepare_platform(self.CONTEST_ZIP_FILE, fixed_layouts_file, self.TMP_CONTEST_DIR, no_fixed_layouts,
-                               no_random_layouts)
+                               no_random_layouts, fixed_layout_seeds, random_seeds)
 
         # Setup all of the TEAMS
         teams_dir = os.path.join(self.TMP_CONTEST_DIR, self.TEAMS_SUBDIR)
@@ -483,8 +499,7 @@ class ContestRunner:
 
         return score, winner, loser, bug
 
-    def _prepare_platform(self, contest_zip_file_path, layouts_zip_file_path, destination, no_fixed_layouts=5,
-                          no_random_layouts=3):
+    def _prepare_platform(self, contest_zip_file_path, layouts_zip_file_path, destination, no_fixed_layouts, no_random_layouts, fixed_layout_seeds, random_seeds):
         """
         Cleans the given destination directory and prepares a fresh setup to execute a Pacman CTF game within.
         Information on the layouts are saved in the member variable layouts.
@@ -504,15 +519,21 @@ class ContestRunner:
 
         # pick no_fixed_layouts layouts from the given set in the zip file
         layouts_available = [file_in_zip[:-4] for file_in_zip in layouts_zip_file.namelist()]
-        if no_fixed_layouts >= len(layouts_available):
+
+        if len(fixed_layout_seeds) > 0:
+            self.layouts = ['contest%dCapture'%x for x in fixed_layout_seeds ]  
+        elif no_fixed_layouts >= len(layouts_available):
             self.layouts = layouts_available
         else:
             self.layouts = random.sample(layouts_available, no_fixed_layouts)
 
         # add a no_random_layouts random layouts
-        if no_random_layouts > 0:
+        if len(fixed_layout_seeds) > 0:
+            self.layouts += ['RANDOM' + str(x) for x in random_seeds ]  
+        elif no_random_layouts > 0:
             list_random_layouts = ['RANDOM' + str(random.randint(1, 9999)) for _ in range(0, no_random_layouts)]
             self.layouts += list_random_layouts
+
 
     def _setup_team(self, submission_path, destination, ignore_file_name_format=False,
                     allow_non_registered_students=False):
@@ -595,7 +616,7 @@ class ContestRunner:
         (red_team_name, red_team_agent_factory) = red_team
         (blue_team_name, blue_team_agent_factory) = blue_team
         # TODO: make the -c an option at the meta level to "Catch exceptions and enforce time limits"
-        command = 'python2 capture.py -c -r "{red_team_agent_factory}" -b "{blue_team_agent_factory}" -l {layout} -i {steps} -q --record'.format(
+        command = 'python2 capture.py -c -r "{red_team_agent_factory}" -b "{blue_team_agent_factory}" -l {layout} -i {steps} -q --record --recordLog'.format(
             red_team_agent_factory=red_team_agent_factory, blue_team_agent_factory=blue_team_agent_factory,
             layout=layout, steps=self.max_steps)
         return command
@@ -611,11 +632,19 @@ class ContestRunner:
         log_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.log'.format(
             layout=layout, run_id=self.contest_timestamp_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
         # results/results_<run_id>/{red_team_name}_vs_{blue_team_name}_{layout}.log
-        with open(os.path.join(self.TMP_LOGS_DIR, log_file_name), 'w') as f:
-            try:
-                print(output.decode('utf-8'), file=f)
-            except:
-                print(output, file=f)
+        if output is not None:
+            with open(os.path.join(self.TMP_LOGS_DIR, log_file_name), 'w') as f:
+                try:
+                    print(output.decode('utf-8'), file=f)
+                except:
+                    print(output, file=f)
+
+        else:
+            with open(os.path.join(self.TMP_LOGS_DIR, log_file_name), 'r') as f:
+                try:
+                    output = f.read()
+                except:
+                    output = ''
 
         if exit_code == 0:
             pass
@@ -757,11 +786,18 @@ class ContestRunner:
                                                                                         run_id=self.contest_timestamp_id,
                                                                                         red_team_name=red_team_name,
                                                                                         blue_team_name=blue_team_name)
-        ret_file = TransferableFile(local_path=os.path.join(self.TMP_REPLAYS_DIR, replay_file_name),
-                                    remote_path=os.path.join(self.TMP_CONTEST_DIR, 'replay-0'))
+        
+        log_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.log'.format(
+            layout=layout, run_id=self.contest_timestamp_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
 
-        return Job(command=command, required_files=[], return_files=[ret_file], data=(red_team, blue_team, layout),
+        ret_file_replay = TransferableFile(local_path=os.path.join(self.TMP_REPLAYS_DIR, replay_file_name),
+                                    remote_path=os.path.join(self.TMP_CONTEST_DIR, 'replay-0'))
+        ret_file_log = TransferableFile(local_path=os.path.join(self.TMP_LOGS_DIR, log_file_name),
+                                    remote_path=os.path.join(self.TMP_CONTEST_DIR, 'log-0'))
+
+        return Job(command=command, required_files=[], return_files=[ ret_file_replay, ret_file_log ], data=(red_team, blue_team, layout),
                    id='{}-vs-{}-in-{}'.format(red_team_name, blue_team_name, layout))
+
 
     def _analyse_all_outputs(self, results):
         logging.info('About to analyze game result outputs. Number of result output to analyze: {}'.format(len(results)))
@@ -771,7 +807,7 @@ class ContestRunner:
                 print('Game {} VS {} in {} exited with code {} and here is the output:'.format(red_team[0],
                                                                                                blue_team[0], layout,
                                                                                                exit_code, output))
-            self._analyse_output(red_team, blue_team, layout, exit_code, output + error, total_secs_taken)
+            self._analyse_output(red_team, blue_team, layout, exit_code, None, total_secs_taken)
 
 
     def run_contest_local(self):
@@ -814,6 +850,29 @@ class ContestRunner:
         print('========================= GAMES FINISHED - NEXT ANALYSING OUTPUT OF GAMES ========================= ')
         self._analyse_all_outputs(results)
         self._calculate_team_stats()
+
+    def resume_contest_remotely(self, hosts):
+        self.prepare_dirs()
+
+        jobs = []
+        for red_team, blue_team in combinations(self.teams, r=2):
+            for layout in self.layouts:
+                jobs.append(self._generate_job(red_team, blue_team, layout))
+
+        #  This is the core package to be transferable to each host
+        core_req_file = TransferableFile(local_path=self.CORE_CONTEST_TEAM_ZIP_FILE,
+                                         remote_path=os.path.join('/tmp', self.CORE_CONTEST_TEAM_ZIP_FILE))
+
+        # create cluster with hots and jobs and run it by starting it, and then analyze output results
+        # results will contain all outputs from every game played
+        cm = ClusterManager(hosts, jobs, [core_req_file])
+        # sys.exit(0)
+        results = cm.start()
+
+        print('========================= GAMES FINISHED - NEXT ANALYSING OUTPUT OF GAMES ========================= ')
+        self._analyse_all_outputs(results)
+        self._calculate_team_stats()
+
 
     def _calculate_team_stats(self):
         """
@@ -864,6 +923,7 @@ class ContestRunner:
         return team_names
 
 
+
 if __name__ == '__main__':
     settings = load_settings()
 
@@ -885,7 +945,8 @@ if __name__ == '__main__':
 
     logging.info("Will create contest runner with options: {}".format(settings))
     runner = ContestRunner(**settings)  # Setup ContestRunner
-    runner.run_contest_remotely(hosts)  # Now run ContestRunner with the hosts!
+    #runner.run_contest_remotely(hosts)  # Now run ContestRunner with the hosts!
+    runner.resume_contest_remotely(hosts)  # Now run ContestRunner with the hosts!
 
     stats_file_url, replays_file_url, logs_file_url = runner.store_results()
     html_generator = HtmlGenerator(settings['www_dir'], settings['organizer'])
