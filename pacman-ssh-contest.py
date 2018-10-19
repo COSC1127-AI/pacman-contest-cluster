@@ -163,6 +163,12 @@ def load_settings():
         default='',
     )
     parser.add_argument(
+        '--resume-competition-folder',
+        help='directory containing the logs and replays from the last failed competition. Can be found in /tmp folder. Rename it to use the folder as an argument.',
+        default='',
+    )
+    
+    parser.add_argument(
         '--allow-non-registered-students',
         help='if passed and --team-names-file is given, students without a team are still allowed to participate',
         action='store_true',
@@ -188,6 +194,7 @@ def load_settings():
         action='store_true',
     )
 
+    
     args = parser.parse_args()
 
     # If no arguments are given, stop
@@ -218,6 +225,11 @@ def load_settings():
     if args.workers_file:
         settings['workers_file'] = args.workers_file
 
+    if args.resume_competition_folder:
+        settings['resume_competition_folder'] = args.resume_competition_folder
+    else:
+        settings['resume_competition_folder'] = ''
+        
     if args.staff_teams_dir:
         settings['staff_teams_dir'] = args.staff_teams_dir
         settings['include_staff_team'] = True
@@ -432,12 +444,13 @@ class ContestRunner:
         loser = None
         bug = False
         tied = False
-
+        totaltime = 0
 
         try:
             output = output.decode()    # convert byte into string
         except:
             pass    # it is already a string
+        
         if output.find("Traceback") != -1 or output.find("agent crashed") != -1:
             bug = True
             # if both teams fail to load, no one wins
@@ -485,6 +498,10 @@ class ContestRunner:
                     winner = None
                     loser = None
                     tied = True
+
+                if line.find("Total Time Game: ") != -1:
+                    totaltime = int(float(line.split('Total Time Game: ')[1].split(' ')[0]))
+
             # signal strange case where script was unable to find outcome of game - should never happen!
             if winner is None and loser is None and not tied:
                 logging.error(
@@ -497,7 +514,7 @@ class ContestRunner:
                 score = -1
                 # sys.exit(1)
 
-        return score, winner, loser, bug
+        return score, winner, loser, bug, totaltime
 
     def _prepare_platform(self, contest_zip_file_path, layouts_zip_file_path, destination, no_fixed_layouts, no_random_layouts, fixed_layout_seeds, random_seeds):
         """
@@ -653,7 +670,7 @@ class ContestRunner:
         else:
             print('Game Failed: Check log in {output_file}.'.format(output_file=log_file_name))
 
-        score, winner, loser, bug = self._parse_result(output, red_team_name, blue_team_name, layout)
+        score, winner, loser, bug, totaltime = self._parse_result(output, red_team_name, blue_team_name, layout)
 
         if winner is None:
             self.ladder[red_team_name].append(score)
@@ -671,9 +688,9 @@ class ContestRunner:
             # results/results_<contest_timestamp_id>/{red_team_name}_vs_{blue_team_name}_{layout}.replay
             shutil.move(replays[0], os.path.join(self.TMP_REPLAYS_DIR, replay_file_name))
         if not bug:
-            self.games.append((red_team_name, blue_team_name, layout, score, winner, total_secs_taken))
+            self.games.append((red_team_name, blue_team_name, layout, score, winner, totaltime))
         else:
-            self.games.append((red_team_name, blue_team_name, layout, self.ERROR_SCORE, winner, total_secs_taken))
+            self.games.append((red_team_name, blue_team_name, layout, self.ERROR_SCORE, winner, totaltime))
 
 
 
@@ -798,6 +815,22 @@ class ContestRunner:
         return Job(command=command, required_files=[], return_files=[ ret_file_replay, ret_file_log ], data=(red_team, blue_team, layout),
                    id='{}-vs-{}-in-{}'.format(red_team_name, blue_team_name, layout))
 
+    
+    # Generates a job to restore a game read_team vs blue_team in layout
+    def _generate_empty_job(self, red_team, blue_team, layout):
+        red_team_name, _ = red_team
+        blue_team_name, _ = blue_team
+
+        command = ''
+
+        # We used to transfer contest_and_teams.zip at every job, but not anymore
+        # we transfered it once at the start per machine, and just copy+unzip there directly
+        # req_file = TransferableFile(local_path=self.CORE_CONTEST_TEAM_ZIP_FILE, remote_path=self.CORE_CONTEST_TEAM_ZIP_FILE)
+
+
+        return Job(command=command, required_files=[], return_files=[  ], data=(red_team, blue_team, layout),
+                   id='{}-vs-{}-in-{}'.format(red_team_name, blue_team_name, layout))
+
 
     def _analyse_all_outputs(self, results):
         logging.info('About to analyze game result outputs. Number of result output to analyze: {}'.format(len(results)))
@@ -851,13 +884,29 @@ class ContestRunner:
         self._analyse_all_outputs(results)
         self._calculate_team_stats()
 
-    def resume_contest_remotely(self, hosts):
+    def resume_contest_remotely(self, hosts, resume_folder):
         self.prepare_dirs()
 
+        shutil.rmtree(self.TMP_LOGS_DIR)
+        shutil.copytree(resume_folder + 'logs-run', self.TMP_LOGS_DIR)
+        shutil.rmtree(self.TMP_REPLAYS_DIR)
+        shutil.copytree(resume_folder + 'replays-run', self.TMP_REPLAYS_DIR)
+        
         jobs = []
+        games_restored = 0
         for red_team, blue_team in combinations(self.teams, r=2):
             for layout in self.layouts:
-                jobs.append(self._generate_job(red_team, blue_team, layout))
+                red_team_name, _ = red_team
+                blue_team_name, _ = blue_team
+                log_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.log'.format(
+                    layout=layout, run_id=self.contest_timestamp_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
+
+                if os.path.isfile(os.path.join(self.TMP_LOGS_DIR, log_file_name)):
+                    games_restored += 1
+                    print( "{id} Game {log} restored".format(id=games_restored, log=log_file_name) )
+                    jobs.append(self._generate_empty_job(red_team, blue_team, layout))
+                else:
+                    jobs.append(self._generate_job(red_team, blue_team, layout))   
 
         #  This is the core package to be transferable to each host
         core_req_file = TransferableFile(local_path=self.CORE_CONTEST_TEAM_ZIP_FILE,
@@ -942,11 +991,17 @@ if __name__ == '__main__':
                   key_filename=w['private_key_file'], key_password=w['private_key_password']) for w in workers_details]
     del settings['workers_file']
 
-
+    
+    resume_competition_folder = settings['resume_competition_folder']
+    del settings['resume_competition_folder']
+    
     logging.info("Will create contest runner with options: {}".format(settings))
-    runner = ContestRunner(**settings)  # Setup ContestRunner
-    #runner.run_contest_remotely(hosts)  # Now run ContestRunner with the hosts!
-    runner.resume_contest_remotely(hosts)  # Now run ContestRunner with the hosts!
+    runner = ContestRunner(**settings)  # Setup ContestRunner    
+    
+    if resume_competition_folder != '':
+        runner.resume_contest_remotely(hosts, resume_competition_folder)  # Now run ContestRunner with the hosts!
+    else:
+        runner.run_contest_remotely(hosts)  # Now run ContestRunner with the hosts!
 
     stats_file_url, replays_file_url, logs_file_url = runner.store_results()
     html_generator = HtmlGenerator(settings['www_dir'], settings['organizer'])

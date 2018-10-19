@@ -1096,11 +1096,12 @@ if __name__ == '__main__':
 
   > python capture.py --help
   """
+  start_time = time.time()
   options = readCommand( sys.argv[1:] ) # Get game components based on input
   games = runGames(**options)
 
   save_score(games[0])
-
+  print '\nTotal Time Game: %s'% round(time.time() - start_time, 0)
   
   # import cProfile
   # cProfile.run('runGames( **options )', 'profile')
