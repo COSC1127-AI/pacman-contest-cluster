@@ -256,7 +256,7 @@ def load_settings():
     if args.no_fixed_layouts:
         settings['no_fixed_layouts'] = int(args.no_fixed_layouts)
     if args.fixed_layout_seeds:
-        settings['fixed_layout_seeds'] = [int(x) for x in args.fixed_layout_seeds.split(',')]
+        settings['fixed_layout_seeds'] = [str(x) for x in args.fixed_layout_seeds.split(',')]
     if args.no_random_layouts:
         settings['no_random_layouts'] = int(args.no_random_layouts)
     if args.random_seeds:
@@ -538,7 +538,14 @@ class ContestRunner:
         layouts_available = [file_in_zip[:-4] for file_in_zip in layouts_zip_file.namelist()]
 
         if len(fixed_layout_seeds) > 0:
-            self.layouts = ['contest%dCapture'%x for x in fixed_layout_seeds ]  
+            self.layouts = ['contest%sCapture'%x for x in fixed_layout_seeds ]
+
+            for l in self.layouts:
+                if l not in layouts_available:
+                    logging.error('File %s could not be found. Aborting.' % l)
+                    print ("Available Layouts: " + layouts_available)
+                    sys.exit(1)
+
         elif no_fixed_layouts >= len(layouts_available):
             self.layouts = layouts_available
         else:
