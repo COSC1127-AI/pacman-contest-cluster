@@ -133,7 +133,7 @@ Hence, user must provide:
 ## HOW THE SCRIPT WORKS ##
 
 
-### Main components: ###
+### Main components ###
 
 - `driver.py`: downloads teams from submissions server, runs `pacman-ssh-contest.py` and upload results into the web.
 - `pacman-ssh-contest.py`: main script
@@ -149,7 +149,7 @@ Hence, user must provide:
 - `TEAMS-STUDENT-MAPPING.csv`: example of a mapping file
 
 
-### Overview of marking process: ###
+### Overview of marking process ###
 
 1. The script authenticate to all workers.
 2. Then the script will collect all the teams. 
@@ -176,7 +176,7 @@ Hence, user must provide:
     
 
 
-### Example of a run: ###
+### Example run ###
 
 Using a csv file to specify team names, include staff teams:
 ````
@@ -193,7 +193,7 @@ python pacman-ssh-contest.py --compress-log \
 Collecting submitted files in teams, and using the zip filename as teamname, and uploading the replays file only into a sharing file service instead of your local directory:
 ````
 python pacman-ssh-contest.py --compress-log \
-        --organizer "RMIT COSC1125/1127 - Intro to AI" \
+        --organizer "UoM COMP90054/2018 - AI Planning" \
         --teams-root AI17-contest/teams/  \
         --www-dir www/ \
         --max-steps 1200 \
@@ -203,7 +203,64 @@ python pacman-ssh-contest.py --compress-log \
         --upload-www-replays
 ````
 
-### Example of generating web page from statistics: ###
+
+If you rather want to use a given set of seeds to specify a set of fixed layouts (look in folder [contest/layouts/](https://bitbucket.org/ssardina-teaching/pacman-contest/src/master/contest/layouts/)) and random layout seeds,
+use the following option:
+
+
+
+````
+--fixed-layout-seeds 16,02c,20 --random-seeds 7669,1332
+````
+
+instead of using:
+
+`````
+--no-fixed-layouts 5 --no-random-layouts 10 
+`````
+
+
+The competition would run with *contest\*\*Capture* fixed layouts and generate the random layouts with the given seeds.
+
+
+This option is very useful if you want to **repeat a specific competition**, or if your **competition fails** and teminates with only a subset of the games.
+
+
+### Example reusing a partial run ###
+
+If a run fails, all the logs generated so far can be found in the folder ``tmp\logs-run`` in your the local machine cloned repo.
+
+
+If you want to resume the competition, first copy the temporal files into a different temporal folder
+
+
+````
+mv tmp tmp-failed
+````
+
+
+then append this option to your script
+
+
+````
+--resume-competition-folder tmp-failed
+````
+
+
+and make sure to specify the same layout seeds used for the failed run. The command will reuse all the *logs* and *replays* from the *tmp-failed* folder.
+
+
+This option looks for all the ``logs`` and only runs games for the missing logs.
+
+
+### Example re-running only 1 team in a given competition ###
+
+
+If only 1 team or a subset of teams failed, you can load the new code of the team, remove all the logs from the temporal folder, and re-run the competition using the same method commeted above. It will only run the games for the logs you deleted.
+
+
+
+### Example generating web page from statistics ###
 
 Build web page in www/ from stats, replays, and logs dirs:
 ````
@@ -229,9 +286,9 @@ If you want to automate the tournament, use the `driver.py` provided. It has the
 
 ```
   --username [USERNAME]
-                        username for --teams-server-url
+                        username for --teams-server-url or for https git connection
   --password [PASSWORD]
-                        password for --teams-server-url
+                        password for --teams-server-url or for https git connection
   --dest-www [DEST_WWW]
                         Destination folder to publish www data in a web
                         server. (it is recommended to map a web-server folder
@@ -241,11 +298,21 @@ If you want to automate the tournament, use the `driver.py` provided. It has the
                         server specified at --teams-server-name
   --teams-server-url [TEAMS_SERVER_URL]
                         server address containing the teams submitted
+  --teams-git-csv [TEAMS_GIT_CSV] 
+                        CSV containining columns TEAM, 'GitLab SSH repository link' and 'GitLab https repository link' 
   --tournament-cmd [TOURNAMENT_CMD]
                         specify all the options to run pacman-ssh-contesy.py
   --cron-script-folder [CRON_SCRIPT_FOLDER]
                         specify the folder to the scripts in order to run cron
 ```
+
+You can run a competition using the following command:
+
+```
+ driver.py --dest-www '' --teams-git-csv xxx --tournament-cmd '--compress-log --organizer "UoM COMP90054/2018 - AI Planning" ...'
+```
+
+It uses a csv file with the links to github/bitbucket/gitlab or any git server containing the code of each team, and downloads the submissions that have the *tag submission-contest* (see [driver.py](https://bitbucket.org/ssardina-teaching/pacman-contest/src/634025cf462dfb379f9f9c96c9b87d7be9c0577d/driver.py#lines-37)).
 
 #### Test command to schedule ####
 
