@@ -326,9 +326,10 @@ class ContestRunner:
     # submissions folder format: s???????[_datetime]
     # datetime in ISO8601 format:  https://en.wikipedia.org/wiki/ISO_8601
     def __init__(self, organizer, teams_root, include_staff_team, staff_teams_dir, compress_logs,
-                 max_steps, no_fixed_layouts, fixed_layout_seeds, random_seeds,
+                 max_steps, no_fixed_layouts,
                  fixed_layouts_file, no_random_layouts, team_names_file,
                  allow_non_registered_students, ignore_file_name_format, www_dir,
+                 fixed_layout_seeds=[], random_seeds=[],
                  stats_archive_dir=None, logs_archive_dir=None, replays_archive_dir=None,
                  upload_replays=False, upload_logs=False):
 
@@ -516,7 +517,7 @@ class ContestRunner:
 
         return score, winner, loser, bug, totaltime
 
-    def _prepare_platform(self, contest_zip_file_path, layouts_zip_file_path, destination, no_fixed_layouts, no_random_layouts, fixed_layout_seeds, random_seeds):
+    def _prepare_platform(self, contest_zip_file_path, layouts_zip_file_path, destination, no_fixed_layouts, no_random_layouts, fixed_layout_seeds=[], random_seeds=[]):
         """
         Cleans the given destination directory and prepares a fresh setup to execute a Pacman CTF game within.
         Information on the layouts are saved in the member variable layouts.
