@@ -12,7 +12,7 @@ The script was developed for RMIT COSC1125/1127 AI course in Semester 1, 2017 by
 student Marco Tamassia. The script is in turn based on an original script from Dr. Nir Lipovetzky.
 """
 #from __future__ import print_function
-from sqlalchemy.sql.functions import random
+# from sqlalchemy.sql.functions import random
 
 __author__ = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
 __copyright__ = "Copyright 2017-2018"
