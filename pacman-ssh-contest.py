@@ -367,7 +367,21 @@ class ContestRunner:
         self._prepare_platform(self.CONTEST_ZIP_FILE, fixed_layouts_file, self.TMP_CONTEST_DIR, no_fixed_layouts,
                                no_random_layouts, fixed_layout_seeds, random_seeds)
 
-        # Setup all of the TEAMS
+        # Report layouts to be played, fixed and random (with seeds)
+        logging.info('Layouts to be played: %s' % self.layouts)
+        random_layouts_selected = set([x for x in self.layouts if re.compile(r'RANDOM[0-9]*').match(x)])
+        fixed_layouts_selected = self.layouts.difference(random_layouts_selected)
+
+        seeds_strings = [m.group(1) for m in (re.compile(r'RANDOM([0-9]*)').search(layout) for layout in random_layouts_selected)
+                 if m]
+        seeds = list(map(lambda x: int(x), seeds_strings))
+        logging.info('Seeds for RANDOM layouts to be played: %s' % seeds)
+        logging.info('Seeds for FIXED layouts to be played: %s' % ','.join(fixed_layouts_selected))
+
+
+        exit(0)
+
+            # Setup all of the TEAMS
         teams_dir = os.path.join(self.TMP_CONTEST_DIR, self.TEAMS_SUBDIR)
         if os.path.exists(teams_dir):
             shutil.rmtree(teams_dir)
