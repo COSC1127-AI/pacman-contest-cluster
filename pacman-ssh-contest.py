@@ -12,6 +12,7 @@ The script was developed for RMIT COSC1125/1127 AI course in Semester 1, 2017 by
 student Marco Tamassia. The script is in turn based on an original script from Dr. Nir Lipovetzky.
 """
 #from __future__ import print_function
+from sqlalchemy.sql.functions import random
 
 __author__ = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
 __copyright__ = "Copyright 2017-2018"
@@ -143,10 +144,8 @@ def load_settings():
     )
     parser.add_argument(
         '--fixed-layout-seeds',
-        help='Layout seeds for set of fixed layouts to use, 01-20. Ex. 01,02,16 (default: %(default)s).',
-        default='',
+        help='Name of fixed layouts to be included separated by commas, e.g., contest02cCapture,contest12Capture.',
     )
-
     parser.add_argument(
         '--fixed-layouts-file',
         help='zip file where all fixed layouts are stored (default: %(default)s).',
@@ -159,8 +158,7 @@ def load_settings():
     )
     parser.add_argument(
         '--random-seeds',
-        help='random seeds for random layouts to use. Ex. 1,2,3 (default: %(default)s).',
-        default='',
+        help='random seeds for random layouts to use, separated by commas. Eg. 1,2,3.',
     )
     parser.add_argument(
         '--resume-competition-folder',
@@ -256,7 +254,7 @@ def load_settings():
     if args.no_fixed_layouts:
         settings['no_fixed_layouts'] = int(args.no_fixed_layouts)
     if args.fixed_layout_seeds:
-        settings['fixed_layout_seeds'] = [int(x) for x in args.fixed_layout_seeds.split(',')]
+        settings['fixed_layout_seeds'] = [x for x in args.fixed_layout_seeds.split(',')]
     if args.no_random_layouts:
         settings['no_random_layouts'] = int(args.no_random_layouts)
     if args.random_seeds:
@@ -535,22 +533,42 @@ class ContestRunner:
         layouts_zip_file = zipfile.ZipFile(layouts_zip_file_path)
         layouts_zip_file.extractall(os.path.join(self.TMP_CONTEST_DIR, 'layouts'))
 
-        # pick no_fixed_layouts layouts from the given set in the zip file
-        layouts_available = [file_in_zip[:-4] for file_in_zip in layouts_zip_file.namelist()]
+        # Pick no_fixed_layouts layouts from the given set in the layout zip file
+        #   if layout seeds have been given use them
+        layouts_available = set([file_in_zip[:-4] for file_in_zip in layouts_zip_file.namelist()])
+        fixed_layout_seeds = set(fixed_layout_seeds)
+        random_seeds = set(random_seeds)
 
-        if len(fixed_layout_seeds) > 0:
-            self.layouts = ['contest%dCapture'%x for x in fixed_layout_seeds ]  
-        elif no_fixed_layouts >= len(layouts_available):
-            self.layouts = layouts_available
-        else:
-            self.layouts = random.sample(layouts_available, no_fixed_layouts)
+        if no_fixed_layouts > len(layouts_available):
+            logging.error(
+                'There are not enough fixed layout (asked for %d layouts, but there are only %d).' % (
+                no_fixed_layouts, len(layouts_available)))
+            exit(1)
+        if len(fixed_layout_seeds) > no_fixed_layouts:
+            logging.error(
+                'Too many fixed seeds layouts selected (%d) for a total of %d fixed layouts requested to play.' % (
+                    len(fixed_layout_seeds), no_fixed_layouts))
+            exit(1)
+        if not fixed_layout_seeds.issubset(layouts_available):  # NOT empty, list of layouts provided
+            logging.error('There are fixed layout seeds  that are not available: %s.' % fixed_layout_seeds.difference(
+                layouts_available))
+            exit(1)
 
-        # add a no_random_layouts random layouts
-        if len(fixed_layout_seeds) > 0:
-            self.layouts += ['RANDOM' + str(x) for x in random_seeds ]  
-        elif no_random_layouts > 0:
-            list_random_layouts = ['RANDOM' + str(random.randint(1, 9999)) for _ in range(0, no_random_layouts)]
-            self.layouts += list_random_layouts
+        # assign the set of fixed layouts to be used: the seeds given and complete with random picks from available
+        self.layouts = fixed_layout_seeds.union(
+            random.sample(layouts_available.difference(fixed_layout_seeds), no_fixed_layouts - len(fixed_layout_seeds)))
+
+        # Next, pick the random layouts, and included all the seeds provided if any
+        if len(random_seeds) > no_random_layouts:
+            logging.error(
+                'Too many random seeds layouts selected (%d) for a total of %d random layouts requested to play.' % (
+                    len(fixed_layout_seeds), no_fixed_layouts))
+            exit(1)
+
+        # complete the mising random layouts
+        self.layouts = self.layouts.union(set(['RANDOM%s' % x for x in random_seeds])) # add random seeds given, if any
+        while len(self.layouts) < no_random_layouts + no_fixed_layouts:
+            self.layouts.add('RANDOM%s' % str(random.randint(1, 9999)))
 
 
     def _setup_team(self, submission_path, destination, ignore_file_name_format=False,

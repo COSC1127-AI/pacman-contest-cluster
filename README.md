@@ -210,20 +210,15 @@ use the following option:
 
 
 ````
---fixed-layout-seeds 16,02c,20 --random-seeds 7669,1332
+--fixed-layout-seeds contest05Capture,contest16Capture,contest20Capture --random-seeds 7669,1332
 ````
 
-instead of using:
-
-`````
---no-fixed-layouts 5 --no-random-layouts 10 
-`````
+will include the corresponding fixed and random layouts.
 
 
-The competition would run with *contest\*\*Capture* fixed layouts and generate the random layouts with the given seeds.
+This option is very useful if you want to **repeat a specific competition**, or if your **competition fails** and teminates with only a subset of the games. It is also useful if you want to make sure certain layouts are included.
 
-
-This option is very useful if you want to **repeat a specific competition**, or if your **competition fails** and teminates with only a subset of the games.
+If the seeds given are less than the number of layouts asked for, the remaining are completed randomly.
 
 
 ### Example reusing a partial run ###
