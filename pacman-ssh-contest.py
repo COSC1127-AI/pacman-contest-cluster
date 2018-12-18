@@ -378,10 +378,7 @@ class ContestRunner:
         logging.info('Seeds for RANDOM layouts to be played: %s' % seeds)
         logging.info('Seeds for FIXED layouts to be played: %s' % ','.join(fixed_layouts_selected))
 
-
-        exit(0)
-
-            # Setup all of the TEAMS
+        # Setup all of the TEAMS
         teams_dir = os.path.join(self.TMP_CONTEST_DIR, self.TEAMS_SUBDIR)
         if os.path.exists(teams_dir):
             shutil.rmtree(teams_dir)
