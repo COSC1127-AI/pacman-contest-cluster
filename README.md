@@ -1,17 +1,13 @@
 # PACMAN CAPTURE THE FLAG - CONTEST SUPPORT SCRIPT #
 
-This script can be used to run a Berkley Pacman Conquer the Flag Contest (http://ai.berkeley.edu/contest.html).
+This system allows to run complex contests for the UC Berkley Pacman Conquer the Flag game (http://ai.berkeley.edu/contest.html).
 
 Designed & developed for RMIT COSC1125/1127 AI course in 2017 by lecturer A/Prof. Sebastian Sardina (with programming support by Marco Tamassia), 
-based on an original script from Dr. Nir Lipovetzky developed for UNIMELB COMP90054 AI course in 2014. 
-Since then, the tool has been continously improved and extended by Nir and Sebatsian to fit both subjects' needs.
+based on an original script from Dr. Nir Lipovetzky. Since then, the tool has been continously improved and extended to fit RMIT COSC1125/1127 and UNIMELB COMP90054 AI course.
 
-**CONTACT:** Sebastian Sardina (ssardina@gmail.com) and Nir Lipovetzky (nirlipo@gmail.com)
+**CONTACT:** A/Prof. Sebastian Sardina (ssardina@gmail.com) and Dr. Nir Lipovetzky (nirlipo@gmail.com)
 
 ----------------------
-
-[TOC]
-
 
 ## OVERVIEW ##
 
