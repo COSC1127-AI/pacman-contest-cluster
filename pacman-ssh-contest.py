@@ -192,7 +192,8 @@ def load_settings():
         action='store_true',
     )
 
-    
+    #TODO: This can be replaced with settings = vars(parser.parse_args()) to generate settings right away!
+    # we would have to also set the types of arguments above, for example integers
     args = parser.parse_args()
 
     # If no arguments are given, stop
