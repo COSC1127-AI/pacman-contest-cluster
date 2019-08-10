@@ -18,6 +18,6 @@ for f in $(ls $1/*.replay) ; do
 	team2=$(echo "$x" | sed -e "s/\(.*\)_vs_\(.*\)_.*/\2/g")
 	echo $team1
 	echo $team2
-	python capture.py -r $team1 -b $team2 -delay-step=0.01 --replay $f
+	python capture.py -r $team1 -b $team2 --delay-step=0.01 --replay $f
 done;
 
