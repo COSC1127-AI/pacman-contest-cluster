@@ -107,13 +107,16 @@ class InfoPane:
   def drawPane(self):
     self.scoreText = text( self.toScreen(0, 0  ), self.textColor, self._infoString(0,1200), "Consolas", self.fontSize, "bold")
     self.redText = text( self.toScreen(230, 0  ), TEAM_COLORS[0], self._redScoreString(), "Consolas", self.fontSize, "bold")
-    self.redText = text( self.toScreen(690, 0  ), TEAM_COLORS[1], self._blueScoreString(), "Consolas", self.fontSize, "bold")
+    self.redText = text( self.toScreen(475, 0  ), self.textColor, "vs", "Consolas", self.fontSize, "bold")
+    self.redText = text( self.toScreen(530, 0  ), TEAM_COLORS[1], self._blueScoreString(), "Consolas", self.fontSize, "bold")
 
   def _redScoreString(self):
-    return "RED: % 10s "%(self.redTeam[:12])
+    # return "% 10s "%(self.redTeam[:12])
+    return "%12s "%(self.redTeam[:12])
 
   def _blueScoreString(self):
-    return "BLUE: % 10s "%(self.blueTeam[:12])
+    # return "BLUE: % 10s "%(self.blueTeam[:12])
+    return "%-12s "%(self.blueTeam[:12])
 
   def updateRedText(self, score):
     changeText(self.redText, self._redScoreString())
@@ -135,7 +138,7 @@ class InfoPane:
       self.ghostDistanceText.append(t)
 
   def _infoString(self, score, timeleft):
-    return "SCORE: % 4d                         TIME:  % 4d" % (score, timeleft)
+    return "SCORE: %4d                               TIME: %4d" % (score, timeleft)
 
   def updateScore(self, score, timeleft):
     changeText(self.scoreText, self._infoString(score,timeleft))
