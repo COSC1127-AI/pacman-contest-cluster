@@ -861,6 +861,7 @@ def readCommand( argv ):
     recorded['delay'] = options.delay_step
     recorded['redTeamName'] = options.red
     recorded['blueTeamName'] = options.blue
+    recorded['waitEnd'] = False
 
     replayGame(**recorded)
     sys.exit(0)

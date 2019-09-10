@@ -1,17 +1,13 @@
 # PACMAN CAPTURE THE FLAG - CONTEST SUPPORT SCRIPT #
 
-This script can be used to run a Berkley Pacman Conquer the Flag Contest (http://ai.berkeley.edu/contest.html).
+This system allows to run complex contests for the UC Berkley Pacman Conquer the Flag game (http://ai.berkeley.edu/contest.html).
 
 Designed & developed for RMIT COSC1125/1127 AI course in 2017 by lecturer A/Prof. Sebastian Sardina (with programming support by Marco Tamassia), 
-based on an original script from Dr. Nir Lipovetzky developed for UNIMELB COMP90054 AI course in 2014. 
-Since then, the tool has been continously improved and extended by Nir and Sebatsian to fit both subjects' needs.
+based on an original script from Dr. Nir Lipovetzky. Since then, the tool has been continously improved and extended to fit RMIT COSC1125/1127 and UNIMELB COMP90054 AI course.
 
-**CONTACT:** Sebastian Sardina (ssardina@gmail.com) and Nir Lipovetzky (nirlipo@gmail.com)
+**CONTACT:** A/Prof. Sebastian Sardina (ssardina@gmail.com) and Dr. Nir Lipovetzky (nirlipo@gmail.com)
 
 ----------------------
-
-[TOC]
-
 
 ## OVERVIEW ##
 
@@ -133,7 +129,7 @@ Hence, user must provide:
 ## HOW THE SCRIPT WORKS ##
 
 
-### Main components: ###
+### Main components ###
 
 - `driver.py`: downloads teams from submissions server, runs `pacman-ssh-contest.py` and upload results into the web.
 - `pacman-ssh-contest.py`: main script
@@ -149,7 +145,7 @@ Hence, user must provide:
 - `TEAMS-STUDENT-MAPPING.csv`: example of a mapping file
 
 
-### Overview of marking process: ###
+### Overview of marking process ###
 
 1. The script authenticate to all workers.
 2. Then the script will collect all the teams. 
@@ -166,17 +162,17 @@ Hence, user must provide:
         Sun, 24 Sep 2017 15:25:48 WARNING  Team zip file "test-teams/s5433273" name has invalid date format. Skipping
         ````
 3. The script will _use contest.zip_, _layouts.zip_ (where some fixed layouts are stored) and a set of teams and:
-    1. create a temporary full contest dir _contest-tmp_
-    2. zip it into _contest_and_teams.zip_ file
+    1. create a temporary full contest dir `contest-tmp`
+    2. zip it into `contest_and_teams.zip` file
 3. For each game:
     1. transfer  _contest_and_teams.zip_ to an available worker
-    2. expanded in /tmp/cluster_xxxxxxx
+    2. expanded in `/tmp/cluster_xxxxxxx`
     3. run game
     4. copy back log and replay to marking machine. 
     
 
 
-### Example of a run: ###
+### Example run ###
 
 Using a csv file to specify team names, include staff teams:
 ````
@@ -193,7 +189,7 @@ python pacman-ssh-contest.py --compress-log \
 Collecting submitted files in teams, and using the zip filename as teamname, and uploading the replays file only into a sharing file service instead of your local directory:
 ````
 python pacman-ssh-contest.py --compress-log \
-        --organizer "RMIT COSC1125/1127 - Intro to AI" \
+        --organizer "UoM COMP90054/2018 - AI Planning" \
         --teams-root AI17-contest/teams/  \
         --www-dir www/ \
         --max-steps 1200 \
@@ -203,7 +199,47 @@ python pacman-ssh-contest.py --compress-log \
         --upload-www-replays
 ````
 
-### Example of generating web page from statistics: ###
+
+
+
+### Example reusing a partial run to resume a tournament ###
+
+It is possible to **resume an existing failed/partial competition** or **repeat a specific competition** by using the option `--resume-competition-folder`.
+
+So, if a run fails and is incomplete, all the logs generated so far can be found in the folder ``tmp\logs-run`` in your the local machine cloned repo.
+
+To resume the competition (so that all games played are used and not re-played):
+
+1. Copy the temporal files into a different temporal folder: `mv tmp tmp-failed`
+2. Tell the script to use that folder to get the existing logs by appending `--resume-competition-folder tmp-failed/`
+3. Tell the script which are all the layouts to be used (those that were originally used in the failed run):
+    * Use  `--fixed-layout-seeds` followed by the names of all fixed layouts that are to be used, separated by commas. 
+        * E.g., `--fixed-layout-seeds contest05Capture,contest16Capture,contest20Capture`
+    * Use `--random-seeds` followed by the seed numbers of all random layouts that are to be used, separated by commas.
+        * E.g., `--random-seeds 7669,1332`
+
+The `--fixed-layout-seeds` and `--random-seeds` options are also useful if you want to force the script to use some specific layouts. 
+Look in folde folder [contest/layouts/](https://bitbucket.org/ssardina-teaching/pacman-contest/src/master/contest/layouts/) for available fixed layouts.
+
+
+Note that if the seeds given are less than the number of layouts asked for, the remaining are completed randomly.
+
+The seeds for the fixed and random layouts used at each tournament are printed at the start, so one can recover them. 
+However, if you need to recover the layouts played in the `tmp/` subdirectory, you can get them as follows:
+
+1. For the random seeds: `ls -la tmp/logs-run/ |  grep RANDOM | sed -e "s/.*RANDOM\(.*\)\.log/\1\,/g" | sort -u | xargs -n 100`
+2. For the fixed layouts: `ls -la tmp/logs-run/ |  grep -v RANDOM | grep log | sed -e "s/.*_\(.*\)\.log/\1\,/g" | sort -u | xargs -n 100`
+
+
+
+### Example re-running only 1 team in a given competition ###
+
+
+If only 1 team or a subset of teams failed, you can load the new code of the team, remove all the logs from the temporal folder, and re-run the competition using the same method commeted above. It will only run the games for the logs you deleted.
+
+
+
+### Example generating web page from statistics ###
 
 Build web page in www/ from stats, replays, and logs dirs:
 ````
@@ -229,9 +265,9 @@ If you want to automate the tournament, use the `driver.py` provided. It has the
 
 ```
   --username [USERNAME]
-                        username for --teams-server-url
+                        username for --teams-server-url or for https git connection
   --password [PASSWORD]
-                        password for --teams-server-url
+                        password for --teams-server-url or for https git connection
   --dest-www [DEST_WWW]
                         Destination folder to publish www data in a web
                         server. (it is recommended to map a web-server folder
@@ -241,11 +277,21 @@ If you want to automate the tournament, use the `driver.py` provided. It has the
                         server specified at --teams-server-name
   --teams-server-url [TEAMS_SERVER_URL]
                         server address containing the teams submitted
+  --teams-git-csv [TEAMS_GIT_CSV] 
+                        CSV containining columns TEAM, 'GitLab SSH repository link' and 'GitLab https repository link' 
   --tournament-cmd [TOURNAMENT_CMD]
                         specify all the options to run pacman-ssh-contesy.py
   --cron-script-folder [CRON_SCRIPT_FOLDER]
                         specify the folder to the scripts in order to run cron
 ```
+
+You can run a competition using the following command:
+
+```
+ driver.py --dest-www '' --teams-git-csv xxx --tournament-cmd '--compress-log --organizer "UoM COMP90054/2018 - AI Planning" ...'
+```
+
+It uses a csv file with the links to github/bitbucket/gitlab or any git server containing the code of each team, and downloads the submissions that have the *tag submission-contest* (see [driver.py](https://bitbucket.org/ssardina-teaching/pacman-contest/src/634025cf462dfb379f9f9c96c9b87d7be9c0577d/driver.py#lines-37)).
 
 #### Test command to schedule ####
 
