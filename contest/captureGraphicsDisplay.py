@@ -58,7 +58,8 @@ GHOST_SHAPE = [
 GHOST_SIZE = 0.65
 SCARED_COLOR = formatColor(1,1,1)
 
-GHOST_VEC_COLORS = map(colorToVector, GHOST_COLORS)
+#GHOST_VEC_COLORS = map(colorToVector, GHOST_COLORS)
+GHOST_VEC_COLORS = [colorToVector(c) for c in GHOST_COLORS]
 
 PACMAN_COLOR = formatColor(255.0/255.0,255.0/255.0,61.0/255)
 PACMAN_SCALE = 0.5
@@ -107,16 +108,13 @@ class InfoPane:
   def drawPane(self):
     self.scoreText = text( self.toScreen(0, 0  ), self.textColor, self._infoString(0,1200), "Consolas", self.fontSize, "bold")
     self.redText = text( self.toScreen(230, 0  ), TEAM_COLORS[0], self._redScoreString(), "Consolas", self.fontSize, "bold")
-    self.redText = text( self.toScreen(475, 0  ), self.textColor, "vs", "Consolas", self.fontSize, "bold")
-    self.redText = text( self.toScreen(530, 0  ), TEAM_COLORS[1], self._blueScoreString(), "Consolas", self.fontSize, "bold")
+    self.redText = text( self.toScreen(690, 0  ), TEAM_COLORS[1], self._blueScoreString(), "Consolas", self.fontSize, "bold")
 
   def _redScoreString(self):
-    # return "% 10s "%(self.redTeam[:12])
-    return "%12s "%(self.redTeam[:12])
+    return "RED: % 10s "%(self.redTeam[:12])
 
   def _blueScoreString(self):
-    # return "BLUE: % 10s "%(self.blueTeam[:12])
-    return "%-12s "%(self.blueTeam[:12])
+    return "BLUE: % 10s "%(self.blueTeam[:12])
 
   def updateRedText(self, score):
     changeText(self.redText, self._redScoreString())
@@ -138,7 +136,7 @@ class InfoPane:
       self.ghostDistanceText.append(t)
 
   def _infoString(self, score, timeleft):
-    return "SCORE: %4d                               TIME: %4d" % (score, timeleft)
+    return "SCORE: % 4d                         TIME:  % 4d" % (score, timeleft)
 
   def updateScore(self, score, timeleft):
     changeText(self.scoreText, self._infoString(score,timeleft))
@@ -289,7 +287,7 @@ class PacmanGraphics:
     begin_graphics(screen_width,
                    screen_height,
                    BACKGROUND_COLOR,
-                   "UC Pacman Simulator")
+                   "CS188 Pacman")
 
   def drawPacman(self, pacman, index):
     position = self.getPosition(pacman)
@@ -335,7 +333,7 @@ class PacmanGraphics:
 
   def animatePacman(self, pacman, prevPacman, image):
     if self.frameTime < 0:
-      print 'Press any key to step forward, "q" to play'
+      print('Press any key to step forward, "q" to play')
       keys = wait_for_keys()
       if 'q' in keys:
         self.frameTime = 0.1
@@ -552,8 +550,8 @@ class PacmanGraphics:
     foodImages = []
     color = FOOD_COLOR
     for xNum, x in enumerate(foodMatrix):
-      if self.capture and (xNum * 2) < foodMatrix.width: color = TEAM_COLORS[0]
-      if self.capture and (xNum * 2) >= foodMatrix.width: color = TEAM_COLORS[1]
+      if self.capture and (xNum * 2) <= foodMatrix.width: color = TEAM_COLORS[0]
+      if self.capture and (xNum * 2) > foodMatrix.width: color = TEAM_COLORS[1]
       imageRow = []
       foodImages.append(imageRow)
       for yNum, cell in enumerate(x):

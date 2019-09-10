@@ -115,7 +115,7 @@ def computeDistances(layout):
         dist = {}
         closed = {}
         for node in allNodes:
-            dist[node] = sys.maxint
+            dist[node] = sys.maxsize
         import util
         queue = util.PriorityQueue()
         queue.push(source, 0)

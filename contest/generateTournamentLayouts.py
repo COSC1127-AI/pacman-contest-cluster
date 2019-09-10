@@ -33,11 +33,11 @@ if __name__=="__main__":
   for i in range(num):
     seed = random.randint(0,99999999)
     layout = 'layouts/random%08dCapture.lay' % seed
-    print 'Generating random layout in %s' % layout
+    print('Generating random layout in %s' % layout)
     with open(layout, 'w') as out:
       maze = mazeGenerator.generateMaze(seed)
       out.write(maze)
-      print maze
+      print(maze)
 
     with open(seedsfile, 'a') as out:
       out.write("%d\n"%seed)

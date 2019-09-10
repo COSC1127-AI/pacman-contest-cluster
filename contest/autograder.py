@@ -30,7 +30,7 @@ except:
 # register arguments and set default values
 def readCommand(argv):
     parser = optparse.OptionParser(description = 'Run public tests on student code')
-    parser.set_defaults(generateSolutions=False, edxOutput=False, muteOutput=False, printTestCase=False, noGraphics=False)
+    parser.set_defaults(generateSolutions=False, edxOutput=False, gsOutput=False, muteOutput=False, printTestCase=False, noGraphics=False)
     parser.add_option('--test-directory',
                       dest = 'testRoot',
                       default = 'test_cases',
@@ -55,6 +55,10 @@ def readCommand(argv):
                     dest = 'edxOutput',
                     action = 'store_true',
                     help = 'Generate edX output files')
+    parser.add_option('--gradescope-output',
+                    dest = 'gsOutput',
+                    action = 'store_true',
+                    help = 'Generate GradeScope output files')
     parser.add_option('--mute',
                     dest = 'muteOutput',
                     action = 'store_true',
@@ -81,8 +85,8 @@ def readCommand(argv):
 
 # confirm we should author solution files
 def confirmGenerate():
-    print 'WARNING: this action will overwrite any solution files.'
-    print 'Are you sure you want to proceed? (yes/no)'
+    print('WARNING: this action will overwrite any solution files.')
+    print('Are you sure you want to proceed? (yes/no)')
     while True:
         ans = sys.stdin.readline().strip()
         if ans == 'yes':
@@ -90,7 +94,7 @@ def confirmGenerate():
         elif ans == 'no':
             sys.exit(0)
         else:
-            print 'please answer either "yes" or "no"'
+            print('please answer either "yes" or "no"')
 
 
 # TODO: Fix this so that it tracebacks work correctly
@@ -110,7 +114,7 @@ def setModuleName(module, filename):
         elif type(o) == classType:
             setattr(o, '__file__', filename)
             # TODO: assign member __file__'s?
-        #print i, type(o)
+        #print(i, type(o))
 
 
 #from cStringIO import StringIO
@@ -122,7 +126,7 @@ def loadModuleString(moduleSource):
     #f = StringIO(moduleCodeDict[k])
     #tmp = imp.load_module(k, f, k, (".py", "r", imp.PY_SOURCE))
     tmp = imp.new_module(k)
-    exec moduleCodeDict[k] in tmp.__dict__
+    exec(moduleCodeDict[k] in tmp.__dict__)
     setModuleName(tmp, k)
     return tmp
 
@@ -183,12 +187,12 @@ def splitStrings(d):
 
 def printTest(testDict, solutionDict):
     pp = pprint.PrettyPrinter(indent=4)
-    print "Test case:"
+    print("Test case:")
     for line in testDict["__raw_lines__"]:
-        print "   |", line
-    print "Solution:"
+        print("   |", line)
+    print("Solution:")
     for line in solutionDict["__raw_lines__"]:
-        print "   |", line
+        print("   |", line)
 
 
 def runTest(testName, moduleDict, printTestCase=False, display=None):
@@ -232,7 +236,7 @@ def getTestSubdirs(testParser, testRoot, questionToGrade):
     if questionToGrade != None:
         questions = getDepends(testParser, testRoot, questionToGrade)
         if len(questions) > 1:
-            print 'Note: due to dependencies, the following tests will be run: %s' % ' '.join(questions)
+            print('Note: due to dependencies, the following tests will be run: %s' % ' '.join(questions))
         return questions
     if 'order' in problemDict:
         return problemDict['order'].split()
@@ -240,7 +244,8 @@ def getTestSubdirs(testParser, testRoot, questionToGrade):
 
 
 # evaluate student code
-def evaluate(generateSolutions, testRoot, moduleDict, exceptionMap=ERROR_HINT_MAP, edxOutput=False, muteOutput=False,
+def evaluate(generateSolutions, testRoot, moduleDict, exceptionMap=ERROR_HINT_MAP,
+             edxOutput=False, muteOutput=False, gsOutput=False,
             printTestCase=False, questionToGrade=None, display=None):
     # imports of testbench code.  note that the testClasses import must follow
     # the import of student code due to dependencies
@@ -296,7 +301,8 @@ def evaluate(generateSolutions, testRoot, moduleDict, exceptionMap=ERROR_HINT_MA
         setattr(sys.modules[__name__], q, makefun(question))
         questions.append((q, question.getMaxPoints()))
 
-    grades = grading.Grades(projectParams.PROJECT_NAME, questions, edxOutput=edxOutput, muteOutput=muteOutput)
+    grades = grading.Grades(projectParams.PROJECT_NAME, questions,
+                            gsOutput=gsOutput, edxOutput=edxOutput, muteOutput=muteOutput)
     if questionToGrade == None:
         for q in questionDicts:
             for prereq in questionDicts[q].get('depends', '').split():
@@ -347,5 +353,6 @@ if __name__ == '__main__':
         runTest(options.runTest, moduleDict, printTestCase=options.printTestCase, display=getDisplay(True, options))
     else:
         evaluate(options.generateSolutions, options.testRoot, moduleDict,
+            gsOutput=options.gsOutput,
             edxOutput=options.edxOutput, muteOutput=options.muteOutput, printTestCase=options.printTestCase,
             questionToGrade=options.gradeQuestion, display=getDisplay(options.gradeQuestion!=None, options))
