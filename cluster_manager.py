@@ -207,7 +207,7 @@ def run_job(pool, job):
                                                                                                           worker.hostname))
                 result_job_on_worker = job.data, -1, '', 'Match did not work: {}'.format(str(e)), 1
         except Exception as e:
-            logging.error("Somehow the following job FAILED to execute (will reconnect & retry): %s" % str(job.id))
+            logging.error("Somehow the following job FAILED to execute (will reconnect & retry): {} with exception: {}".format(str(job.id), str(job)))
             traceback.print_exc()
             worker.close()
             worker.connect(hostname=worker.hostname, username=worker.username, password=worker.password,
@@ -325,6 +325,7 @@ def run_job_on_worker(worker, job):
         'END OF GAME in host %s (%s) - START COPYING BACK RESULT: %s' % (worker.hostname, dest_dir, report_match(job)))
     # Retrieve replay file
     for tf in job.return_files:
+        #print(tf)
         sftp.get(localpath=tf.local_path, remotepath=tf.remote_path)
     sftp.close()
 

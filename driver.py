@@ -350,6 +350,7 @@ if __name__ == '__main__':
         
         sys.exit(1)
 
+    
     if 'teams_git_csv' in args:
 
         username = args['username']
@@ -357,8 +358,8 @@ if __name__ == '__main__':
         
         git_run = GitSubmissions( username, password )
         
-        #git_run.clone_repos( args['teams_git_csv'] )
-        git_run.competition_is_on=True
+        git_run.clone_repos( args['teams_git_csv'] )
+        #git_run.competition_is_on=True
         
         '''
         ' Retrieve all the zip files, copy them into teams folder

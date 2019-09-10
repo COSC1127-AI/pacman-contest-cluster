@@ -209,7 +209,7 @@ def add_pacman_stuff(maze, max_food=60, max_capsules=4, toskip=0):
     depth += 1
     num_added = 0
     for row in range(1, maze.r-1):
-      for col in range(1+toskip, (maze.c/2)-1):
+      for col in range(1+toskip, (maze.c//2)-1):
         if (row > maze.r-6) and (col < 6): continue
         if maze.grid[row][col] != E: continue
         neighbors = (maze.grid[row-1][col]==E) + (maze.grid[row][col-1]==E) + (maze.grid[row+1][col]==E) + (maze.grid[row][col+1]==E)
@@ -232,7 +232,7 @@ def add_pacman_stuff(maze, max_food=60, max_capsules=4, toskip=0):
   total_capsules = 0
   while total_capsules < max_capsules:
     row = random.randint(1, maze.r-1)
-    col = random.randint(1+toskip, (maze.c/2)-2)
+    col = random.randint(1+toskip, (maze.c//2)-2)
     if (row > maze.r-6) and (col < 6): continue
     if(abs(col - maze.c/2) < 3): continue
     if maze.grid[row][col] == E:
@@ -243,9 +243,9 @@ def add_pacman_stuff(maze, max_food=60, max_capsules=4, toskip=0):
   ## extra random food
   while total_food < max_food:
     row = random.randint(1, maze.r-1)
-    col = random.randint(1+toskip, (maze.c/2)-1)
+    col = random.randint(1+toskip, (maze.c//2)-1)
     if (row > maze.r-6) and (col < 6): continue
-    if(abs(col - maze.c/2) < 3): continue
+    if(abs(col - maze.c//2) < 3): continue
     if maze.grid[row][col] == E:
       maze.grid[row][col] = F
       maze.grid[maze.r-row-1][maze.c-(col)-1] = F
@@ -261,7 +261,7 @@ def generateMaze(seed = None):
   gapfactor = min(0.65,random.gauss(0.5,0.1))
   skip = make_with_prison(maze, depth=0, gaps=3, vert=True, min_width=1, gapfactor=gapfactor)
   maze.to_map()
-  add_pacman_stuff(maze, 2*(maze.r*maze.c/20), 4, skip)
+  add_pacman_stuff(maze, 2*(maze.r*maze.c//20), 4, skip)
   return str(maze)
 
 if __name__ == '__main__':

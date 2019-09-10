@@ -1060,13 +1060,13 @@ def runGames( layouts, agents, display, length, numGames, record, numTraining, r
 
     g.record = None
     if record:
-      import time, cPickle, game
+      import time, pickle, game
       #fname = ('recorded-game-%d' % (i + 1)) +  '-'.join([str(t) for t in time.localtime()[1:6]])
       #f = file(fname, 'w')
       components = {'layout': layout, 'agents': [game.Agent() for a in agents], 'actions': g.moveHistory, 'length': length, 'redTeamName': redTeamName, 'blueTeamName':blueTeamName }
       #f.close()
       print("recorded")
-      g.record = cPickle.dumps(components)
+      g.record = pickle.dumps(components)
       with open('replay-%d'%i,'wb') as f:
         f.write(g.record)
 
@@ -1102,5 +1102,5 @@ if __name__ == '__main__':
 
   save_score(games[0])
   print('\nTotal Time Game: %s'% round(time.time() - start_time, 0))
-  # import cProfile
-  # cProfile.run('runGames( **options )', 'profile')
+  # import profile
+  # profile.run('runGames( **options )', 'profile')
