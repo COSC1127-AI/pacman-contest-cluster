@@ -69,16 +69,20 @@ python pacman_html_generator.py --help
         * For example, set `MaxStartups 20:30:60` to accept up to 20 simultaneous connections. Remember to restart the ssh server: `sudo service sshd restart`
         * For more info on this, see issue #22.
     * Cluster should have all the Python and Unix packages to run the contest. For example, in the NeCTAR cluster:
-
+                            
             sudo apt-get update
-            sudo apt-get install python-pip unzip vim
-            sudo pip install setuptools
-            sudo pip install -r requirements.txt
-            
+            sudo apt-get install python3-pip unzip vim
+            sudo pip3 install setuptools
+            sudo pip3 install -r requirements.txt
+                    
         If you do not have root access you can use `pip install -r requirements.txt --user` to do a user install. Get [requirements.txt](requirements.txt) with wget.
 
     * Many students benefit from the availability other tools, like [TensorFlow](https://www.tensorflow.org/), [scikit-learn](http://scikit-learn.org/), [neat-python](https://github.com/CodeReclaimers/neat-python): 
         * `pip install tensorflow sklearn sklearn scipy neat-python --user` or `sudo pip install tensorflow sklearn scipy neat-python`
+    * If students want to use planners to solve pacman PDDL models for their solutions, copy any planner to `/usr/local/bin`. For example, in the NeCTAR cluster:
+         
+            sudo cp planners/ff /usr/local/bin/.
+        
 
 * In the **local machine** that will dispatch jobs to the cluster via `pacman-ssh-contest.py` script:
     * unzip & zip (to pack and unpack submissions and files for transfer): `sudo apt-get install -y unzip zip`
