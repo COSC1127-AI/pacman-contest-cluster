@@ -856,7 +856,7 @@ def readCommand( argv ):
   if options.replay != None:
     print('Replaying recorded game %s.' % options.replay)
     import pickle
-    recorded = pickle.load(open(options.replay))
+    recorded = pickle.load(open(options.replay,'rb'),encoding="bytes")
     recorded['display'] = args['display']
     recorded['delay'] = options.delay_step
     recorded['redTeamName'] = options.red
@@ -870,7 +870,7 @@ def readCommand( argv ):
   if options.replayq != None:
     print('Replaying recorded game %s.' % options.replay)
     import pickle
-    recorded = pickle.load(open(options.replayq))
+    recorded = pickle.load(open(options.replayq,'rb'),encoding="bytes")
     recorded['display'] = args['display']
     recorded['delay'] = 0.0
     recorded['redTeamName'] = options.red
