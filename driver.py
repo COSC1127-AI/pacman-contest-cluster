@@ -31,7 +31,7 @@ class GitSubmissions():
 
     def __init__(self, username, password):
         self.use_git_ssh = False
-        self.min_teams_for_competition = 1
+        self.min_teams_for_competition = 4
         self.competition_is_on = False
         self.add_timestamps = True
         self.submission_tag = 'submission-contest'
@@ -294,10 +294,10 @@ class RunCommand():
             print ('put %s file from host: %s:' % (filename, host[0]))
 
 
-def upload_files( dest_www, year, month, day):
+def upload_files( src_www, dest_www, year, month, day):
     
     cwd = os.getcwd()        
-    os.system("cp -rf www/* %s/."%dest_www)
+    os.system("cp -rf %s/* %s/."%(src_www,dest_www))
     
     
     
@@ -306,7 +306,7 @@ if __name__ == '__main__':
     
     parser = argparse.ArgumentParser()
     
-    
+    parser.add_argument('--src-www',  help='source folder where www data is located. (it is recommended to map a web-server folder using smb)', nargs='?' )
     parser.add_argument('--dest-www',  help='Destination folder to publish www data in a web server. (it is recommended to map a web-server folder using smb)', nargs='?' )
 
     server_group = parser.add_argument_group('Download submission from a server using ssh connections', 'Submission options')
@@ -317,6 +317,7 @@ if __name__ == '__main__':
 
     git_group = parser.add_argument_group('Download submission from GIT repos', 'Submission options')    
     git_group.add_argument('--teams-git-csv',  help='CSV containining columns TEAM and \'GitLab SSH repository link\' ', nargs='?' )
+    git_group.add_argument('--teams-git-output-folder',  help='Folder containing GIT submissions (default: git-teams)', nargs='?' , default='git-teams')
     
     parser.add_argument('--tournament-cmd',  help='specify all the options to run pacman-ssh-contesy.py', nargs='?' )
     
@@ -357,6 +358,8 @@ if __name__ == '__main__':
         password = args['password']
         
         git_run = GitSubmissions( username, password )
+       
+        git_run.output_folder = args['teams_git_output_folder']
         
         git_run.clone_repos( args['teams_git_csv'] )
         #git_run.competition_is_on=True
@@ -480,7 +483,11 @@ if __name__ == '__main__':
     dest_www = 'dest-www'
     if 'dest_www' in args:
         dest_www = args['dest_www']
-        
+
+    src_www = 'www'
+    if 'src_www' in args:
+        src_www = args['src_www']
+    
     today = datetime.date.today()
     year = today.year
     month = today.month
@@ -495,4 +502,4 @@ if __name__ == '__main__':
     ' upload files to server
     '''
     
-    upload_files( dest_www, year, month, day)
+    upload_files( src_www, dest_www, year, month, day)
