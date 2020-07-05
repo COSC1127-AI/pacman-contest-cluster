@@ -128,3 +128,5 @@ AI18-contest
 tmp*
 contest-run
 link-* 
+contest/score
+contest/gmon.out
