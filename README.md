@@ -247,9 +247,17 @@ Note that if the seeds given are less than the number of layouts asked for, the 
 The seeds for the fixed and random layouts used at each tournament are printed at the start, so one can recover them. 
 However, if you need to recover the layouts played in the `tmp/` subdirectory, you can get them as follows:
 
-1. For the random seeds: `ls -la tmp/logs-run/ |  grep RANDOM | sed -e "s/.*RANDOM\(.*\)\.log/\1\,/g" | sort -u | xargs -n 100`
-2. For the fixed layouts: `ls -la tmp/logs-run/ |  grep -v RANDOM | grep log | sed -e "s/.*_\(.*\)\.log/\1\,/g" | sort -u | xargs -n 100`
+1. For the random seeds: 
 
+    ```bash
+    $ ls -la tmp/logs-run/ |  grep RANDOM | sed -e "s/.*RANDOM\(.*\)\.log/\1\,/g" | sort -u | xargs -n 100
+    ```
+
+2. For the fixed layouts: 
+
+    ```bash
+    $ ls -la tmp/logs-run/ |  grep -v RANDOM | grep log | sed -e "s/.*_\(.*\)\.log/\1\,/g" | sort -u | xargs -n 100
+    ```
 
 
 ### Re-run only some teams in a given contest
