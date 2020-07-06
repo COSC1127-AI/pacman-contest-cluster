@@ -67,9 +67,7 @@ $ python3 pacman_html_generator.py --h
     * Via student-team mapping file; option `--team-names`
 * Generate an HTML page with the contest result and full details, including links to replay files.
     * Ability to store replays and logs into [`https://transfer.sh`](https://transfer.sh) service to avoid filling local www space.
-    * Ranking generation:
-        * 3 points per win; 1 point per tie. Failed games are loses.
-        * Order by: points first, no. of wins second, score points third.
+    * Ranking generation: 3 points per win; 1 point per tie. Failed games are loses. Ordered by: points first, no. of wins second, score points third.
 * Handle latest submission per team, by sorting via timestamp recorded in file name.
 * Can resume a partial ran contest.
 * Automate tournament using a `driver.py` script and `cron`.
@@ -174,7 +172,6 @@ In a nutshell, the script follows the following steps:
 
 1. Authenticates to all workers specified.
 2. Collect all the teams. 
-
     - If option `--ignore-file-name-format` is given, then it will simply collect the team names from the `<teamname>.zip` files.
     - Otherwise, it will assume a file name `s<student number>_<timestamp>.zip`. The student number will be mapped to the team name (via the provided mapping in `--team-names-file`) and the last submission (using the timetsamps) will be selected.
 3. Take `contest.zip`, `layouts.zip` (where some fixed layouts are stored), and the set of collected set of teams and:
@@ -182,10 +179,18 @@ In a nutshell, the script follows the following steps:
     2. zip it into `contest_and_teams.zip` file;
     3. transfer  `contest_and_teams.zip` to each available worker.
 3. For each game:
-    2. expand in `contest_and_teams.zip` to `/tmp/cluster_xxxxxxx`;
-    3. run game;
-    4. copy back log and replay to marking machine. 
-    
+    1. expand in `contest_and_teams.zip` to `/tmp/cluster_xxxxxxx`;
+    2. run game;
+    3. copy back log and replay to marking machine. 
+4. Produce stat files as JSON files (can be used to generate HTML pages).
+
+
+The full contest is **all-against-all tournament** with the following rank generation:
+ 
+ * 3 points per win; 1 point per tie; 0 points per lose. Failed games are loses. 
+ * Ordered by: points first, no. of wins second, score points third.
+   
+
 
 ## EXAMPLE RUNS
 
