@@ -225,11 +225,11 @@ $ python3 pacman-ssh-contest.py --compress-log \
 
 ### Resume partial contest
 
-It is possible to **resume an existing failed/partial competition** or **repeat a specific competition** by using the option `--resume-competition-folder`.
+It is possible to **resume** an existing failed/partial competition or **repeat** a specific competition by using the option `--resume-competition-folder`.
 
 So, if a run fails and is incomplete, all the logs generated so far can be found in the folder ``tmp\logs-run`` in your the local machine cloned repo.
 
-To resume the competition (so that all games played are used and not re-played):
+To _resume_ the competition (so that all games played are used and not re-played):
 
 1. Copy the temporal files into a different temporal folder: `mv tmp tmp-failed`
 2. Tell the script to use that folder to get the existing logs by appending `--resume-competition-folder tmp-failed/`
@@ -239,8 +239,7 @@ To resume the competition (so that all games played are used and not re-played):
     * Use `--random-seeds` followed by the seed numbers of all random layouts that are to be used, separated by commas.
         * E.g., `--random-seeds 7669,1332`
 
-The `--fixed-layout-seeds` and `--random-seeds` options are also useful if you want to force the script to use some specific layouts. 
-Look in folde folder [contest/layouts/](contest/layouts/) for available fixed layouts.
+The `--fixed-layout-seeds` and `--random-seeds` options are also useful if you want to force the script to use some specific layouts. Look in folder [layouts/](layouts/) for available fixed, non-random, layouts.
 
 
 Note that if the seeds given are less than the number of layouts asked for, the remaining are completed randomly.
