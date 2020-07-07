@@ -90,6 +90,8 @@ In **each machine in the cluster**:
     sudo apt-get update
     sudo apt-get install python3-pip unzip vim
     sudo pip3 install setuptools
+  
+    wget https://raw.githubusercontent.com/ssardina-teaching/pacman-contest/master/requirements.txt
     sudo pip3 install -r requirements.txt
     ```
                         
