@@ -378,9 +378,16 @@ Remove the line you introduced before and introduce the following line:
 
 Now your script will run every midnight at 00:01
 
-## MODIFYING CONTEST
+## MODIFYING THE CONTEST GAME
 
 The code implementing a game between two players is located in `contest/`, with the main script being `capture.py`. As of 2019, that code runs under Python 3.x. (The original code under Python 2.7 is kept under `contest2.7/`).
+
+We can run and test single games. For example, if we assume that `contest/teams` points to a set of teams, we can run one game as follows:
+
+```bash
+$ cd contest/
+$ python3 capture.py -r teams/staff_team_super/myTeam.py -b teams/staff_team_medium/myTeam.py
+```
 
 Any changes, bug fixes, extensions, to the actual game system, needs to be done in the code at `contest/` and then zip it into `contest.zip` so that it can be used by the contest script. The new `contest.zip` can be generated as follows:
 
@@ -393,6 +400,7 @@ Similarly, if the 2.7 version is changed in `contest2.7/` folder:
 ```bash
 $ rm -f contest27.zip ; cd contest2.7/ ; zip -r  ../contest27.zip * ; cd .. 
 ```
+
 
 
 
