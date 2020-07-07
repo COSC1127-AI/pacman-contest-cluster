@@ -109,12 +109,12 @@ In the **local machine** (e.g., your laptop) that will dispatch game jobs to the
 
 * unzip & zip (to pack and unpack submissions and files for transfer): `sudo apt-get install -y unzip zip`
 * Python >= 3.5 with:
-       * setuptools
-       * python-future
-       * future
-       * iso8601
-       * pytz
-       * paramiko
+   * setuptools
+   * python-future
+   * future
+   * iso8601
+   * pytz
+   * paramiko
 * Simply run: `pip3 install -r requirements.txt --user`
 
 
@@ -377,6 +377,24 @@ Remove the line you introduced before and introduce the following line:
 ```
 
 Now your script will run every midnight at 00:01
+
+## MODIFYING CONTEST
+
+The code implementing a game between two players is located in `contest/`, with the main script being `capture.py`. As of 2019, that code runs under Python 3.x. (The original code under Python 2.7 is kept under `contest2.7/`).
+
+Any changes, bug fixes, extensions, to the actual game system, needs to be done in the code at `contest/` and then zip it into `contest.zip` so that it can be used by the contest script. The new `contest.zip` can be generated as follows:
+
+```bash
+$ rm -f contest.zip ; cd contest/ ; zip -r  ../contest.zip * ; cd ..
+```
+
+Similarly, if the 2.7 version is changed in `contest2.7/` folder:
+
+```bash
+$ rm -f contest27.zip ; cd contest2.7/ ; zip -r  ../contest27.zip * ; cd .. 
+```
+
+
 
 
 ## TROUBLESHOOTING 
