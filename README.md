@@ -43,14 +43,14 @@ This system runs a full Pacman Capture the Flag tournament among many teams usin
 
 The system contains two main scripts:
 
-1. ```pacman-ssh-contest.py``` is the main script to actually run a contest.
+1. ```pacman-contest-cluster.py``` is the main script to actually run a contest.
 2. ```pacman_html_generator.py``` generates an HTML web page from existing data of already ran contests.
 
 
 To see options available run: 
 
 ```bash
-$ python3 pacman-ssh-contest.py -h
+$ python3 pacman-contest-cluster.py -h
 ```
 
 ```bash
@@ -107,7 +107,7 @@ In **each machine in the cluster**:
         
 
 
-In the **local machine** (e.g., your laptop) that will dispatch game jobs to the cluster via the `pacman-ssh-contest.py` script:
+In the **local machine** (e.g., your laptop) that will dispatch game jobs to the cluster via the `pacman-contest-cluster.py` script:
 
 * unzip & zip (to pack and unpack submissions and files for transfer): `sudo apt-get install -y unzip zip`
 * Python >= 3.5 with:
@@ -152,9 +152,9 @@ Hence, the user of this system must provide:
 
 ## MAIN COMPONENTS 
 
-The main script `pacman-ssh-contest.py` runs a full contest and uses:
+The main script `pacman-contest-cluster.py` runs a full contest and uses:
 
-- `cluster_manager.py`: the support script to manage clusters (used by `pacman-ssh-contest.py`).
+- `cluster_manager.py`: the support script to manage clusters (used by `pacman-contest-cluster.py`).
 - `contest.zip`: the actual main contest infrastructure, based on that one from UC (with minor fixes, e.g., delay in replays, upgraded to Python 3.x)
 - `layouts.zip`: some interesting layouts that can be used (beyond the randomly generated ones)
 - `staff_team_{basic,medium,top}.zip`: the teams from staff, used for `--include-staff-team` option. 
@@ -166,7 +166,7 @@ The main script `pacman-ssh-contest.py` runs a full contest and uses:
 
 In addition:
 
-- `driver.py`: downloads teams from submissions server, runs `pacman-ssh-contest.py` and upload results into the web.
+- `driver.py`: downloads teams from submissions server, runs `pacman-contest-cluster.py` and upload results into the web.
 - `contest/` subdir: developing place for `contest.zip`. 
 
 
@@ -201,7 +201,7 @@ The full contest is **all-against-all tournament** with the following rank gener
 Using a CSV file to specify team names, include staff teams:
 
 ````bash
-$ python3 pacman-ssh-contest.py --compress-log \
+$ python3 pacman-contest-cluster.py --compress-log \
         --organizer "RMIT COSC1125/1127 - Intro to AI" \
         --teams-root AI17-contest/teams/  \
         --team-names-file AI17-contest/AI17-Contest-TEAMS.csv  \
@@ -215,7 +215,7 @@ $ python3 pacman-ssh-contest.py --compress-log \
 Collecting submitted files in teams, and using the zip filename as teamname, and uploading the replays file only into a sharing file service instead of your local directory:
 
 ````bash
-$ python3 pacman-ssh-contest.py --compress-log \
+$ python3 pacman-contest-cluster.py --compress-log \
         --organizer "UoM COMP90054/2018 - AI Planning" \
         --teams-root AI17-contest/teams/  \
         --www-dir www/ \

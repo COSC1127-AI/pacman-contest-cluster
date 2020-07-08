@@ -494,8 +494,8 @@ if __name__ == '__main__':
     day = today.day
 
         
-    print ("RUNNING: python pacman-ssh-contest.py %s"%(tournament_cmd))
-    os.system("python3 pacman-ssh-contest.py %s"%(tournament_cmd))
+    print ("RUNNING: python pacman-contest-cluster.py %s"%(tournament_cmd))
+    os.system("python3 pacman-contest-cluster.py %s"%(tournament_cmd))
 
     
     '''
