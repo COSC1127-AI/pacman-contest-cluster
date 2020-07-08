@@ -20,12 +20,14 @@ Table of Contents
    * [Resume partial contest](#resume-partial-contest)
    * [Re-run only some teams in a given contest](#re-run-only-some-teams-in-a-given-contest)
 * [WEB PAGE GENERATION](#web-page-generation)
-* [SCHEDULE COMPETITION VIA `driver.py`](#schedule-competition-via-driverpy)
+* [SCHEDULE COMPETITION VIA driver.py](#schedule-competition-via-driverpy)
    * [Test command to schedule](#test-command-to-schedule)
    * [Setting up cron](#setting-up-cron)
+* [MODIFYING THE CONTEST GAME](#modifying-the-contest-game)
 * [TROUBLESHOOTING](#troubleshooting)
 * [SCREENSHOT](#screenshot)
 * [LICENSE](#license)
+
 
 
 Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc)
