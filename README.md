@@ -380,25 +380,23 @@ Now your script will run every midnight at 00:01
 
 ## MODIFYING THE CONTEST GAME
 
-The code implementing a game between two players is located in `contest/`, with the main script being `capture.py`. As of 2019, that code runs under Python 3.x. (The original code under Python 2.7 is kept under `contest2.7/`).
+The code implementing a game simulator between two players is located in `contest/` as a _git submodule_ from [pacman-contest-3](https://github.com/AI4EDUC/pacman-contest-3) repository. 
 
-We can run and test single games. For example, if we assume that `contest/teams` points to a set of teams, we can run one game as follows:
+As of 2019, that code runs under Python 3.x. The game simulator for Python 2.7 is kept in repository [pacman-contest-27](https://github.com/AI4EDUC/pacman-contest-27/) repository. 
+
+Note that the simulator is not used for the actual cluster tournament, which only uses the simulator packed in `contest.zip` file. It is however left there under `contest/` just in case one wants to run and test specific single games, if needed. For example, if we assume that `contest/teams` points to a set of teams, we can run one game as follows:
 
 ```bash
 $ cd contest/
 $ python3 capture.py -r teams/staff_team_super/myTeam.py -b teams/staff_team_medium/myTeam.py
 ```
 
-Any changes, bug fixes, extensions, to the actual game system, needs to be done in the code at `contest/` and then zip it into `contest.zip` so that it can be used by the contest script. The new `contest.zip` can be generated as follows:
+Since the actual simulator code used by the cluster contest script is the one packed in `contest.zip`, any changes, fixes, upgrades, extensions to the simulator have to be done outside and zipped it into `contest.zip` file again.
+
+For example, if one modifies the code in `contest/`, a new `contest.zip` can be generated as follows:
 
 ```bash
 $ rm -f contest.zip ; cd contest/ ; zip -r  ../contest.zip * ; cd ..
-```
-
-Similarly, if the 2.7 version is changed in `contest2.7/` folder:
-
-```bash
-$ rm -f contest27.zip ; cd contest2.7/ ; zip -r  ../contest27.zip * ; cd .. 
 ```
 
 
