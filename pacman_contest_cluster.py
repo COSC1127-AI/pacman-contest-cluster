@@ -874,26 +874,6 @@ class ContestRunner:
                                                                                                exit_code, output))
             self._analyse_output(red_team, blue_team, layout, exit_code, None, total_secs_taken)
 
-
-    def run_contest_local(self):
-        """
-        This script runs the tournament in the local machine. This is NOT used anymore, as everything is run
-        remotely via workers. The remote script can be used to run also in localhost
-        """
-        self.prepare_dirs()
-        for red_team, blue_team in combinations(self.teams, r=2):
-            for layout in self.layouts:
-                red_team_name, _ = red_team
-                blue_team_name, _ = blue_team
-                print('Running game %s vs %s (layout: %s).' % (red_team_name, blue_team_name, layout), end='')
-                sys.stdout.flush()
-                command = self._generate_command(red_team, blue_team, layout)
-                logging.info(command)
-                exit_code, output = subprocess.getstatusoutput('cd %s && %s' % (self.TMP_CONTEST_DIR, command))
-                self._analyse_output(red_team, blue_team, layout, exit_code, output)
-        self._calculate_team_stats()
-
-
     def run_contest_remotely(self, hosts):
         self.prepare_dirs()
 
