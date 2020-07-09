@@ -15,7 +15,7 @@ student Marco Tamassia. The script is in turn based on an original script from D
 # from sqlalchemy.sql.functions import random
 
 __author__ = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
-__copyright__ = "Copyright 2017-2018"
+__copyright__ = "Copyright 2017-2020"
 __license__ = "GPLv3"
 
 from future.utils import iteritems
