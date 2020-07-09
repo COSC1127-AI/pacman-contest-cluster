@@ -5,7 +5,7 @@
 	"dest-www": "tmp-www",
 	"teams-server-folder": ".",
 	"teams-server-url": 'xxx.org',
-	"tournament-cmd": "all options for pacman-contest-cluster.py ",
+	"tournament-cmd": "all options for  pacman_contest_cluster.py ",
 	"cron-script-folder":"if you want to run cron, specify the folder where the driver.py sits"
     }]  
 }
