@@ -133,6 +133,11 @@ def load_settings():
         help='if given, include staff teams in the given directory (with name staff_team_xxxx.zip).'
     )
     parser.add_argument(
+        '--staff-teams-vs-others-only',
+        help='if set to true, it will create only games for each student team vs the staff teams. This is useful to provide fast feedback, as it avoids playing student teams in the same game. ',
+        action='store_true',
+    )
+    parser.add_argument(
         '--max-steps',
         help='the limit on the number of steps for each game (default: %(default)s).',
         default=DEFAULT_MAX_STEPS
@@ -164,8 +169,7 @@ def load_settings():
         '--resume-competition-folder',
         help='directory containing the logs and replays from the last failed competition. Can be found in /tmp folder. Rename it to use the folder as an argument.',
         default='',
-    )
-    
+    )    
     parser.add_argument(
         '--allow-non-registered-students',
         help='if passed and --team-names-file is given, students without a team are still allowed to participate',
@@ -236,6 +240,11 @@ def load_settings():
         settings['include_staff_team'] = False
         settings['staff_teams_dir'] = 'None'
 
+    if args.staff_teams_vs_others_only:
+        settings['staff_teams_vs_others_only'] = True
+    else:
+        settings['staff_teams_vs_others_only'] = False
+        
     if args.teams_root:
         settings['teams_root'] = args.teams_root
     if args.team_names_file:
@@ -324,7 +333,7 @@ class ContestRunner:
     # submissions file format: s???????[_datetime].zip
     # submissions folder format: s???????[_datetime]
     # datetime in ISO8601 format:  https://en.wikipedia.org/wiki/ISO_8601
-    def __init__(self, organizer, teams_root, include_staff_team, staff_teams_dir, compress_logs,
+    def __init__(self, organizer, teams_root, staff_teams_vs_others_only, include_staff_team, staff_teams_dir, compress_logs,
                  max_steps, no_fixed_layouts,
                  fixed_layouts_file, no_random_layouts, team_names_file,
                  allow_non_registered_students, ignore_file_name_format, www_dir,
@@ -348,6 +357,8 @@ class ContestRunner:
 
         # self.maxTimeTaken = Null
 
+        # flag indicating the contest only will run student teams vs staff teams, instead of a full tournament
+        self.staff_teams_vs_others_only = staff_teams_vs_others_only
 
         # unique id for this execution of the contest; used to label logs
         self.contest_timestamp_id = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
@@ -401,6 +412,7 @@ class ContestRunner:
 
         # setup all team directories under contest/team subdir for contest (copy content in .zip to team dirs)
         self.teams = []
+        self.staff_teams = []
         self.submission_times = {}
 
         for submission_file in os.listdir(teams_root):
@@ -417,7 +429,7 @@ class ContestRunner:
                 if match:
                     submission_path = os.path.join(staff_teams_dir, staff_team_submission_file)
                     if staff_team_submission_file.endswith(".zip") or os.path.isdir(submission_path):
-                        self._setup_team(submission_path, teams_dir, True)
+                        self._setup_team(submission_path, teams_dir, True, False, True )
 
         # # Add the staff team, if necessary
         # if include_staff_team:
@@ -585,7 +597,7 @@ class ContestRunner:
 
 
     def _setup_team(self, submission_path, destination, ignore_file_name_format=False,
-                    allow_non_registered_students=False):
+                    allow_non_registered_students=False, is_staff_team=False):
         """
         Extracts team.py from the team submission zip file into a directory inside contest/teams
             If the zip file name is listed in team-name mapping, then name directory with team name
@@ -650,6 +662,8 @@ class ContestRunner:
             else:
                 submission_zip_file.extractall(team_destination_dir)
             agent_factory = os.path.join(self.TEAMS_SUBDIR, team_name, desired_file)
+            if is_staff_team:
+                self.staff_teams.append((team_name, agent_factory))
             self.teams.append((team_name, agent_factory))
             self.submission_times[team_name] = submission_time
 
@@ -736,6 +750,8 @@ class ContestRunner:
         try:
             # This will yield a byte, not a str (at least in Python 3)
             transfer_url = subprocess.check_output(transfer_cmd, shell=True)
+            if 'Could not save metadata' in transfer_url:
+                raise ValueError('Transfer.sh returns incorrect url: %s'%transfer_url)
             if remove_local:
                 print('rm %s' % file_full_path)
                 os.system('rm %s' % file_full_path)
@@ -878,9 +894,17 @@ class ContestRunner:
         self.prepare_dirs()
 
         jobs = []
-        for red_team, blue_team in combinations(self.teams, r=2):
-            for layout in self.layouts:
-                jobs.append(self._generate_job(red_team, blue_team, layout))
+        if self.staff_teams_vs_others_only:
+            for red_team in self.teams:
+                for blue_team in self.staff_teams:
+                    if red_team in self.staff_teams: continue #do not play a staff team against another staff team
+                    for layout in self.layouts:
+                        jobs.append(self._generate_job(red_team, blue_team, layout))                        
+        else:
+            for red_team, blue_team in combinations(self.teams, r=2):
+                for layout in self.layouts:
+                    jobs.append(self._generate_job(red_team, blue_team, layout))
+
 
         #  This is the core package to be transferable to each host
         core_req_file = TransferableFile(local_path=self.CORE_CONTEST_TEAM_ZIP_FILE,
@@ -906,19 +930,39 @@ class ContestRunner:
         
         jobs = []
         games_restored = 0
-        for red_team, blue_team in combinations(self.teams, r=2):
-            for layout in self.layouts:
-                red_team_name, _ = red_team
-                blue_team_name, _ = blue_team
-                log_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.log'.format(
-                    layout=layout, run_id=self.contest_timestamp_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
+        if self.staff_teams_vs_others_only:
+            for red_team in self.teams:
+                for blue_team in self.staff_teams:
+                    if red_team in self.staff_teams: continue #do not play a staff team against another staff team
+                    for layout in self.layouts:
+                        red_team_name, _ = red_team
+                        blue_team_name, _ = blue_team
+                        log_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.log'.format(
+                            layout=layout, run_id=self.contest_timestamp_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
 
-                if os.path.isfile(os.path.join(self.TMP_LOGS_DIR, log_file_name)):
-                    games_restored += 1
-                    print( "{id} Game {log} restored".format(id=games_restored, log=log_file_name) )
-                    jobs.append(self._generate_empty_job(red_team, blue_team, layout))
-                else:
-                    jobs.append(self._generate_job(red_team, blue_team, layout))   
+                        if os.path.isfile(os.path.join(self.TMP_LOGS_DIR, log_file_name)):
+                            games_restored += 1
+                            #print( "{id} Game {log} restored".format(id=games_restored, log=log_file_name) )
+                            jobs.append(self._generate_empty_job(red_team, blue_team, layout))
+                        else:
+                            print( "{id} Game {log} MISSING".format(id=games_restored, log=log_file_name) )
+                            jobs.append(self._generate_job(red_team, blue_team, layout))   
+            
+        else:
+
+            for red_team, blue_team in combinations(self.teams, r=2):
+                for layout in self.layouts:
+                    red_team_name, _ = red_team
+                    blue_team_name, _ = blue_team
+                    log_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.log'.format(
+                        layout=layout, run_id=self.contest_timestamp_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
+
+                    if os.path.isfile(os.path.join(self.TMP_LOGS_DIR, log_file_name)):
+                        games_restored += 1
+                        print( "{id} Game {log} restored".format(id=games_restored, log=log_file_name) )
+                        jobs.append(self._generate_empty_job(red_team, blue_team, layout))
+                    else:
+                        jobs.append(self._generate_job(red_team, blue_team, layout))   
 
         #  This is the core package to be transferable to each host
         core_req_file = TransferableFile(local_path=self.CORE_CONTEST_TEAM_ZIP_FILE,
@@ -1013,7 +1057,7 @@ if __name__ == '__main__':
     if resume_competition_folder != '':
         runner.resume_contest_remotely(hosts, resume_competition_folder)  # Now run ContestRunner with the hosts!
     else:
-        runner.run_contest_remotely(hosts)  # Now run ContestRunner with the hosts!
+        runner.run_contest_remotely(hosts) 
 
     stats_file_url, replays_file_url, logs_file_url = runner.store_results()
     html_generator = HtmlGenerator(settings['www_dir'], settings['organizer'])

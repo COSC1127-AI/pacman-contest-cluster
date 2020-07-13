@@ -11,22 +11,25 @@ The system and scripts in it require Python 3.x.
 Table of Contents
 =================
 
-* [OVERVIEW](#overview)
-   * [Features](#features)
-   * [Pre-requisites (in cluster and local machines)](#pre-requisites-in-cluster-and-local-machines)
-* [MAIN COMPONENTS](#main-components)
-* [OVERVIEW OF MARKING PROCESS](#overview-of-marking-process)
-* [EXAMPLE RUNS](#example-runs)
-   * [Resume partial contest](#resume-partial-contest)
-   * [Re-run only some teams in a given contest](#re-run-only-some-teams-in-a-given-contest)
-* [WEB PAGE GENERATION](#web-page-generation)
-* [SCHEDULE COMPETITION VIA driver.py](#schedule-competition-via-driverpy)
-   * [Test command to schedule](#test-command-to-schedule)
-   * [Setting up cron](#setting-up-cron)
-* [MODIFYING THE CONTEST GAME](#modifying-the-contest-game)
-* [TROUBLESHOOTING](#troubleshooting)
-* [SCREENSHOT](#screenshot)
-* [LICENSE](#license)
+- [OVERVIEW](#overview)
+  * [Features](#features)
+  * [Dependencies](#dependencies)
+- [MAIN COMPONENTS](#main-components)
+- [OVERVIEW OF MARKING PROCESS](#overview-of-marking-process)
+- [EXAMPLE RUNS](#example-runs)
+  * [Run a contest](#run-a-contest)
+  * [Run contest only vs staff teams](#run-contest-only-vs-staff-teams)
+  * [Resume partial contest](#resume-partial-contest)
+  * [Re-run only some teams in a given contest](#re-run-only-some-teams-in-a-given-contest)
+- [WEB PAGE GENERATION](#web-page-generation)
+- [SCHEDULE COMPETITION](#schedule-competition)
+  * [Test command to schedule](#test-command-to-schedule)
+  * [Setting up cron](#setting-up-cron)
+- [MODIFYING THE CONTEST GAME](#modifying-the-contest-game)
+- [TROUBLESHOOTING](#troubleshooting)
+- [SCREENSHOT](#screenshot)
+- [LICENSE](#license)
+
 
 
 
@@ -75,7 +78,7 @@ $ python3 pacman_html_generator.py --h
 * Automate tournament using a `driver.py` script and `cron`.
     
     
-### Pre-requisites (in cluster and local machines)
+### Dependencies
 
 In **each machine in the cluster**:
 
@@ -198,6 +201,7 @@ The full contest is **all-against-all tournament** with the following rank gener
 
 ## EXAMPLE RUNS
 
+### Run a contest
 Using a CSV file to specify team names, include staff teams:
 
 ````bash
@@ -225,6 +229,9 @@ $ python3  pacman_contest_cluster.py --compress-log \
         --staff-teams-dir AI17-contest/staff-teams/
         --upload-www-replays
 ````
+### Run contest only vs staff teams
+
+Append this option to the command above ``` --staff-teams-vs-others-only```
 
 
 ### Resume partial contest
@@ -298,7 +305,7 @@ $ python3 pacman_html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" 
 **Observation:** If the stats file for a run has the `transfer.sh` URL for logs/replays, those will be used.
 
 
-## SCHEDULE COMPETITION VIA `driver.py` 
+## SCHEDULE COMPETITION
 
 
 If you want to automate the tournament, use the `driver.py` provided. It has the following options:
