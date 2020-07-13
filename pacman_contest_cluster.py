@@ -357,6 +357,8 @@ class ContestRunner:
 
         # self.maxTimeTaken = Null
 
+        # flag indicating the contest only will run student teams vs staff teams, instead of a full tournament
+        self.staff_teams_vs_others_only = staff_teams_vs_others_only
 
         # unique id for this execution of the contest; used to label logs
         self.contest_timestamp_id = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
@@ -908,11 +910,11 @@ class ContestRunner:
         self._calculate_team_stats()
 
 
-    def run_contest_remotely(self, hosts, staff_teams_vs_others_only):
+    def run_contest_remotely(self, hosts):
         self.prepare_dirs()
 
         jobs = []
-        if staff_teams_vs_others_only:
+        if self.staff_teams_vs_others_only:
             for red_team in self.teams:
                 for blue_team in self.staff_teams:
                     if red_team in self.staff_teams: continue #do not play a staff team against another staff team
@@ -938,7 +940,7 @@ class ContestRunner:
         self._analyse_all_outputs(results)
         self._calculate_team_stats()
 
-    def resume_contest_remotely(self, hosts, resume_folder, staff_teams_vs_others_only):
+    def resume_contest_remotely(self, hosts, resume_folder):
         self.prepare_dirs()
 
         shutil.rmtree(self.TMP_LOGS_DIR)
@@ -948,7 +950,7 @@ class ContestRunner:
         
         jobs = []
         games_restored = 0
-        if staff_teams_vs_others_only:
+        if self.staff_teams_vs_others_only:
             for red_team in self.teams:
                 for blue_team in self.staff_teams:
                     if red_team in self.staff_teams: continue #do not play a staff team against another staff team
@@ -1073,9 +1075,9 @@ if __name__ == '__main__':
     runner = ContestRunner(**settings)  # Setup ContestRunner    
     
     if resume_competition_folder != '':
-        runner.resume_contest_remotely(hosts, resume_competition_folder, settings['staff_teams_vs_others_only'])  # Now run ContestRunner with the hosts!
+        runner.resume_contest_remotely(hosts, resume_competition_folder)  # Now run ContestRunner with the hosts!
     else:
-        runner.run_contest_remotely(hosts, settings['staff_teams_vs_others_only']) 
+        runner.run_contest_remotely(hosts) 
 
     stats_file_url, replays_file_url, logs_file_url = runner.store_results()
     html_generator = HtmlGenerator(settings['www_dir'], settings['organizer'])
