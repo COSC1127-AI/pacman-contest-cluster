@@ -88,7 +88,7 @@ In **each machine in the cluster**:
     * The original UC Pacman Contest ran under Python 2, but in this system it was ported to version 3.
 * Set the SSH server to accept as many connections as you want to run concurrently. This is done by changing option `MaxStartups` in file `/etc/ssh/sshd_config`. By default `sshd` has up to 10 connections.
     * For example, set `MaxStartups 20:30:60` to accept up to 20 simultaneous connections. Remember to restart the ssh server: `sudo service sshd restart`
-    * For more info on this, see issue #22.
+    * For more info on this, see issue [#26](https://github.com/AI4EDUC/pacman-contest-cluster/issues/26).
 * Cluster should have all the Python and Unix packages to run the contest. For example, in the NeCTAR cluster:
                             
     ```bash
@@ -115,8 +115,6 @@ In the **local machine** (e.g., your laptop) that will dispatch game jobs to the
 * unzip & zip (to pack and unpack submissions and files for transfer): `sudo apt-get install -y unzip zip`
 * Python >= 3.5 with:
    * setuptools
-   * python-future
-   * future
    * iso8601
    * pytz
    * paramiko
@@ -393,11 +391,20 @@ The code implementing a game simulator between two players is located in `contes
 
 As of 2019, that code runs under Python 3.x. The game simulator for Python 2.7 is kept in repository [pacman-contest-27](https://github.com/AI4EDUC/pacman-contest-27/) repository. 
 
-Note that the simulator is not used for the actual cluster tournament, which only uses the simulator packed in `contest.zip` file. It is however left there under `contest/` just in case one wants to run and test specific single games, if needed. For example, if we assume that `contest/teams` points to a set of teams, we can run one game as follows:
+Note that the submodule source under `contest/` is NOT used for the actual cluster tournament, which only uses the source packed in `contest.zip` file. 
+
+It is however left there under `contest/` just in case one wants to run and test specific single games, if needed. For example, if we assume that `contest/teams` points to a set of teams, we can run one game as follows:
 
 ```bash
 $ cd contest/
 $ python3 capture.py -r teams/staff_team_super/myTeam.py -b teams/staff_team_medium/myTeam.py
+```
+
+Remember that to get the source from its repo, one needs to do this before:
+
+```bash
+$ git submodule init
+$ git submodule update --remote
 ```
 
 Since the actual simulator code used by the cluster contest script is the one packed in `contest.zip`, any changes, fixes, upgrades, extensions to the simulator have to be done outside and zipped it into `contest.zip` file again.
