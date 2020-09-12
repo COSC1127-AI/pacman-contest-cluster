@@ -389,7 +389,7 @@ Now your script will run every midnight at 00:01
 
 ## MODIFYING THE CONTEST GAME
 
-The code implementing a game simulator between two players is located in `contest/` as a _git submodule_ from [pacman-contest-3](https://github.com/AI4EDUC/pacman-contest-3) repository. 
+The code implementing a game simulator between two players is located in `contest/` as a _git submodule_ from [pacman-contest-agent](https://github.com/AI4EDUC/pacman-contest-agent) repository, which also serves as an empty agent template.
 
 As of 2019, that code runs under Python 3.x. The game simulator for Python 2.7 is kept in repository [pacman-contest-27](https://github.com/AI4EDUC/pacman-contest-27/) repository. 
 
