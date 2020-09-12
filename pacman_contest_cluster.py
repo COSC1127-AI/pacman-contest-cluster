@@ -416,7 +416,6 @@ class ContestRunner:
                 self._setup_team(submission_path, teams_dir, ignore_file_name_format,
                                  allow_non_registered_students=allow_non_registered_students)
 
-
         # Include staff teams if available (ones with pattern STAFF_TEAM_FILENAME_PATTERN)
         if include_staff_team:
             for staff_team_submission_file in os.listdir(staff_teams_dir):
@@ -424,18 +423,11 @@ class ContestRunner:
                 if match:
                     submission_path = os.path.join(staff_teams_dir, staff_team_submission_file)
                     if staff_team_submission_file.endswith(".zip") or os.path.isdir(submission_path):
-                        self._setup_team(submission_path, teams_dir, True, False, True )
+                        self._setup_team(submission_path, teams_dir, True, False, True)
 
-        # # Add the staff team, if necessary
-        # if include_staff_team:
-        #     for STAFF_TEAM in [os.path.join(staff_teams_dir, staff_file) for staff_file in self.STAFF_TEAM_ZIP_FILE]:
-        #         if not os.path.exists(STAFF_TEAM):
-        #             logging.error('Staff team file %s could not be found. Aborting.' % STAFF_TEAM)
-        #             sys.exit(1)
-        #         self._setup_team(STAFF_TEAM, teams_dir, True)
-
-        # zip directory for transfer to remote workers
-        shutil.make_archive(self.CORE_CONTEST_TEAM_ZIP_FILE[:-4], 'zip', self.TMP_CONTEST_DIR)
+        # zip directory for transfer to remote workers; zip goes into temp directory
+        shutil.make_archive(os.path.join(self.TMP_DIR, self.CORE_CONTEST_TEAM_ZIP_FILE[:-4]), 'zip',
+                            self.TMP_CONTEST_DIR)
 
         self.ladder = {n: [] for n, _ in self.teams}
         self.games = []
@@ -838,10 +830,6 @@ class ContestRunner:
             deflate_command=deflate_command, contest_dir=self.TMP_CONTEST_DIR, game_command=game_command,
             replay_filename='replay-0')
 
-        # We used to transfer contest_and_teams.zip at every job, but not anymore
-        # we transfered it once at the start per machine, and just copy+unzip there directly
-        # req_file = TransferableFile(local_path=self.CORE_CONTEST_TEAM_ZIP_FILE, remote_path=self.CORE_CONTEST_TEAM_ZIP_FILE)
-
         replay_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.replay'.format(layout=layout,
                                                                                         run_id=self.contest_timestamp_id,
                                                                                         red_team_name=red_team_name,
@@ -865,11 +853,6 @@ class ContestRunner:
         blue_team_name, _ = blue_team
 
         command = ''
-
-        # We used to transfer contest_and_teams.zip at every job, but not anymore
-        # we transfered it once at the start per machine, and just copy+unzip there directly
-        # req_file = TransferableFile(local_path=self.CORE_CONTEST_TEAM_ZIP_FILE, remote_path=self.CORE_CONTEST_TEAM_ZIP_FILE)
-
 
         return Job(command=command, required_files=[], return_files=[  ], data=(red_team, blue_team, layout),
                    id='{}-vs-{}-in-{}'.format(red_team_name, blue_team_name, layout))
@@ -900,9 +883,8 @@ class ContestRunner:
                 for layout in self.layouts:
                     jobs.append(self._generate_job(red_team, blue_team, layout))
 
-
         #  This is the core package to be transferable to each host
-        core_req_file = TransferableFile(local_path=os.path.join(DIR_SCRIPT, self.CORE_CONTEST_TEAM_ZIP_FILE),
+        core_req_file = TransferableFile(local_path=os.path.join(self.TMP_DIR, self.CORE_CONTEST_TEAM_ZIP_FILE),
                                          remote_path=os.path.join('/tmp', self.CORE_CONTEST_TEAM_ZIP_FILE))
 
         # create cluster with hots and jobs and run it by starting it, and then analyze output results
@@ -960,7 +942,7 @@ class ContestRunner:
                         jobs.append(self._generate_job(red_team, blue_team, layout))   
 
         #  This is the core package to be transferable to each host
-        core_req_file = TransferableFile(local_path=os.path.join(DIR_SCRIPT, self.CORE_CONTEST_TEAM_ZIP_FILE),
+        core_req_file = TransferableFile(local_path=os.path.join(self.TMP_DIR, self.CORE_CONTEST_TEAM_ZIP_FILE),
                                          remote_path=os.path.join('/tmp', self.CORE_CONTEST_TEAM_ZIP_FILE))
 
         # create cluster with hots and jobs and run it by starting it, and then analyze output results
