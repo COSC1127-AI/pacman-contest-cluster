@@ -18,11 +18,6 @@ __author__ = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
 __copyright__ = "Copyright 2017-2020"
 __license__ = "GPLv3"
 
-
-
-#  ----------------------------------------------------------------------------------------------------------------------
-# Import standard stuff
-
 import os
 import re
 import sys
@@ -39,9 +34,9 @@ import random
 #import commands
 import tarfile
 import subprocess
+import iso8601
 from itertools import combinations
 from cluster_manager import ClusterManager, Job, Host, TransferableFile
-import iso8601
 from pytz import timezone
 
 #import cluster_manager
@@ -52,6 +47,7 @@ from pacman_html_generator import HtmlGenerator
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO,
                     datefmt='%a, %d %b %Y %H:%M:%S')
 
+DIR_SCRIPT = sys.path[0]
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Load settings either from config.json or from the command line
@@ -62,7 +58,7 @@ def default(str):
 def load_settings():
     DEFAULT_MAX_STEPS = 1200
     DEFAULT_FIXED_LAYOUTS = 3
-    DEFAULT_LAYOUTS_ZIP_FILE = 'layouts.zip'
+    DEFAULT_LAYOUTS_ZIP_FILE = os.path.join(DIR_SCRIPT, 'layouts.zip')
     DEFAULT_RANDOM_LAYOUTS = 3
     DEFAULT_CONFIG_FILE = 'config.json'
 
@@ -365,17 +361,17 @@ class ContestRunner:
         # a flag indicating whether to compress the logs
         self.compress_logs = compress_logs
 
-        if not os.path.exists(self.CONTEST_ZIP_FILE):
+        if not os.path.exists(os.path.join(DIR_SCRIPT, self.CONTEST_ZIP_FILE)):
             logging.error('File %s could not be found. Aborting.' % self.CONTEST_ZIP_FILE)
             sys.exit(1)
 
-        if not os.path.exists(fixed_layouts_file):
+        if not fixed_layouts_file:
             logging.error('File %s could not be found. Aborting.' % fixed_layouts_file)
             sys.exit(1)
 
         # Setup Pacman CTF environment by extracting it from a clean zip file
         self.layouts = None
-        self._prepare_platform(self.CONTEST_ZIP_FILE, fixed_layouts_file, self.TMP_CONTEST_DIR, no_fixed_layouts,
+        self._prepare_platform(os.path.join(DIR_SCRIPT, self.CONTEST_ZIP_FILE), fixed_layouts_file, self.TMP_CONTEST_DIR, no_fixed_layouts,
                                no_random_layouts, fixed_layout_seeds, random_seeds)
 
         # Report layouts to be played, fixed and random (with seeds)
@@ -906,7 +902,7 @@ class ContestRunner:
 
 
         #  This is the core package to be transferable to each host
-        core_req_file = TransferableFile(local_path=self.CORE_CONTEST_TEAM_ZIP_FILE,
+        core_req_file = TransferableFile(local_path=os.path.join(DIR_SCRIPT, self.CORE_CONTEST_TEAM_ZIP_FILE),
                                          remote_path=os.path.join('/tmp', self.CORE_CONTEST_TEAM_ZIP_FILE))
 
         # create cluster with hots and jobs and run it by starting it, and then analyze output results
@@ -964,7 +960,7 @@ class ContestRunner:
                         jobs.append(self._generate_job(red_team, blue_team, layout))   
 
         #  This is the core package to be transferable to each host
-        core_req_file = TransferableFile(local_path=self.CORE_CONTEST_TEAM_ZIP_FILE,
+        core_req_file = TransferableFile(local_path=os.path.join(DIR_SCRIPT, self.CORE_CONTEST_TEAM_ZIP_FILE),
                                          remote_path=os.path.join('/tmp', self.CORE_CONTEST_TEAM_ZIP_FILE))
 
         # create cluster with hots and jobs and run it by starting it, and then analyze output results

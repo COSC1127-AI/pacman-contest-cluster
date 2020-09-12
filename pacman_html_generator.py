@@ -25,6 +25,9 @@ from pytz import timezone
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO,
                     datefmt='%a, %d %b %Y %H:%M:%S')
 
+DIR_SCRIPT = sys.path[0]
+FILE_FONTS = os.path.join(DIR_SCRIPT, "fonts.zip")
+FILE_CSS = os.path.join(DIR_SCRIPT, "style.css")
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Load settings either from config.json or from the command line
@@ -215,9 +218,9 @@ class HtmlGenerator:
 
         if not os.path.exists(self.www_dir):
             os.makedirs(self.www_dir)
-        contest_zip_file = zipfile.ZipFile("fonts.zip")
+        contest_zip_file = zipfile.ZipFile(FILE_FONTS)
         contest_zip_file.extractall(self.www_dir)
-        shutil.copy("style.css", self.www_dir)
+        shutil.copy(FILE_CSS, self.www_dir)
 
         if not os.path.exists(html_parent_path):
             os.makedirs(html_parent_path)
