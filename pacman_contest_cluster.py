@@ -356,7 +356,7 @@ class ContestRunner:
         self.staff_teams_vs_others_only = staff_teams_vs_others_only
 
         # unique id for this execution of the contest; used to label logs
-        self.contest_timestamp_id = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
+        self.contest_timestamp_id = datetime.datetime.now().astimezone(self.TIMEZONE).strftime("%Y-%m-%d-%H-%M")
 
         # a flag indicating whether to compress the logs
         self.compress_logs = compress_logs
