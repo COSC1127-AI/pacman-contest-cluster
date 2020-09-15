@@ -237,10 +237,10 @@ class HtmlGenerator:
         The file is saved in www/results.html.
         """
         # regenerate main html
-        main_html = """<html><head><title>Results for PACMAN Capture the Flag the tournament</title>"""
-        main_html += """<link rel="stylesheet" type="text/css" href="style.css"/></head>"""
-        main_html += """<body><h1>Results Pacman Capture the Flag by Date</h1>"""
-        main_html += """<body><h2>Organizer: %s </h1>""" % self.organizer
+        main_html = """<html><head><title>Results for PACMAN Capture the Flag the tournament</title>\n"""
+        main_html += """<link rel="stylesheet" type="text/css" href="style.css"/></head>\n"""
+        main_html += """<body><h1>Results Pacman Capture the Flag by Date</h1>\n"""
+        main_html += """<body><h2>Organizer: %s </h1>\n\n""" % self.organizer
         for d in sorted(os.listdir(self.www_dir)):
             if not os.path.isdir(os.path.join(self.www_dir, d)):
                 continue
@@ -248,8 +248,8 @@ class HtmlGenerator:
                 continue
             if not d.startswith('results'):
                 continue
-            main_html += """<a href="%s/results.html"> %s  </a> <br/>""" % (d, d)
-        main_html += "<br/></body></html>"
+            main_html += """<a href="%s/results.html"> %s  </a> <br/>\n""" % (d, d)
+        main_html += "\n\n<br/></body></html>"
         with open(os.path.join(self.www_dir, 'index.html'), "w") as f:
             print(main_html, file=f)
 
