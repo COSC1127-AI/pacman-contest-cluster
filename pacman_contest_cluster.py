@@ -62,7 +62,6 @@ def load_settings():
     DEFAULT_RANDOM_LAYOUTS = 3
     DEFAULT_CONFIG_FILE = 'config.json'
 
-
     parser = argparse.ArgumentParser(
         description='Run an Pacman Capture the Flag tournament based on '
                     'the project developed by John DeNero (denero@cs.berkeley.edu) and Dan Klein '
@@ -74,7 +73,8 @@ def load_settings():
                     'and is based on an original script from Dr. Nir Lipovetzky for UoM COMP90054. '
                     'From 2017 both have been further developing this tool. \n'
                     '\n'
-                    'Full documentation at https://github.com/AI4EDUC/pacman-contest-cluster'
+                    'Full documentation at https://github.com/AI4EDUC/pacman-contest-cluster',
+        formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
     parser.add_argument(
