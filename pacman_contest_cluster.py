@@ -1,22 +1,22 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
 """
-This script is to run a tournament between teams of agents for the Pacman package developed by
-John DeNero (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu) at UC Berkeley.
+This script runs a all-against-all tournament between teams of agents for the Pacman Capture the Flag
+project (http://ai.berkeley.edu/contest.html) developed by John DeNero (denero@cs.berkeley.edu) and
+Dan Klein (klein@cs.berkeley.edu) at UC Berkeley.
 
-After running the tournament, the script generates a report in HTML. The report is, optionally,
-uploaded to a specified server via scp.
+After running the tournament, the script generates a leaderboard report in HTML for web hosting which includes
+logs and replays for each game.
                     
-The script was developed for RMIT COSC1125/1127 AI course in Semester 1, 2017 by A/Prof. Sebastian Sardina and PhD
-student Marco Tamassia. The script is in turn based on an original script from Dr. Nir Lipovetzky.
-"""
-#from __future__ import print_function
-# from sqlalchemy.sql.functions import random
+The script was developed for RMIT COSC1125/1127 AI course in Semester 1, 2017 by Sebastian Sardina and PhD
+student Marco Tamassia. The script is in turn based on an original script from Nir Lipovetzky for local runs.
 
+It is currently maintained by Sebastian Sardina and Nir Lipovetzky; contact them for any question.
+"""
 __author__ = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
 __copyright__ = "Copyright 2017-2020"
 __license__ = "GPLv3"
+__repo__      = "https://github.com/AI4EDUC/pacman-contest-cluster"
 
 import os
 import re
@@ -64,18 +64,17 @@ def load_settings():
 
 
     parser = argparse.ArgumentParser(
-        description='This script is to run a tournament between teams of agents for the Pacman package developed by '
-                    'John DeNero (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu) at UC Berkeley.\n'
+        description='Run an Pacman Capture the Flag tournament based on '
+                    'the project developed by John DeNero (denero@cs.berkeley.edu) and Dan Klein '
+                    '(klein@cs.berkeley.edu) at UC Berkeley (http://ai.berkeley.edu/contest.html).\n'
                     '\n'
-                    'After running the tournament, the script generates a report in HTML. The report is, optionally, '
-                    'uploaded to a specified server via scp.\n'
+                    'The script produces JSON files with results and an leaderboard report in HTML. \n'
                     '\n'
-                    'The parameters are saved in config.json, so it is only necessary to pass them the first time or '
-                    'if they have to be updated.\n'
+                    'Script was developed for RMIT COSC1125/1127 AI course in 2017 (A/Prof. Sebastian Sardina), '
+                    'and is based on an original script from Dr. Nir Lipovetzky for UoM COMP90054. '
+                    'From 2017 both have been further developing this tool. \n'
                     '\n'
-                    'The script was developed for RMIT COSC1125/1127 AI course in 2017 (A/Prof. Sebastian Sardina), '
-                    'and is based on an original script from Dr. Nir Lipovetzky for UoM COMP90054.'
-                    'From 2017 both have been developing futher this tool.'
+                    'Full documentation at https://github.com/AI4EDUC/pacman-contest-cluster'
     )
 
     parser.add_argument(
