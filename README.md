@@ -76,6 +76,7 @@ $ python3 pacman_html_generator.py --h
 * Handle latest submission per team, by sorting via timestamp recorded in file name.
 * Can resume a partial ran contest.
 * Automate tournament using a `driver.py` script and `cron`.
+* Save options into a JSON file `config.json` for future runs using `--build-config-file` option.
     
     
 ### Dependencies
