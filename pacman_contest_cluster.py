@@ -370,7 +370,8 @@ class ContestRunner:
 
         # Setup Pacman CTF environment by extracting it from a clean zip file
         self.layouts = None
-        self._prepare_platform(os.path.join(DIR_SCRIPT, self.CONTEST_ZIP_FILE), fixed_layouts_file, self.TMP_CONTEST_DIR, no_fixed_layouts,
+        self._prepare_platform(os.path.join(DIR_SCRIPT, self.CONTEST_ZIP_FILE), fixed_layouts_file,
+                               self.TMP_CONTEST_DIR, no_fixed_layouts,
                                no_random_layouts, fixed_layout_seeds, random_seeds)
 
         # Report layouts to be played, fixed and random (with seeds)
@@ -378,8 +379,9 @@ class ContestRunner:
         random_layouts_selected = set([x for x in self.layouts if re.compile(r'RANDOM[0-9]*').match(x)])
         fixed_layouts_selected = self.layouts.difference(random_layouts_selected)
 
-        seeds_strings = [m.group(1) for m in (re.compile(r'RANDOM([0-9]*)').search(layout) for layout in random_layouts_selected)
-                 if m]
+        seeds_strings = [m.group(1) for m in
+                         (re.compile(r'RANDOM([0-9]*)').search(layout) for layout in random_layouts_selected)
+                         if m]
         seeds = list(map(lambda x: int(x), seeds_strings))
         logging.info('Seeds for RANDOM layouts to be played: %s' % seeds)
         logging.info('Seeds for FIXED layouts to be played: %s' % ','.join(fixed_layouts_selected))
@@ -525,7 +527,8 @@ class ContestRunner:
 
         return score, winner, loser, bug, totaltime
 
-    def _prepare_platform(self, contest_zip_file_path, layouts_zip_file_path, destination, no_fixed_layouts, no_random_layouts, fixed_layout_seeds=[], random_seeds=[]):
+    def _prepare_platform(self, contest_zip_file_path, layouts_zip_file_path, destination, no_fixed_layouts,
+                          no_random_layouts, fixed_layout_seeds=[], random_seeds=[]):
         """
         Cleans the given destination directory and prepares a fresh setup to execute a Pacman CTF game within.
         Information on the layouts are saved in the member variable layouts.
@@ -842,7 +845,8 @@ class ContestRunner:
         ret_file_log = TransferableFile(local_path=os.path.join(self.TMP_LOGS_DIR, log_file_name),
                                     remote_path=os.path.join(self.TMP_CONTEST_DIR, 'log-0'))
 
-        return Job(command=command, required_files=[], return_files=[ ret_file_replay, ret_file_log ], data=(red_team, blue_team, layout),
+        return Job(command=command, required_files=[], return_files=[ret_file_replay, ret_file_log],
+                   data=(red_team, blue_team, layout),
                    id='{}-vs-{}-in-{}'.format(red_team_name, blue_team_name, layout))
 
     
@@ -858,7 +862,8 @@ class ContestRunner:
 
 
     def _analyse_all_outputs(self, results):
-        logging.info('About to analyze game result outputs. Number of result output to analyze: {}'.format(len(results)))
+        logging.info(
+            'About to analyze game result outputs. Number of result output to analyze: {}'.format(len(results)))
         for result in results:
             (red_team, blue_team, layout), exit_code, output, error, total_secs_taken = result
             if not exit_code == 0:
@@ -914,7 +919,8 @@ class ContestRunner:
                         red_team_name, _ = red_team
                         blue_team_name, _ = blue_team
                         log_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.log'.format(
-                            layout=layout, run_id=self.contest_timestamp_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
+                            layout=layout, run_id=self.contest_timestamp_id, red_team_name=red_team_name,
+                            blue_team_name=blue_team_name)
 
                         if os.path.isfile(os.path.join(self.TMP_LOGS_DIR, log_file_name)):
                             games_restored += 1
@@ -931,7 +937,8 @@ class ContestRunner:
                     red_team_name, _ = red_team
                     blue_team_name, _ = blue_team
                     log_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.log'.format(
-                        layout=layout, run_id=self.contest_timestamp_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
+                        layout=layout, run_id=self.contest_timestamp_id, red_team_name=red_team_name,
+                        blue_team_name=blue_team_name)
 
                     if os.path.isfile(os.path.join(self.TMP_LOGS_DIR, log_file_name)):
                         games_restored += 1
