@@ -10,6 +10,6 @@ numpy
 keras
 tensorflow
 sklearn
-sklearn
 scipy
 neat-python
+py_trees
