@@ -1,0 +1,5 @@
+{
+  "workers": [
+      {"no_cpu": 2, "hostname": "localhost", "username": "ssardina", "password": null, "private_key_file": "~/.ssh/id_rsa", "key_password": null}
+  ]
+}
