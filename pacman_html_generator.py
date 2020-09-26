@@ -262,15 +262,15 @@ class HtmlGenerator:
         if organizer is None:
             organizer = self.organizer
 
-        output = """<html><head><title>Results for the tournament round</title>"""
-        output += """<link rel="stylesheet" type="text/css" href="../style.css"/></head>"""
-        output += """<body><h1>PACMAN Capture the Flag Tournament</h1>"""
-        output += """<body><h2>Tournament Organizer: %s </h1>""" % organizer
+        output = """<html><head><title>Results for the tournament round</title>\n"""
+        output += """<link rel="stylesheet" type="text/css" href="../style.css"/></head>\n"""
+        output += """<body><h1>PACMAN Capture the Flag Tournament</h1>\n"""
+        output += """<body><h2>Tournament Organizer: %s </h1>\n""" % organizer
         if not run_id == date_run:
-            output += """<body><h2>Name of Tournament: %s </h1>""" % run_id
-        output += """<body><h2>Date of Tournament: %s </h1>""" % date_run
+            output += """<body><h2>Name of Tournament: %s </h1>\n""" % run_id
+        output += """<body><h2>Date of Tournament: %s \n</h1>""" % date_run
 
-        output += """<h2>Configuration: %d teams in %d (%d fixed + %d random) layouts for %d steps</h2>""" \
+        output += """<h2>Configuration: %d teams in %d (%d fixed + %d random) layouts for %d steps</h2>\n""" \
                   % (len(team_stats), len(fixed_layouts) + len(random_layouts), len(fixed_layouts), len(random_layouts),
                      max_steps)
 
@@ -306,7 +306,7 @@ class HtmlGenerator:
             output += """<th>TOTAL</th>"""
             output += """<th>FAILED</th>"""
             output += """<th>Score Balance</th>"""
-            output += """</tr>"""
+            output += """</tr>\n"""
 
             # Sort teams by points v[1][0] first, then no. of wins, then score points.
             # example list(team_stats.items() = [('TYGA_THUG', [6, 2, 0, 0, 0, 2]), ('RationalAgents_', [0, 0, 0, 2, 2, -2])]
@@ -324,24 +324,24 @@ class HtmlGenerator:
                 output += """<td>%d</td>""" % (wins + draws + losses)
                 output += """<td >%d</td>""" % errors
                 output += """<td >%d</td>""" % sum_score
-                output += """</tr>"""
+                output += """</tr>\n"""
             output += "</table>"
 
 
             # Second, print each game result
-            output += "<br/><br/><h2>Games</h2>"
+            output += "\n\n<br/><br/><h2>Games</h2>\n"
 
             times_taken = [time_game for (_, _, _, _, _, time_game) in games]
-            output += """<h3>No. of games: %d / Avg. game length: %s / Max game length: %s</h3>""" \
+            output += """<h3>No. of games: %d / Avg. game length: %s / Max game length: %s</h3>\n""" \
                       % (len(games), str(datetime.timedelta(seconds=round(sum(times_taken) / len(times_taken),0))),
                          str(datetime.timedelta(seconds=max(times_taken))))
 
             if replays_url:
-                output += """<a href="%s">DOWNLOAD REPLAYS</a><br/>""" % replays_url
+                output += """<a href="%s">DOWNLOAD REPLAYS</a><br/>\n""" % replays_url
             if logs_url:
-                output += """<a href="%s">DOWNLOAD LOGS</a><br/>""" % logs_url
+                output += """<a href="%s">DOWNLOAD LOGS</a><br/>\n""" % logs_url
             if stats_url:
-                output += """<a href="%s">DOWNLOAD STATS</a><br/>""" % stats_url
+                output += """<a href="%s">DOWNLOAD STATS</a><br/>\n\n""" % stats_url
             output += """<table border="1">"""
             output += """<tr>"""
             output += """<th>Team 1</th>"""
@@ -350,7 +350,7 @@ class HtmlGenerator:
             output += """<th>Time</th>"""
             output += """<th>Score</th>"""
             output += """<th>Winner</th>"""
-            output += """</tr>"""
+            output += """</tr>\n"""
             for (n1, n2, layout, score, winner, time_taken) in games:
                 output += """<tr>"""
 
@@ -391,9 +391,9 @@ class HtmlGenerator:
                     output += """<td>%d</td>""" % score
                     output += """<td><b>%s</b></td>""" % winner
 
-                output += """</tr>"""
+                output += """</tr>\n"""
 
-        output += "</table></body></html>"
+        output += "\n\n</table></body></html>"
 
         return output
 
