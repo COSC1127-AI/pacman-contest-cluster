@@ -107,7 +107,7 @@ class ClusterManager:
                 jobs_list = [j for j in jobs_list if j.data in games_failed]    # extract failed jobs (to retry)
                 good_results = [tuple(result) for result  in results_run if not result[1] == -1]
                 results = results + good_results  # keep non-error results only (rest will be re-tried)
-                print('============================ ONE FULL PASS ON JOBS COMPELTED ============================')
+                print('============================ ONE FULL PASS ON JOBS COMPLETED ============================')
             else:
                 # tough luck, include failed jobs in results as they came with score = -1 (failed)...
                 results = results + results_run
@@ -240,8 +240,6 @@ def report_progress_bytes_transfered(xfer, to_be_xfer, job_id):
 
 def report_match(job):
     return job.id
-    return job.data[0][0] + " vs " + job.data[1][0] + " in map " + job.data[2]  # this is particular to games
-
 
 def _rmdir(sftp, path):
     files = sftp.listdir(path)
