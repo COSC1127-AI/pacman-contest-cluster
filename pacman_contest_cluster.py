@@ -16,7 +16,7 @@ It is currently maintained by Sebastian Sardina and Nir Lipovetzky; contact them
 __author__ = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
 __copyright__ = "Copyright 2017-2020"
 __license__ = "GPLv3"
-__repo__      = "https://github.com/AI4EDUC/pacman-contest-cluster"
+__repo__ = "https://github.com/AI4EDUC/pacman-contest-cluster"
 
 import os
 import re
@@ -79,13 +79,12 @@ def load_settings():
 
     parser.add_argument(
         '--config-file',
-        help='configuration file to use (default: %(default)s).',
-        default = DEFAULT_CONFIG_FILE
+        help='configuration file to use, if any.',
     )
     parser.add_argument(
         '--organizer',
         help='name of contest organizer (default: %(default)s).',
-        default = 'Uni Pacman'
+        default='Uni Pacman'
     )
     parser.add_argument(
         '--www-dir',
@@ -133,13 +132,11 @@ def load_settings():
     )
     parser.add_argument(
         '--max-steps',
-        help='the limit on the number of steps for each game (default: %(default)s).',
-        default=DEFAULT_MAX_STEPS
+        help=f'the limit on the number of steps for each game (default: {DEFAULT_MAX_STEPS}).'
     )
     parser.add_argument(
         '--no-fixed-layouts',
-        help='number of (random) layouts to use from a given fix set (default: %(default)s).',
-        default=DEFAULT_FIXED_LAYOUTS,
+        help=f'number of (random) layouts to use from a given fix set (default: {DEFAULT_FIXED_LAYOUTS}).'
     )
     parser.add_argument(
         '--fixed-layout-seeds',
@@ -147,22 +144,20 @@ def load_settings():
     )
     parser.add_argument(
         '--fixed-layouts-file',
-        help='zip file where all fixed layouts are stored (default: %(default)s).',
-        default=DEFAULT_LAYOUTS_ZIP_FILE,
+        help=f'zip file where all fixed layouts are stored (default: {DEFAULT_LAYOUTS_ZIP_FILE}).'
     )
     parser.add_argument(
         '--no-random-layouts',
-        help='number of random layouts to use (default: %(default)s).',
-        default=DEFAULT_RANDOM_LAYOUTS,
+        help=f'number of random layouts to use (default: {DEFAULT_RANDOM_LAYOUTS}).'
     )
     parser.add_argument(
         '--random-seeds',
-        help='random seeds for random layouts to use, separated by commas. Eg. 1,2,3.',
+        help='random seeds for random layouts to use, separated by commas. Eg. 1,2,3.'
     )
     parser.add_argument(
-        '--resume-competition-folder',
-        help='directory containing the logs and replays from the last failed competition. Can be found in /tmp folder. Rename it to use the folder as an argument.',
-        default='',
+        '--resume-contest-folder',
+        help='directory containing the logs and replays from the last failed competition. Can be found in /tmp folder. '
+             'Rename it to use the folder as an argument.'
     )    
     parser.add_argument(
         '--allow-non-registered-students',
@@ -189,6 +184,11 @@ def load_settings():
         help='uploads logs and replays into https://transfer.sh.',
         action='store_true',
     )
+    parser.add_argument(
+        '--split',
+        help='split tournament into two leagues A and B.',
+        action='store_true',
+    )
 
     #TODO: This can be replaced with settings = vars(parser.parse_args()) to generate settings right away!
     # we would have to also set the types of arguments above, for example integers
@@ -199,85 +199,100 @@ def load_settings():
         print('No arguments given. Use -h fo help')
         sys.exit(0)
 
-    # First get the options from the configuration file if available
-    if not args.config_file is None:
-        if os.path.exists(args.config_file):
-            with open(args.config_file, 'r') as f:
-                settings = json.load(f)
+    # Set the default settings first
+    settings_default = {}
+    settings_default['no_fixed_layouts'] = DEFAULT_FIXED_LAYOUTS
+    settings_default['no_random_layouts'] = DEFAULT_RANDOM_LAYOUTS
+    settings_default['max_steps'] = DEFAULT_MAX_STEPS
+    settings_default['fixed_layouts_file'] = DEFAULT_LAYOUTS_ZIP_FILE
+    settings_default['resume_contest_folder'] = None
+    settings_default['include_staff_team'] = False
+    settings_default['staff_teams_dir'] = None
+    settings_default['staff_teams_vs_others_only'] = False
+    settings_default['ignore_file_name_format'] = True
+    settings_default['team_names_file'] = None
+    settings_default['upload_replays'] = args.upload_replays
+    settings_default['upload_logs'] = args.upload_logs
+    settings_default['allow_non_registered_students'] = args.allow_non_registered_students
+    settings_default['split'] = args.split
+
+
+    # Then set the settings from config file, if any provided
+    settings_json = {}
+    if args.config_file is not None:
+        config_json_file = args.config_file if args.config_file is not None else DEFAULT_CONFIG_FILE
+        if os.path.exists(config_json_file):
+            with open(config_json_file, 'r') as f:
+                settings_json = json.load(f)
                 logging.debug('Configuration file loaded')
         else:
-            logging.warning('Configuration file not available.')
-            settings = {}
-    else:
-        settings = {}
+            logging.error(f'Configuration file {config_json_file} not available.')
+            sys.exit(1)
 
-    # if given, set the parameters as per command line options (may override config file)
+    # Now collect all CLI options, override default and config file
+    settings_cli = {}
     if args.organizer:
-        settings['organizer'] = args.organizer
+        settings_cli['organizer'] = args.organizer
 
     if args.www_dir:
-        settings['www_dir'] = args.www_dir
+        settings_cli['www_dir'] = args.www_dir
     if args.compress_logs:
-        settings['compress_logs'] = args.compress_logs
+        settings_cli['compress_logs'] = args.compress_logs
     if args.workers_file:
-        settings['workers_file'] = args.workers_file
+        settings_cli['workers_file'] = args.workers_file
 
-    if args.resume_competition_folder:
-        settings['resume_competition_folder'] = args.resume_competition_folder
-    else:
-        settings['resume_competition_folder'] = ''
-        
+    if args.resume_contest_folder:
+        settings_cli['resume_contest_folder'] = args.resume_contest_folder
+
     if args.staff_teams_dir:
-        settings['staff_teams_dir'] = args.staff_teams_dir
-        settings['include_staff_team'] = True
-    else:
-        settings['include_staff_team'] = False
-        settings['staff_teams_dir'] = 'None'
+        settings_cli['staff_teams_dir'] = args.staff_teams_dir
+        settings_cli['include_staff_team'] = True
 
     if args.staff_teams_vs_others_only:
-        settings['staff_teams_vs_others_only'] = True
-    else:
-        settings['staff_teams_vs_others_only'] = False
-        
+        settings_cli['staff_teams_vs_others_only'] = True
+
     if args.teams_root:
-        settings['teams_root'] = args.teams_root
+        settings_cli['teams_root'] = args.teams_root
     if args.team_names_file:
-        settings['team_names_file'] = args.team_names_file
-        settings['ignore_file_name_format'] = False
-    else:
-        settings['ignore_file_name_format'] = True
-        settings['team_names_file'] = 'None'
+        settings_cli['team_names_file'] = args.team_names_file
+        settings_cli['ignore_file_name_format'] = False
 
     if args.stats_archive_dir:
-        settings['stats_archive_dir'] = args.stats_archive_dir
+        settings_cli['stats_archive_dir'] = args.stats_archive_dir
     if args.replays_archive_dir:
-        settings['replays_archive_dir'] = args.replays_archive_dir
+        settings_cli['replays_archive_dir'] = args.replays_archive_dir
     if args.logs_archive_dir:
-        settings['logs_archive_dir'] = args.logs_archive_dir
+        settings_cli['logs_archive_dir'] = args.logs_archive_dir
 
     if args.no_fixed_layouts:
-        settings['no_fixed_layouts'] = int(args.no_fixed_layouts)
+        settings_cli['no_fixed_layouts'] = int(args.no_fixed_layouts)
     if args.fixed_layout_seeds:
-        settings['fixed_layout_seeds'] = [x for x in args.fixed_layout_seeds.split(',')]
+        settings_cli['fixed_layout_seeds'] = [x for x in args.fixed_layout_seeds.split(',')]
     if args.no_random_layouts:
-        settings['no_random_layouts'] = int(args.no_random_layouts)
+        settings_cli['no_random_layouts'] = int(args.no_random_layouts)
     if args.random_seeds:
-        settings['random_seeds'] = [int(x) for x in args.random_seeds.split(',')]
+        settings_cli['random_seeds'] = [int(x) for x in args.random_seeds.split(',')]
     if args.max_steps:
-        settings['max_steps'] = int(args.max_steps)
-    elif 'max_steps' not in set(settings.keys()):
-        settings['max_steps'] = DEFAULT_MAX_STEPS
+        settings_cli['max_steps'] = int(args.max_steps)
 
     if args.upload_all:
-        settings['upload_replays'] = True
-        settings['upload_logs'] = True
+        settings_cli['upload_replays'] = True
+        settings_cli['upload_logs'] = True
     else:
-        settings['upload_replays'] = args.upload_replays
-        settings['upload_logs'] = args.upload_logs
+        if args.upload_replays:
+            settings_cli['upload_replays'] = args.upload_replays
+        if args.upload_logs:
+            settings_cli['upload_logs'] = args.upload_logs
 
-    settings['allow_non_registered_students'] = args.allow_non_registered_students
-    settings['fixed_layouts_file'] = args.fixed_layouts_file
+    if args.allow_non_registered_students:
+        settings_cli['allow_non_registered_students'] = args.allow_non_registered_students
+    if args.split:
+        settings_cli['split'] = args.split
 
+    # Now integrate default, config file, and CLI settings, in that order
+    settings = {**settings_default, **settings_json, **settings_cli}
+
+    # Check if some important option is missing, if so abort (not used yet)
     missing_parameters = set({}) - set(settings.keys())
     if missing_parameters:
         logging.error('Missing parameters: %s. Aborting.' % list(sorted(missing_parameters)))
@@ -286,8 +301,9 @@ def load_settings():
 
     # dump current config files into configuration file if requested to do so
     if args.build_config_file:
-        logging.info('Dumping current options to file %s' % args.config_file)
-        with open(args.config_file, 'w') as f:
+        config_json_file = args.config_file if args.config_file is not None else DEFAULT_CONFIG_FILE
+        logging.info(f'Dumping current options to file {config_json_file}')
+        with open(config_json_file, 'w') as f:
             json.dump(settings, f, sort_keys=True, indent=4, separators=(',', ': '))
 
 
@@ -327,13 +343,14 @@ class ContestRunner:
     # submissions file format: s???????[_datetime].zip
     # submissions folder format: s???????[_datetime]
     # datetime in ISO8601 format:  https://en.wikipedia.org/wiki/ISO_8601
-    def __init__(self, organizer, teams_root, staff_teams_vs_others_only, include_staff_team, staff_teams_dir, compress_logs,
+    def __init__(self, organizer, teams_root, staff_teams_vs_others_only, include_staff_team, staff_teams_dir,
+                 compress_logs,
                  max_steps, no_fixed_layouts,
                  fixed_layouts_file, no_random_layouts, team_names_file,
                  allow_non_registered_students, ignore_file_name_format, www_dir,
                  fixed_layout_seeds=[], random_seeds=[],
                  stats_archive_dir=None, logs_archive_dir=None, replays_archive_dir=None,
-                 upload_replays=False, upload_logs=False):
+                 upload_replays=False, upload_logs=False, split=False):
 
         self.organizer = organizer
         self.max_steps = max_steps
@@ -361,11 +378,11 @@ class ContestRunner:
         self.compress_logs = compress_logs
 
         if not os.path.exists(os.path.join(DIR_SCRIPT, self.CONTEST_ZIP_FILE)):
-            logging.error('File %s could not be found. Aborting.' % self.CONTEST_ZIP_FILE)
+            logging.error('Contest zip file %s could not be found. Aborting.' % self.CONTEST_ZIP_FILE)
             sys.exit(1)
 
         if not fixed_layouts_file:
-            logging.error('File %s could not be found. Aborting.' % fixed_layouts_file)
+            logging.error('Layouts file %s could not be found. Aborting.' % fixed_layouts_file)
             sys.exit(1)
 
         # Setup Pacman CTF environment by extracting it from a clean zip file
@@ -401,7 +418,7 @@ class ContestRunner:
         os.makedirs(self.TMP_LOGS_DIR)
 
         # Get all team name mapping from mapping file, If no file is specified, all zip files in team folder will be taken.
-        if team_names_file is 'None':
+        if team_names_file is None:
             self.team_names = None
         else:
             self.team_names = self._load_teams(team_names_file)
@@ -939,18 +956,11 @@ class ContestRunner:
                     log_file_name = '{red_team_name}_vs_{blue_team_name}_{layout}.log'.format(
                         layout=layout, run_id=self.contest_timestamp_id, red_team_name=red_team_name,
                         blue_team_name=blue_team_name)
-                    log_file_name2 = '{blue_team_name}_vs_{red_team_name}_{layout}.log'.format(
-                        layout=layout, run_id=self.contest_timestamp_id, red_team_name=red_team_name,
-                        blue_team_name=blue_team_name)
 
                     if os.path.isfile(os.path.join(self.TMP_LOGS_DIR, log_file_name)):
                         games_restored += 1
                         print( "{id} Game {log} restored".format(id=games_restored, log=log_file_name) )
                         jobs.append(self._generate_empty_job(red_team, blue_team, layout))
-                    elif os.path.isfile(os.path.join(self.TMP_LOGS_DIR, log_file_name2)):
-                        games_restored += 1
-                        print( "{id} Game {log} restored".format(id=games_restored, log=log_file_name) )
-                        jobs.append(self._generate_empty_job(blue_team,red_team, layout))
                     else:
                         jobs.append(self._generate_job(red_team, blue_team, layout))   
 
@@ -1022,6 +1032,7 @@ class ContestRunner:
 if __name__ == '__main__':
     settings = load_settings()
 
+
     # from getpass import getuser
 
     # prompt for password (for password authentication or if private key is password protected)
@@ -1038,14 +1049,14 @@ if __name__ == '__main__':
     del settings['workers_file']
 
     
-    resume_competition_folder = settings['resume_competition_folder']
-    del settings['resume_competition_folder']
+    resume_contest_folder = settings['resume_contest_folder']
+    del settings['resume_contest_folder']
     
     logging.info("Will create contest runner with options: {}".format(settings))
     runner = ContestRunner(**settings)  # Setup ContestRunner    
     
-    if resume_competition_folder != '':
-        runner.resume_contest_remotely(hosts, resume_competition_folder)  # Now run ContestRunner with the hosts!
+    if resume_contest_folder is not None:
+        runner.resume_contest_remotely(hosts, resume_contest_folder)  # Now run ContestRunner with the hosts!
     else:
         runner.run_contest_remotely(hosts) 
 

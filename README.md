@@ -236,14 +236,14 @@ Append this option to the command above ``` --staff-teams-vs-others-only```
 
 ### Resume partial contest
 
-It is possible to **resume** an existing failed/partial competition or **repeat** a specific competition by using the option `--resume-competition-folder`.
+It is possible to **resume** an existing failed/partial competition or **repeat** a specific competition by using the option `--resume-contest-folder`.
 
 So, if a run fails and is incomplete, all the logs generated so far can be found in the folder ``tmp\logs-run`` in your the local machine cloned repo.
 
 To _resume_ the competition (so that all games played are used and not re-played):
 
-1. Copy the temporal files into a different temporal folder: `mv tmp tmp-failed`
-2. Tell the script to use that folder to get the existing logs by appending `--resume-competition-folder tmp-failed/`
+1. Copy the temporal files into a different temporal folder: `mv tmp tmp-failed`. This is important, the folder `tmp/` as is cannot be used as it will be re-generated for each contest.
+2. Tell the script to use that folder to get the existing logs by appending `--resume-contest-folder tmp-failed/`
 3. Tell the script which are all the layouts to be used (those that were originally used in the failed run):
     * Use  `--fixed-layout-seeds` followed by the names of all fixed layouts that are to be used, separated by commas. 
         * E.g., `--fixed-layout-seeds contest05Capture,contest16Capture,contest20Capture`
