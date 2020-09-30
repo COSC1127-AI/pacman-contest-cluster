@@ -13,3 +13,6 @@ sklearn
 scipy
 neat-python
 py_trees
+keras-rl
+gym
+tf-agents[reverb]

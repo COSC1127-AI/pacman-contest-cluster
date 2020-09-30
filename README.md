@@ -88,7 +88,7 @@ In **each machine in the cluster**:
 * Python 3.x with standard libraries.
     * The original UC Pacman Contest ran under Python 2, but in this system it was ported to version 3.
 * Set the SSH server to accept as many connections as you want to run concurrently. This is done by changing option `MaxStartups` in file `/etc/ssh/sshd_config`. By default `sshd` has up to 10 connections.
-    * For example, set `MaxStartups 20:30:60` to accept up to 20 simultaneous connections. Remember to restart the ssh server: `sudo service sshd restart`
+    * For example, set `MaxStartups 100:30:100` to accept up to 100 simultaneous connections. Remember to restart the ssh server: `sudo service sshd restart`
     * For more info on this, see issue [#26](https://github.com/AI4EDUC/pacman-contest-cluster/issues/26).
 * Cluster should have all the Python and Unix packages to run the contest. For example, in the NeCTAR cluster:
                             
@@ -97,7 +97,8 @@ In **each machine in the cluster**:
     sudo apt-get install python3-pip unzip vim
     sudo pip3 install setuptools
   
-    wget https://raw.githubusercontent.com/ssardina-teaching/pacman-contest/master/requirements.txt
+    wget https://raw.githubusercontent.com/AI4EDUC/pacman-contest-cluster/master/requirements.txt
+    python -m pip install --user --upgrade pip
     sudo pip3 install -r requirements.txt
     ```
                         
