@@ -29,7 +29,7 @@ class ContestRunner:
                  max_steps, no_fixed_layouts,
                  fixed_layouts_file, no_random_layouts, team_names_file,
                  allow_non_registered_students, ignore_file_name_format, www_dir,
-                 fixed_layout_seeds=[], random_seeds=[],
+                 fixed_layout_seeds=[], random_layout_seeds=[],
                  stats_archive_dir=None, logs_archive_dir=None, replays_archive_dir=None,
                  upload_replays=False, upload_logs=False, split=False):
 
@@ -70,7 +70,7 @@ class ContestRunner:
         self.layouts = None
         self._prepare_platform(os.path.join(DIR_SCRIPT, CONTEST_ZIP_FILE), fixed_layouts_file,
                                TMP_CONTEST_DIR, no_fixed_layouts,
-                               no_random_layouts, fixed_layout_seeds, random_seeds)
+                               no_random_layouts, fixed_layout_seeds, random_layout_seeds)
 
         # Report layouts to be played, fixed and random (with seeds)
         logging.info('Layouts to be played: %s' % self.layouts)

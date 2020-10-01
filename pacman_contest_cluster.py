@@ -132,7 +132,7 @@ def load_settings():
         help=f'number of random layouts to use (default: {DEFAULT_RANDOM_LAYOUTS}).'
     )
     parser.add_argument(
-        '--random-seeds',
+        '--random-layout-seeds',
         help='random seeds for random layouts to use, separated by commas. Eg. 1,2,3.'
     )
     parser.add_argument(
@@ -251,8 +251,8 @@ def load_settings():
         settings_cli['fixed_layout_seeds'] = [x for x in args.fixed_layout_seeds.split(',')]
     if args.no_random_layouts:
         settings_cli['no_random_layouts'] = int(args.no_random_layouts)
-    if args.random_seeds:
-        settings_cli['random_seeds'] = [int(x) for x in args.random_seeds.split(',')]
+    if args.random_layout_seeds:
+        settings_cli['random_layout_seeds'] = [int(x) for x in args.random_layout_seeds.split(',')]
     if args.max_steps:
         settings_cli['max_steps'] = int(args.max_steps)
 
