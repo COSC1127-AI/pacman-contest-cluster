@@ -24,6 +24,7 @@ import argparse
 import json
 import logging
 
+from dataclasses import dataclass
 from cluster_manager import Host
 from contest_runner import ContestRunner
 from pacman_html_generator import HtmlGenerator
@@ -166,7 +167,7 @@ def load_settings():
     )
     parser.add_argument(
         '--split',
-        help='split tournament into two leagues A and B.',
+        help='split contest into two leagues A and B.',
         action='store_true',
     )
 
@@ -290,6 +291,210 @@ def load_settings():
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+
+def list_partition (list_in, n):
+    #partitions a list into n (nearly) equal lists: https://stackoverflow.com/questions/3352737/how-to-randomly-partition-a-list-into-n-nearly-equal-parts
+    random.shuffle(list_in)
+    return [list_in[i::n] for i in range(n)]
+
+
+@dataclass
+class ContestSettings:
+    organizer: str
+    teams_root: str
+    staff_teams_vs_others_only: bool
+    include_staff_team: bool 
+    staff_teams_dir
+    compress_logs
+    max_steps
+    no_fixed_layouts,
+    fixed_layouts_file
+    no_random_layouts
+    team_names_file
+    allow_non_registered_students
+    ignore_file_name_format
+    www_dir
+    fixed_layout_seeds=[]
+    random_seeds=[]
+    stats_archive_dir=None
+    logs_archive_dir=None
+    replays_archive_dir=None
+    upload_replays=False
+    upload_logs=False
+    split=1
+
+class MultiContest:
+
+    def __init__(self, split=1):
+        self.layouts = set()
+        self.split = split
+
+        self._prepare_platform(os.path.join(DIR_SCRIPT, self.CONTEST_ZIP_FILE), fixed_layouts_file,
+                                self.TMP_CONTEST_DIR, no_fixed_layouts,
+                                no_random_layouts, fixed_layout_seeds, random_seeds)
+
+        # Report layouts to be played, fixed and random (with seeds)
+        self.log_layouts()
+
+        # Setup all of the TEAMS
+        teams_dir = os.path.join(self.TMP_CONTEST_DIR, self.TEAMS_SUBDIR)
+        if os.path.exists(teams_dir):
+            shutil.rmtree(teams_dir)
+        os.makedirs(teams_dir)
+
+
+        # Get all team name mapping from mapping file, If no file is specified, all zip files in team folder will be taken.
+        if team_names_file is 'None':
+            self.team_names = None
+        else:
+            self.team_names = self._load_teams(team_names_file)
+
+        # setup all team directories under contest/team subdir for contest (copy content in .zip to team dirs)
+        self.teams = []
+
+        for submission_file in os.listdir(teams_root):
+            submission_path = os.path.join(teams_root, submission_file)
+            if submission_file.endswith(".zip") or os.path.isdir(submission_path):
+                team_details = self._get_team_details(submission_path, ignore_file_name_format,
+                                    allow_non_registered_students=allow_non_registered_students)
+                self.teams.append(team_details)
+                
+    def create_contests(self):
+        contests = []
+        for contest_participants in list_partition(self.teams, self.split):
+            contests.append(ContestRunner(**settings))
+
+        return contests 
+
+
+
+    def _prepare_platform(self, contest_zip_file_path, layouts_zip_file_path, destination, no_fixed_layouts,
+                          no_random_layouts, fixed_layout_seeds=[], random_seeds=[]):
+        """
+        Cleans the given destination directory and prepares a fresh setup to execute a Pacman CTF game within.
+        Information on the layouts are saved in the member variable layouts.
+        
+        :param contest_zip_file_path: the zip file containing the necessary files for the contest (no sub-folder).
+        :param layouts_zip_file_path: the zip file containing the layouts to be used for the contest (in the root).
+        :param destination: the directory in which to setup the environment.
+        :returns: a list of all the layouts
+        """
+        if os.path.exists(destination):
+            shutil.rmtree(destination)
+        os.makedirs(destination)
+        contest_zip_file = zipfile.ZipFile(contest_zip_file_path)
+        contest_zip_file.extractall(os.path.join(self.TMP_CONTEST_DIR, '.'))
+        layouts_zip_file = zipfile.ZipFile(layouts_zip_file_path)
+        layouts_zip_file.extractall(os.path.join(self.TMP_CONTEST_DIR, 'layouts'))
+
+
+        # Pick no_fixed_layouts layouts from the given set in the layout zip file
+        #   if layout seeds have been given use them
+        layouts_available = set([file_in_zip[:-4] for file_in_zip in layouts_zip_file.namelist()])
+        fixed_layout_seeds = set(fixed_layout_seeds)
+        random_seeds = set(random_seeds)
+
+        if no_fixed_layouts > len(layouts_available):
+            logging.error(
+                'There are not enough fixed layout (asked for %d layouts, but there are only %d).' % (
+                no_fixed_layouts, len(layouts_available)))
+            exit(1)
+        if len(fixed_layout_seeds) > no_fixed_layouts:
+            logging.error(
+                'Too many fixed seeds layouts selected (%d) for a total of %d fixed layouts requested to play.' % (
+                    len(fixed_layout_seeds), no_fixed_layouts))
+            exit(1)
+        if not fixed_layout_seeds.issubset(layouts_available):  # NOT empty, list of layouts provided
+            logging.error('There are fixed layout seeds  that are not available: %s.' % fixed_layout_seeds.difference(
+                layouts_available))
+            exit(1)
+
+        # assign the set of fixed layouts to be used: the seeds given and complete with random picks from available
+        self.layouts = fixed_layout_seeds.union(
+            random.sample(layouts_available.difference(fixed_layout_seeds), no_fixed_layouts - len(fixed_layout_seeds)))
+
+        # Next, pick the random layouts, and included all the seeds provided if any
+        if len(random_seeds) > no_random_layouts:
+            logging.error(
+                'Too many random seeds layouts selected (%d) for a total of %d random layouts requested to play.' % (
+                    len(fixed_layout_seeds), no_fixed_layouts))
+            exit(1)
+
+        # complete the mising random layouts
+        self.layouts = self.layouts.union(set(['RANDOM%s' % x for x in random_seeds])) # add random seeds given, if any
+        while len(self.layouts) < no_random_layouts + no_fixed_layouts:
+            self.layouts.add('RANDOM%s' % str(random.randint(1, 9999)))
+
+    def log_layouts(self):
+        logging.info('Layouts to be played: %s' % self.layouts)
+        random_layouts_selected = set([x for x in self.layouts if re.compile(r'RANDOM[0-9]*').match(x)])
+        fixed_layouts_selected = self.layouts.difference(random_layouts_selected)
+
+        seeds_strings = [m.group(1) for m in
+                            (re.compile(r'RANDOM([0-9]*)').search(layout) for layout in random_layouts_selected)
+                            if m]
+        seeds = list(map(lambda x: int(x), seeds_strings))
+        logging.info('Seeds for RANDOM layouts to be played: %s' % seeds)
+        logging.info('Seeds for FIXED layouts to be played: %s' % ','.join(fixed_layouts_selected))
+
+
+    def _get_team_details(self, submission_path, ignore_file_name_format=False,
+                    allow_non_registered_students=False):
+        """
+        Extracts team name and submission time details from the team submission zip file or folder
+        
+        :param submission_path: the zip file or directory of the team.
+        :param ignore_file_name_format: if True, an invalid file name format does not cause the team to be ignored.
+        In this case, if the file name truly is not respecting the format, the zip file name (minus the .zip part) is
+        used as team name. If this function is called twice with files having the same name (e.g., if they are in
+        different directories), only the first one is kept.
+        :param allow_non_registered_students: if True, students not appearing in the team_names are still allowed (team
+        name used is the student id).
+        :raises KeyError if the zip file contains multiple copies of team.py, non of which is in the root.
+        """
+        #NOTE: this is duplicated in ContestRunner._setup_team. Should be abstracted
+        if os.path.isdir(submission_path):
+            submission_zip_file = None
+        else:
+            try:
+                submission_zip_file = zipfile.ZipFile(submission_path)
+            except zipfile.BadZipfile:
+                logging.warning('Submission is not a valid ZIP file nor a folder: %s. Skipping' % submission_path)
+                return
+
+        # Get team name from submission: if in self.team_names mapping, then use mapping; otherwise use filename
+        
+        match = re.match(self.SUBMISSION_FILENAME_PATTERN, os.path.basename(submission_path))
+        submission_time = None
+        if match:
+            student_id = match.group(1)
+
+            # first get the team of this submission
+            if student_id in self.team_names:
+                team_name = self.team_names[student_id]
+            elif allow_non_registered_students:
+                team_name = student_id
+            else:
+                logging.warning('Student not registered: "%s" (file %s). Skipping' % (student_id, submission_path))
+                return
+
+            # next get the submission date (encoded in filename)
+            try:
+                submission_time = iso8601.parse_date(match.group(3)).astimezone(self.TIMEZONE)
+            except iso8601.iso8601.ParseError:
+                if not ignore_file_name_format:
+                    logging.warning('Team zip file "%s" name has invalid date format. Skipping' % submission_path)
+                    return
+        else:
+            if not ignore_file_name_format:
+                logging.warning('Submission zip file "%s" does not correspond to any team. Skipping' % submission_path)
+                return
+            team_name = os.path.basename(submission_path)
+            team_name = team_name[:-4] if team_name.endswith(".zip") else team_name
+        return team_name, submission_time
+
+
+
 if __name__ == '__main__':
     settings = load_settings()
 
@@ -314,16 +519,17 @@ if __name__ == '__main__':
     del settings['resume_contest_folder']
     
     logging.info("Will create contest runner with options: {}".format(settings))
-    runner = ContestRunner(**settings)  # Setup ContestRunner    
-    
-    if resume_contest_folder is not None:
-        runner.resume_contest_remotely(hosts, resume_contest_folder)  # Now run ContestRunner with the hosts!
-    else:
-        runner.run_contest_remotely(hosts) 
 
-    stats_file_url, replays_file_url, logs_file_url = runner.store_results()
-    html_generator = HtmlGenerator(settings['www_dir'], settings['organizer'])
-    html_generator.add_run(runner.contest_timestamp_id, stats_file_url, replays_file_url, logs_file_url)
-    logging.info("Web pages generated. Now cleaning up and closing... Thank you!")
+    multi_contest = MultiContest(settings)
+    for runner in multi_contest.create_contests():
+        if resume_contest_folder is not None:
+            runner.resume_contest_remotely(hosts, resume_competition_folder)  # Now run ContestRunner with the hosts!
+        else:
+            runner.run_contest_remotely(hosts) 
 
-    runner.clean_up()
+        stats_file_url, replays_file_url, logs_file_url = runner.store_results()
+        html_generator = HtmlGenerator(settings['www_dir'], settings['organizer'])
+        html_generator.add_run(runner.contest_timestamp_id, stats_file_url, replays_file_url, logs_file_url)
+        logging.info("Web pages generated. Now cleaning up and closing... Thank you!")
+
+        runner.clean_up()

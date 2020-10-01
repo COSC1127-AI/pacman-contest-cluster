@@ -18,8 +18,6 @@ from config import *
 from cluster_manager import ClusterManager, Job, Host, TransferableFile
 
 
-
-
 class ContestRunner:
     # submissions file format: s???????[_datetime].zip
     # submissions folder format: s???????[_datetime]
@@ -67,28 +65,6 @@ class ContestRunner:
             sys.exit(1)
 
         # Setup Pacman CTF environment by extracting it from a clean zip file
-        self.layouts = None
-        self._prepare_platform(os.path.join(DIR_SCRIPT, CONTEST_ZIP_FILE), fixed_layouts_file,
-                               TMP_CONTEST_DIR, no_fixed_layouts,
-                               no_random_layouts, fixed_layout_seeds, random_layout_seeds)
-
-        # Report layouts to be played, fixed and random (with seeds)
-        logging.info('Layouts to be played: %s' % self.layouts)
-        random_layouts_selected = set([x for x in self.layouts if re.compile(r'RANDOM[0-9]*').match(x)])
-        fixed_layouts_selected = self.layouts.difference(random_layouts_selected)
-
-        seeds_strings = [m.group(1) for m in
-                         (re.compile(r'RANDOM([0-9]*)').search(layout) for layout in random_layouts_selected)
-                         if m]
-        seeds = list(map(lambda x: int(x), seeds_strings))
-        logging.info('Seeds for RANDOM layouts to be played: %s' % seeds)
-        logging.info('Seeds for FIXED layouts to be played: %s' % ','.join(fixed_layouts_selected))
-
-        # Setup all of the TEAMS
-        teams_dir = os.path.join(TMP_CONTEST_DIR, TEAMS_SUBDIR)
-        if os.path.exists(teams_dir):
-            shutil.rmtree(teams_dir)
-        os.makedirs(teams_dir)
 
         if os.path.exists(TMP_REPLAYS_DIR):
             shutil.rmtree(TMP_REPLAYS_DIR)
@@ -98,22 +74,9 @@ class ContestRunner:
             shutil.rmtree(TMP_LOGS_DIR)
         os.makedirs(TMP_LOGS_DIR)
 
-        # Get all team name mapping from mapping file, If no file is specified, all zip files in team folder will be taken.
-        if team_names_file is None:
-            self.team_names = None
-        else:
-            self.team_names = self._load_teams(team_names_file)
-
-        # setup all team directories under contest/team subdir for contest (copy content in .zip to team dirs)
         self.teams = []
         self.staff_teams = []
         self.submission_times = {}
-
-        for submission_file in os.listdir(teams_root):
-            submission_path = os.path.join(teams_root, submission_file)
-            if submission_file.endswith(".zip") or os.path.isdir(submission_path):
-                self._setup_team(submission_path, teams_dir, ignore_file_name_format,
-                                 allow_non_registered_students=allow_non_registered_students)
 
         # Include staff teams if available (ones with pattern STAFF_TEAM_FILENAME_PATTERN)
         if include_staff_team:
@@ -225,64 +188,7 @@ class ContestRunner:
 
         return score, winner, loser, bug, totaltime
 
-    def _prepare_platform(self, contest_zip_file_path, layouts_zip_file_path, destination, no_fixed_layouts,
-                          no_random_layouts, fixed_layout_seeds=[], random_seeds=[]):
-        """
-        Cleans the given destination directory and prepares a fresh setup to execute a Pacman CTF game within.
-        Information on the layouts are saved in the member variable layouts.
-
-        :param contest_zip_file_path: the zip file containing the necessary files for the contest (no sub-folder).
-        :param layouts_zip_file_path: the zip file containing the layouts to be used for the contest (in the root).
-        :param destination: the directory in which to setup the environment.
-        :returns: a list of all the layouts
-        """
-        if os.path.exists(destination):
-            shutil.rmtree(destination)
-        os.makedirs(destination)
-        contest_zip_file = zipfile.ZipFile(contest_zip_file_path)
-        contest_zip_file.extractall(os.path.join(TMP_CONTEST_DIR, '.'))
-        layouts_zip_file = zipfile.ZipFile(layouts_zip_file_path)
-        layouts_zip_file.extractall(os.path.join(TMP_CONTEST_DIR, 'layouts'))
-
-        # Pick no_fixed_layouts layouts from the given set in the layout zip file
-        #   if layout seeds have been given use them
-        layouts_available = set([file_in_zip[:-4] for file_in_zip in layouts_zip_file.namelist()])
-        fixed_layout_seeds = set(fixed_layout_seeds)
-        random_seeds = set(random_seeds)
-
-        if no_fixed_layouts > len(layouts_available):
-            logging.error(
-                'There are not enough fixed layout (asked for %d layouts, but there are only %d).' % (
-                    no_fixed_layouts, len(layouts_available)))
-            exit(1)
-        if len(fixed_layout_seeds) > no_fixed_layouts:
-            logging.error(
-                'Too many fixed seeds layouts selected (%d) for a total of %d fixed layouts requested to play.' % (
-                    len(fixed_layout_seeds), no_fixed_layouts))
-            exit(1)
-        if not fixed_layout_seeds.issubset(layouts_available):  # NOT empty, list of layouts provided
-            logging.error('There are fixed layout seeds  that are not available: %s.' % fixed_layout_seeds.difference(
-                layouts_available))
-            exit(1)
-
-        # assign the set of fixed layouts to be used: the seeds given and complete with random picks from available
-        self.layouts = fixed_layout_seeds.union(
-            random.sample(layouts_available.difference(fixed_layout_seeds), no_fixed_layouts - len(fixed_layout_seeds)))
-
-        # Next, pick the random layouts, and included all the seeds provided if any
-        if len(random_seeds) > no_random_layouts:
-            logging.error(
-                'Too many random seeds layouts selected (%d) for a total of %d random layouts requested to play.' % (
-                    len(fixed_layout_seeds), no_fixed_layouts))
-            exit(1)
-
-        # complete the mising random layouts
-        self.layouts = self.layouts.union(set(['RANDOM%s' % x for x in random_seeds]))  # add random seeds given, if any
-        while len(self.layouts) < no_random_layouts + no_fixed_layouts:
-            self.layouts.add('RANDOM%s' % str(random.randint(1, 9999)))
-
-    def _setup_team(self, submission_path, destination, ignore_file_name_format=False,
-                    allow_non_registered_students=False, is_staff_team=False):
+    def _setup_team(self, submission_path, destination, team_name, submission_time, is_staff_team=False):
         """
         Extracts team.py from the team submission zip file into a directory inside contest/teams
             If the zip file name is listed in team-name mapping, then name directory with team name
@@ -308,34 +214,6 @@ class ContestRunner:
                 logging.warning('Submission is not a valid ZIP file nor a folder: %s. Skipping' % submission_path)
                 return
 
-        # Get team name from submission: if in self.team_names mapping, then use mapping; otherwise use filename
-        match = re.match(SUBMISSION_FILENAME_PATTERN, os.path.basename(submission_path))
-        submission_time = None
-        if match:
-            student_id = match.group(1)
-
-            # first get the team of this submission
-            if student_id in self.team_names:
-                team_name = self.team_names[student_id]
-            elif allow_non_registered_students:
-                team_name = student_id
-            else:
-                logging.warning('Student not registered: "%s" (file %s). Skipping' % (student_id, submission_path))
-                return
-
-            # next get the submission date (encoded in filename)
-            try:
-                submission_time = iso8601.parse_date(match.group(3)).astimezone(TIMEZONE)
-            except iso8601.iso8601.ParseError:
-                if not ignore_file_name_format:
-                    logging.warning('Team zip file "%s" name has invalid date format. Skipping' % submission_path)
-                    return
-        else:
-            if not ignore_file_name_format:
-                logging.warning('Submission zip file "%s" does not correspond to any team. Skipping' % submission_path)
-                return
-            team_name = os.path.basename(submission_path)
-            team_name = team_name[:-4] if team_name.endswith(".zip") else team_name
 
         # This submission will be temporarily expanded into team_destination_dir
         team_destination_dir = os.path.join(destination, team_name)
@@ -532,9 +410,9 @@ class ContestRunner:
             layout=layout, run_id=self.contest_timestamp_id, red_team_name=red_team_name, blue_team_name=blue_team_name)
 
         ret_file_replay = TransferableFile(local_path=os.path.join(TMP_REPLAYS_DIR, replay_file_name),
-                                           remote_path=os.path.join(TMP_CONTEST_DIR, 'replay-0'))
+                                    remote_path=os.path.join(TMP_CONTEST_DIR, 'replay-0'))
         ret_file_log = TransferableFile(local_path=os.path.join(TMP_LOGS_DIR, log_file_name),
-                                        remote_path=os.path.join(TMP_CONTEST_DIR, 'log-0'))
+                                    remote_path=os.path.join(TMP_CONTEST_DIR, 'log-0'))
 
         return Job(command=command, required_files=[], return_files=[ret_file_replay, ret_file_log],
                    data=(red_team, blue_team, layout),
