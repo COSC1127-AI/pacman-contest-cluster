@@ -147,8 +147,7 @@ def load_settings():
     )
     parser.add_argument(
         '--build-config-file',
-        help='if passed, config.json file will be generated with current options',
-        action='store_true',
+        help='name of JSON file to write the current options used',
     )
     parser.add_argument(
         '--upload-replays',
@@ -282,9 +281,8 @@ def load_settings():
 
     # dump current config files into configuration file if requested to do so
     if args.build_config_file:
-        config_json_file = args.config_file if args.config_file is not None else DEFAULT_CONFIG_FILE
         logging.info(f'Dumping current options to file {config_json_file}')
-        with open(config_json_file, 'w') as f:
+        with open(args.build_config_file, 'w') as f:
             json.dump(settings, f, sort_keys=True, indent=4, separators=(',', ': '))
 
 
