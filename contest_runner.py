@@ -17,7 +17,6 @@ from config import *
 
 from cluster_manager import ClusterManager, Job, Host, TransferableFile
 
-DIR_SCRIPT = sys.path[0]
 
 
 

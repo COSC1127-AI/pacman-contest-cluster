@@ -1,6 +1,11 @@
 import os
 import re
+import sys
 from pytz import timezone
+
+
+DIR_SCRIPT = sys.path[0]
+
 
 
 ERROR_SCORE = 9999
@@ -28,3 +33,10 @@ RESULTS_DIR = 'results'
 TIMEZONE = timezone('Australia/Melbourne')
 CORE_CONTEST_TEAM_ZIP_FILE = 'contest_and_teams.zip'
 SUBMISSION_FILENAME_PATTERN = re.compile(r'^(s\d+)(_([-+0-9T:.]+))?(\.zip)?$')
+
+DEFAULT_MAX_STEPS = 1200
+DEFAULT_FIXED_LAYOUTS = 3
+DEFAULT_LAYOUTS_ZIP_FILE = os.path.join(DIR_SCRIPT, 'layouts.zip')
+DEFAULT_RANDOM_LAYOUTS = 3
+DEFAULT_CONFIG_FILE = 'config.json'
+

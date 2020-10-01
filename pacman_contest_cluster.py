@@ -27,8 +27,7 @@ import logging
 from cluster_manager import Host
 from contest_runner import ContestRunner
 from pacman_html_generator import HtmlGenerator
-
-DIR_SCRIPT = sys.path[0]
+from config import *
 
 # check https://stackoverflow.com/questions/10677721/advantages-of-logging-vs-print-logging-best-practices
 # logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG, datefmt='%a, %d %b %Y %H:%M:%S')
@@ -43,11 +42,6 @@ def default(str):
     return str + ' [Default: %default]'
 
 def load_settings():
-    DEFAULT_MAX_STEPS = 1200
-    DEFAULT_FIXED_LAYOUTS = 3
-    DEFAULT_LAYOUTS_ZIP_FILE = os.path.join(DIR_SCRIPT, 'layouts.zip')
-    DEFAULT_RANDOM_LAYOUTS = 3
-    DEFAULT_CONFIG_FILE = 'config.json'
 
     parser = argparse.ArgumentParser(
         description='Run an Pacman Capture the Flag tournament based on '
