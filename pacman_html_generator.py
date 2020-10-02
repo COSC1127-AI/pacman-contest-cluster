@@ -172,9 +172,6 @@ class HtmlGenerator:
         except AttributeError:
             pass
 
-
-        html_parent_path = os.path.join(self.www_dir, 'results_%s' % run_id)
-
         # Get the information in the stats file
         if stats_file_url.startswith('http'):  # http url
             import urllib.request as request
@@ -208,26 +205,17 @@ class HtmlGenerator:
         if 'url_logs' in data:
             logs_file_url = data['url_logs']
 
-        # If not HTTP URLs, prepend ../ to so the files can be linked to from www/...
-        if not stats_file_url.startswith('http'):  # http url
-            stats_file_url = os.path.join('..', stats_file_url)
-        if not replays_file_url.startswith('http'):  # http url
-            replays_file_url = os.path.join('..', replays_file_url)
-        if not logs_file_url.startswith('http'):  # http url
-            logs_file_url = os.path.join('..', logs_file_url)
-
         if not os.path.exists(self.www_dir):
             os.makedirs(self.www_dir)
         contest_zip_file = zipfile.ZipFile(FILE_FONTS)
         contest_zip_file.extractall(self.www_dir)
         shutil.copy(FILE_CSS, self.www_dir)
 
-        if not os.path.exists(html_parent_path):
-            os.makedirs(html_parent_path)
-        run_html = self._generate_output(run_id, date_run, organizer, games, team_stats, random_layouts, fixed_layouts, max_steps,
+        run_html = self._generate_output(run_id, date_run, organizer, games, team_stats, random_layouts, fixed_layouts,
+                                         max_steps,
                                          stats_file_url, replays_file_url, logs_file_url)
 
-        html_full_path = os.path.join(html_parent_path, 'results.html')
+        html_full_path = os.path.join(self.www_dir, f'results_{run_id}.html')
         with open(html_full_path, "w") as f:
             print(run_html, file=f)
 
@@ -242,13 +230,11 @@ class HtmlGenerator:
         main_html += """<body><h1>Results Pacman Capture the Flag by Date</h1>\n"""
         main_html += """<body><h2>Organizer: %s </h1>\n\n""" % self.organizer
         for d in sorted(os.listdir(self.www_dir)):
-            if not os.path.isdir(os.path.join(self.www_dir, d)):
-                continue
             if d.endswith('fonts'):
                 continue
             if not d.startswith('results'):
                 continue
-            main_html += """<a href="%s/results.html"> %s  </a> <br/>\n""" % (d, d)
+            main_html += f"""<a href="{d}"> {d[:-5]}  </a> <br/>\n"""
         main_html += "\n\n<br/></body></html>"
         with open(os.path.join(self.www_dir, 'index.html'), "w") as f:
             print(main_html, file=f)
@@ -263,7 +249,7 @@ class HtmlGenerator:
             organizer = self.organizer
 
         output = """<html><head><title>Results for the tournament round</title>\n"""
-        output += """<link rel="stylesheet" type="text/css" href="../style.css"/></head>\n"""
+        output += """<link rel="stylesheet" type="text/css" href="style.css"/></head>\n"""
         output += """<body><h1>PACMAN Capture the Flag Tournament</h1>\n"""
         output += """<body><h2>Tournament Organizer: %s </h1>\n""" % organizer
         if not run_id == date_run:
