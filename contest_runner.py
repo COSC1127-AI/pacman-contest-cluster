@@ -519,10 +519,10 @@ class ContestRunner:
     def resume_contest_remotely(self, hosts, resume_folder):
         self.prepare_dirs()
 
-        shutil.rmtree(self.tmp_logs_dir)
-        shutil.copytree(resume_folder + "logs-run", self.tmp_logs_dir)
-        shutil.rmtree(self.tmp_replays_dir)
-        shutil.copytree(resume_folder + "replays-run", self.self.tmp_replays_dir)
+        shutil.rmtree(TMP_LOGS_DIR)
+        shutil.copytree(os.path.join(resume_folder, 'logs-run'), TMP_LOGS_DIR)
+        shutil.rmtree(TMP_REPLAYS_DIR)
+        shutil.copytree(os.path.join(resume_folder, 'replays-run'), TMP_REPLAYS_DIR)
 
         jobs = []
         games_restored = 0
