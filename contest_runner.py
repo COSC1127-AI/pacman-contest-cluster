@@ -583,6 +583,14 @@ class ContestRunner:
                             blue_team_name=blue_team_name,
                         )
                     )
+                    log_file_name2 = (
+                        "{blue_team_name}_vs_{red_team_name}_{layout}.log".format(
+                            layout=layout,
+                            run_id=self.contest_timestamp_id,
+                            red_team_name=red_team_name,
+                            blue_team_name=blue_team_name,
+                        )
+                    )
 
                     if os.path.isfile(os.path.join(self.tmp_logs_dir, log_file_name)):
                         games_restored += 1
@@ -593,6 +601,18 @@ class ContestRunner:
                         )
                         jobs.append(
                             self._generate_empty_job(red_team, blue_team, layout)
+                        )
+                    elif os.path.isfile(
+                        os.path.join(self.tmp_logs_dir, log_file_name2)
+                    ):
+                        games_restored += 1
+                        print(
+                            "{id} Game {log} restored".format(
+                                id=games_restored, log=log_file_name
+                            )
+                        )
+                        jobs.append(
+                            self._generate_empty_job(blue_team, red_team, layout)
                         )
                     else:
                         jobs.append(self._generate_job(red_team, blue_team, layout))
