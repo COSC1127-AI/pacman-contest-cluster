@@ -528,9 +528,11 @@ class ContestRunner:
         self.prepare_dirs()
 
         shutil.rmtree(self.tmp_logs_dir)
-        shutil.copytree(resume_folder + "logs-run", self.tmp_logs_dir)
+        shutil.copytree(os.path.join(resume_folder, "logs-run"), self.tmp_logs_dir)
         shutil.rmtree(self.tmp_replays_dir)
-        shutil.copytree(resume_folder + "replays-run", self.tmp_replays_dir)
+        shutil.copytree(
+            os.path.join(resume_folder, "replays-run"), self.tmp_replays_dir
+        )
 
         jobs = []
         games_restored = 0
