@@ -437,7 +437,7 @@ class MultiContest:
         for i, teams in enumerate(list_partition(self.teams, self.split)):
             settings = copy.deepcopy(self.settings)
             settings["teams"] = teams
-            settings["tmp_dir"] = TMP_DIR + "-" + ascii_lowercase[i]
+            settings["tmp_dir"] = os.path.join(TMP_DIR, "contest-" + ascii_lowercase[i])
             settings["contest_timestamp_id"] = (
                 self.contest_timestamp_id + "-" + ascii_lowercase[i]
             )

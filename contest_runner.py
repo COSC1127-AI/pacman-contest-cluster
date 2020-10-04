@@ -61,7 +61,15 @@ class ContestRunner:
 
         if os.path.exists(self.tmp_dir):
             shutil.rmtree(self.tmp_dir)
-        shutil.copytree(TMP_DIR, self.tmp_dir)
+        os.makedirs(self.tmp_dir)
+
+        contest_zip_file_path = os.path.join(self.tmp_dir, CORE_CONTEST_TEAM_ZIP_FILE)
+        shutil.copy(
+            os.path.join(TMP_DIR, CORE_CONTEST_TEAM_ZIP_FILE), contest_zip_file_path
+        )
+
+        contest_zip_file = zipfile.ZipFile(contest_zip_file_path)
+        contest_zip_file.extractall(os.path.join(self.tmp_dir, "."))
 
         if os.path.exists(self.tmp_replays_dir):
             shutil.rmtree(self.tmp_replays_dir)
@@ -519,10 +527,10 @@ class ContestRunner:
     def resume_contest_remotely(self, hosts, resume_folder):
         self.prepare_dirs()
 
-        shutil.rmtree(TMP_LOGS_DIR)
-        shutil.copytree(os.path.join(resume_folder, 'logs-run'), TMP_LOGS_DIR)
-        shutil.rmtree(TMP_REPLAYS_DIR)
-        shutil.copytree(os.path.join(resume_folder, 'replays-run'), TMP_REPLAYS_DIR)
+        shutil.rmtree(self.tmp_logs_dir)
+        shutil.copytree(resume_folder + "logs-run", self.tmp_logs_dir)
+        shutil.rmtree(self.tmp_replays_dir)
+        shutil.copytree(resume_folder + "replays-run", self.tmp_replays_dir)
 
         jobs = []
         games_restored = 0
