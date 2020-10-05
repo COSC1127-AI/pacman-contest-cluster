@@ -490,21 +490,21 @@ class ContestRunner:
                 red_team, blue_team, layout, exit_code, None, total_secs_taken
             )
 
-    def run_contest_remotely(self, hosts):
+    def run_contest_remotely(self, hosts, resume_folder=None):
         self.prepare_dirs()
 
-        jobs = []
-        if self.staff_teams_vs_others_only:
-            for red_team in self.teams:
-                for blue_team in self.staff_teams:
-                    if red_team in self.staff_teams:
-                        continue  # do not play a staff team against another staff team
-                    for layout in self.layouts:
-                        jobs.append(self._generate_job(red_team, blue_team, layout))
+        if resume_folder is not None:
+            contest_folder = os.path.split(self.tmp_dir)[1]
+            resume_folder = os.path.join(resume_folder, contest_folder)
+            shutil.rmtree(self.tmp_logs_dir)
+            shutil.copytree(os.path.join(resume_folder, "logs-run"), self.tmp_logs_dir)
+            shutil.rmtree(self.tmp_replays_dir)
+            shutil.copytree(
+                os.path.join(resume_folder, "replays-run"), self.tmp_replays_dir
+            )
+            jobs = self.resume_contest_jobs()
         else:
-            for red_team, blue_team in combinations(self.teams, r=2):
-                for layout in self.layouts:
-                    jobs.append(self._generate_job(red_team, blue_team, layout))
+            jobs = self.run_contest_jobs()
 
         #  This is the core package to be transferable to each host
         core_req_file = TransferableFile(
@@ -524,16 +524,22 @@ class ContestRunner:
         self._analyse_all_outputs(results)
         self._calculate_team_stats()
 
-    def resume_contest_remotely(self, hosts, resume_folder):
-        self.prepare_dirs()
+    def run_contest_jobs(self):
+        jobs = []
+        if self.staff_teams_vs_others_only:
+            for red_team in self.teams:
+                for blue_team in self.staff_teams:
+                    if red_team in self.staff_teams:
+                        continue  # do not play a staff team against another staff team
+                    for layout in self.layouts:
+                        jobs.append(self._generate_job(red_team, blue_team, layout))
+        else:
+            for red_team, blue_team in combinations(self.teams, r=2):
+                for layout in self.layouts:
+                    jobs.append(self._generate_job(red_team, blue_team, layout))
+        return jobs
 
-        shutil.rmtree(self.tmp_logs_dir)
-        shutil.copytree(os.path.join(resume_folder, "logs-run"), self.tmp_logs_dir)
-        shutil.rmtree(self.tmp_replays_dir)
-        shutil.copytree(
-            os.path.join(resume_folder, "replays-run"), self.tmp_replays_dir
-        )
-
+    def resume_contest_jobs(self):
         jobs = []
         games_restored = 0
         if self.staff_teams_vs_others_only:
@@ -545,12 +551,7 @@ class ContestRunner:
                         red_team_name, _ = red_team
                         blue_team_name, _ = blue_team
                         log_file_name = (
-                            "{red_team_name}_vs_{blue_team_name}_{layout}.log".format(
-                                layout=layout,
-                                run_id=self.contest_timestamp_id,
-                                red_team_name=red_team_name,
-                                blue_team_name=blue_team_name,
-                            )
+                            f"{red_team_name}_vs_{blue_team_name}_{layout}.log"
                         )
 
                         if os.path.isfile(
@@ -562,11 +563,7 @@ class ContestRunner:
                                 self._generate_empty_job(red_team, blue_team, layout)
                             )
                         else:
-                            print(
-                                "{id} Game {log} MISSING".format(
-                                    id=games_restored, log=log_file_name
-                                )
-                            )
+                            print(f"{games_restored} Game {log_file_name} MISSING")
                             jobs.append(self._generate_job(red_team, blue_team, layout))
 
         else:
@@ -575,30 +572,12 @@ class ContestRunner:
                 for layout in self.layouts:
                     red_team_name, _ = red_team
                     blue_team_name, _ = blue_team
-                    log_file_name = (
-                        "{red_team_name}_vs_{blue_team_name}_{layout}.log".format(
-                            layout=layout,
-                            run_id=self.contest_timestamp_id,
-                            red_team_name=red_team_name,
-                            blue_team_name=blue_team_name,
-                        )
-                    )
-                    log_file_name2 = (
-                        "{blue_team_name}_vs_{red_team_name}_{layout}.log".format(
-                            layout=layout,
-                            run_id=self.contest_timestamp_id,
-                            red_team_name=red_team_name,
-                            blue_team_name=blue_team_name,
-                        )
-                    )
+                    log_file_name = f"{red_team_name}_vs_{blue_team_name}_{layout}.log"
+                    log_file_name2 = f"{blue_team_name}_vs_{red_team_name}_{layout}.log"
 
                     if os.path.isfile(os.path.join(self.tmp_logs_dir, log_file_name)):
                         games_restored += 1
-                        print(
-                            "{id} Game {log} restored".format(
-                                id=games_restored, log=log_file_name
-                            )
-                        )
+                        print(f"{games_restored} Game {log_file_name} restored")
                         jobs.append(
                             self._generate_empty_job(red_team, blue_team, layout)
                         )
@@ -606,34 +585,13 @@ class ContestRunner:
                         os.path.join(self.tmp_logs_dir, log_file_name2)
                     ):
                         games_restored += 1
-                        print(
-                            "{id} Game {log} restored".format(
-                                id=games_restored, log=log_file_name
-                            )
-                        )
+                        print(f"{games_restored} Game {log_file_name} restored")
                         jobs.append(
                             self._generate_empty_job(blue_team, red_team, layout)
                         )
                     else:
                         jobs.append(self._generate_job(red_team, blue_team, layout))
-
-                        #  This is the core package to be transferable to each host
-        core_req_file = TransferableFile(
-            local_path=os.path.join(self.tmp_dir, CORE_CONTEST_TEAM_ZIP_FILE),
-            remote_path=os.path.join("/tmp", CORE_CONTEST_TEAM_ZIP_FILE),
-        )
-
-        # create cluster with hots and jobs and run it by starting it, and then analyze output results
-        # results will contain all outputs from every game played
-        cm = ClusterManager(hosts, jobs, [core_req_file])
-        # sys.exit(0)
-        results = cm.start()
-
-        print(
-            "========================= GAMES FINISHED - NEXT ANALYSING OUTPUT OF GAMES ========================= "
-        )
-        self._analyse_all_outputs(results)
-        self._calculate_team_stats()
+        return jobs
 
     def _calculate_team_stats(self):
         """

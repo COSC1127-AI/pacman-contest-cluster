@@ -224,18 +224,18 @@ def load_settings():
                 "Configuration file loaded from resume directory, ignoring specified config file"
             )
         else:
-        config_json_file = (
+            config_json_file = (
                 args.config_file
                 if args.config_file is not None
                 else DEFAULT_CONFIG_FILE
-        )
-        if os.path.exists(config_json_file):
-            with open(config_json_file, "r") as f:
-                settings_json = json.load(f)
-                logging.debug("Configuration file loaded")
-        else:
-            logging.error(f"Configuration file {config_json_file} not available.")
-            sys.exit(1)
+            )
+            if os.path.exists(config_json_file):
+                with open(config_json_file, "r") as f:
+                    settings_json = json.load(f)
+                    logging.debug("Configuration file loaded")
+            else:
+                logging.error(f"Configuration file {config_json_file} not available.")
+                sys.exit(1)
 
     # Now collect all CLI options, override default and config file
     if args.organizer:
@@ -757,7 +757,7 @@ if __name__ == "__main__":
         )
         for w in workers_details
     ]
-    del settings["workers_file"]
+    # del settings["workers_file"]
 
     resume_contest_folder = settings["resume_contest_folder"]
     del settings["resume_contest_folder"]
@@ -766,12 +766,7 @@ if __name__ == "__main__":
 
     multi_contest = MultiContest(settings)
     for runner in multi_contest.create_contests():
-        if resume_contest_folder is not None:
-            runner.resume_contest_remotely(
-                hosts, resume_contest_folder
-            )  # Now run ContestRunner with the hosts!
-        else:
-            runner.run_contest_remotely(hosts)
+        runner.run_contest_remotely(hosts, resume_contest_folder)
 
         stats_file_url, replays_file_url, logs_file_url = runner.store_results()
         html_generator = HtmlGenerator(settings["www_dir"], settings["organizer"])
