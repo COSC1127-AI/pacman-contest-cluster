@@ -169,7 +169,7 @@ def load_settings():
     parser.add_argument(
         "--split",
         help="split contest into n leagues (default: 1).",
-        default=1,
+        default=0,
         type=int,
     )
 
@@ -301,7 +301,8 @@ def load_settings():
 
     # Now integrate default, config file, and CLI settings, in that order
     settings = {**settings_default, **settings_json, **settings_cli}
-
+    if "split" not in settings:
+        settings["split"] = 1
     # Check if some important option is missing, if so abort (not used yet)
     missing_parameters = set({}) - set(settings.keys())
     if missing_parameters:
@@ -493,7 +494,7 @@ class MultiContest:
                 [team for section in prior_split for team in section]
             )
             if new_teams:
-                new_split = list_partition(new_teams, self.split)
+                new_split = list_partition(list(new_teams), self.split)
                 return [old + new for old, new in zip(prior_split, reversed(new_split))]
             else:
                 return prior_split
