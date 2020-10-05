@@ -218,6 +218,12 @@ def load_settings():
             )
             sys.exit(1)
 
+        if args.split and args.split != settings_json["split"]:
+            logging.error(
+                f"Mismatch in split parameter between CLI and resume folder: {args.split} vs {settings_json['split']}. Aborting."
+            )
+            sys.exit(1)
+
     if args.config_file is not None:
         if args.resume_contest_folder is not None:
             logging.warning(
