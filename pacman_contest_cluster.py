@@ -301,7 +301,7 @@ def load_settings():
 
     # Now integrate default, config file, and CLI settings, in that order
     settings = {**settings_default, **settings_json, **settings_cli}
-    if "split" not in settings:
+    if settings.get("split", 0) == 0:
         settings["split"] = 1
     # Check if some important option is missing, if so abort (not used yet)
     missing_parameters = set({}) - set(settings.keys())
@@ -392,9 +392,18 @@ class MultiContest:
             settings["fixed_layout_seeds"],
             settings["random_layout_seeds"],
         )
-
         # Report layouts to be played, fixed and random (with seeds)
         self.log_layouts()
+
+        # clear out old contest subdirectories
+        for contest_folder in os.listdir(TMP_DIR):
+            contest_path = os.path.join(TMP_DIR, contest_folder)
+            if (
+                os.path.isdir(contest_path)
+                and contest_folder.startswith("contest-")
+                and contest_folder != "contest-run"
+            ):
+                shutil.rmtree(contest_path)
 
         # unique id for this execution of the contest; used to label logs
         self.contest_timestamp_id = (
