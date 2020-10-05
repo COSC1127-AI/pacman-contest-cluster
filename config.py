@@ -37,6 +37,7 @@ RESULTS_DIR = "results"
 TIMEZONE = timezone("Australia/Melbourne")
 CORE_CONTEST_TEAM_ZIP_FILE = "contest_and_teams.zip"
 SUBMISSION_FILENAME_PATTERN = re.compile(r"^(s\d+)(_([-+0-9T:.]+))?(\.zip)?$")
+AGENT_FACTORY = "myTeam.py"
 
 DEFAULT_MAX_STEPS = 1200
 DEFAULT_FIXED_LAYOUTS = 3

@@ -203,9 +203,31 @@ def load_settings():
 
     # Then set the settings from config file, if any provided
     settings_json = {}
+    settings_cli = {}
+
+    if args.resume_contest_folder is not None:
+        settings_cli["resume_contest_folder"] = args.resume_contest_folder
+        config_json_file = os.path.join(args.resume_contest_folder, DEFAULT_CONFIG_FILE)
+        if os.path.exists(config_json_file):
+            with open(config_json_file, "r") as f:
+                settings_json = json.load(f)
+                logging.debug("Configuration file loaded from resume directory")
+        else:
+            logging.error(
+                f"Configuration file {config_json_file} not available in resume directory."
+            )
+            sys.exit(1)
+
     if args.config_file is not None:
+        if args.resume_contest_folder is not None:
+            logging.warning(
+                "Configuration file loaded from resume directory, ignoring specified config file"
+            )
+        else:
         config_json_file = (
-            args.config_file if args.config_file is not None else DEFAULT_CONFIG_FILE
+                args.config_file
+                if args.config_file is not None
+                else DEFAULT_CONFIG_FILE
         )
         if os.path.exists(config_json_file):
             with open(config_json_file, "r") as f:
@@ -216,7 +238,6 @@ def load_settings():
             sys.exit(1)
 
     # Now collect all CLI options, override default and config file
-    settings_cli = {}
     if args.organizer:
         settings_cli["organizer"] = args.organizer
 
@@ -226,9 +247,6 @@ def load_settings():
         settings_cli["compress_logs"] = args.compress_logs
     if args.workers_file:
         settings_cli["workers_file"] = args.workers_file
-
-    if args.resume_contest_folder:
-        settings_cli["resume_contest_folder"] = args.resume_contest_folder
 
     if args.staff_teams_dir:
         settings_cli["staff_teams_dir"] = args.staff_teams_dir
@@ -309,6 +327,11 @@ def list_partition(list_in, n):
     # partitions a list into n (nearly) equal lists: https://stackoverflow.com/questions/3352737/how-to-randomly-partition-a-list-into-n-nearly-equal-parts
     random.shuffle(list_in)
     return [list_in[i::n] for i in range(n)]
+
+
+def get_agent_factory(team_name):
+    """returns the agent factory for a given team"""
+    return os.path.join(TEAMS_SUBDIR, team_name, AGENT_FACTORY)
 
 
 # @dataclass
@@ -432,11 +455,28 @@ class MultiContest:
 
     def create_contests(self):
         contests = []
+        self.settings["fixed_layout_seeds"] = [
+            l for l in self.layouts if not l.startswith("RANDOM")
+        ]
+        self.settings["random_layout_seeds"] = [
+            int(l[6:]) for l in self.layouts if l.startswith("RANDOM")
+        ]
+        team_split = self.split_teams()
+        self.settings["teams"] = team_split
+
+        with open(os.path.join(TMP_DIR, DEFAULT_CONFIG_FILE), "w") as f:
+            json.dump(
+                self.settings, f, sort_keys=True, indent=4, separators=(",", ": ")
+            )
+
         self.settings["layouts"] = self.layouts
-        self.settings["staff_teams"] = self.staff_teams
-        for i, teams in enumerate(list_partition(self.teams, self.split)):
+        self.settings["staff_teams"] = [
+            (team, get_agent_factory(team)) for team in self.staff_teams
+        ]
+
+        for i, teams in enumerate(team_split):
             settings = copy.deepcopy(self.settings)
-            settings["teams"] = teams
+            settings["teams"] = [(team, get_agent_factory(team)) for team in teams]
             settings["tmp_dir"] = os.path.join(TMP_DIR, "contest-" + ascii_lowercase[i])
             settings["contest_timestamp_id"] = (
                 self.contest_timestamp_id + "-" + ascii_lowercase[i]
@@ -444,6 +484,22 @@ class MultiContest:
             contests.append(ContestRunner(settings))
 
         return contests
+
+    def split_teams(self):
+        prior_split = self.settings.get("teams")
+        if prior_split is not None:
+            current_teams = set(self.teams)
+            new_teams = current_teams.difference(
+                [team for section in prior_split for team in section]
+            )
+            if new_teams:
+                new_split = list_partition(new_teams, self.split)
+                return [old + new for old, new in zip(prior_split, reversed(new_split))]
+            else:
+                return prior_split
+
+        else:
+            return list_partition(self.teams, self.split)
 
     def _prepare_platform(
         self,
@@ -626,18 +682,16 @@ class MultiContest:
 
         # This submission will be temporarily expanded into team_destination_dir
         team_destination_dir = os.path.join(destination, team_name)
-        desired_file = "myTeam.py"
 
         if team_name not in self.submission_times:
             if submission_zip_file is None:
                 shutil.copytree(submission_path, team_destination_dir)
             else:
                 submission_zip_file.extractall(team_destination_dir)
-            agent_factory = os.path.join(TEAMS_SUBDIR, team_name, desired_file)
             if is_staff_team:
-                self.staff_teams.append((team_name, agent_factory))
+                self.staff_teams.append(team_name)
             else:
-                self.teams.append((team_name, agent_factory))
+                self.teams.append(team_name)
             self.submission_times[team_name] = submission_time
 
         elif (

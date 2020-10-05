@@ -69,7 +69,7 @@ class ContestRunner:
         )
 
         contest_zip_file = zipfile.ZipFile(contest_zip_file_path)
-        contest_zip_file.extractall(os.path.join(self.tmp_dir, "."))
+        contest_zip_file.extractall(os.path.join(self.tmp_contest_dir, "."))
 
         if os.path.exists(self.tmp_replays_dir):
             shutil.rmtree(self.tmp_replays_dir)
