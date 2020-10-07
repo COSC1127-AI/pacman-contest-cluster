@@ -55,21 +55,12 @@ class ContestRunner:
         self.layouts = settings["layouts"]
 
         self.tmp_dir = settings["tmp_dir"]
-        self.tmp_contest_dir = os.path.join(self.tmp_dir, TMP_CONTEST_DIR)
         self.tmp_replays_dir = os.path.join(self.tmp_dir, TMP_REPLAYS_DIR)
         self.tmp_logs_dir = os.path.join(self.tmp_dir, TMP_LOGS_DIR)
 
         if os.path.exists(self.tmp_dir):
             shutil.rmtree(self.tmp_dir)
         os.makedirs(self.tmp_dir)
-
-        contest_zip_file_path = os.path.join(self.tmp_dir, CORE_CONTEST_TEAM_ZIP_FILE)
-        shutil.copy(
-            os.path.join(TMP_DIR, CORE_CONTEST_TEAM_ZIP_FILE), contest_zip_file_path
-        )
-
-        contest_zip_file = zipfile.ZipFile(contest_zip_file_path)
-        contest_zip_file.extractall(os.path.join(self.tmp_contest_dir, "."))
 
         if os.path.exists(self.tmp_replays_dir):
             shutil.rmtree(self.tmp_replays_dir)
@@ -164,7 +155,7 @@ class ContestRunner:
             blue_team_name=blue_team_name,
         )
 
-        replays = glob.glob(os.path.join(self.tmp_contest_dir, "replay*"))
+        replays = glob.glob(os.path.join(self.tmp_dir, "replay*"))
         if replays:
             # results/results_<contest_timestamp_id>/{red_team_name}_vs_{blue_team_name}_{layout}.replay
             shutil.move(
@@ -410,12 +401,12 @@ class ContestRunner:
 
         deflate_command = "mkdir -p {contest_dir} ; unzip -o {zip_file} -d {contest_dir} ; chmod +x -R *".format(
             zip_file=os.path.join("/tmp", CORE_CONTEST_TEAM_ZIP_FILE),
-            contest_dir=self.tmp_contest_dir,
+            contest_dir=self.tmp_dir,
         )
 
         command = "{deflate_command} ; cd {contest_dir} ; {game_command} ; touch {replay_filename}".format(
             deflate_command=deflate_command,
-            contest_dir=self.tmp_contest_dir,
+            contest_dir=self.tmp_dir,
             game_command=game_command,
             replay_filename="replay-0",
         )
@@ -436,11 +427,11 @@ class ContestRunner:
 
         ret_file_replay = TransferableFile(
             local_path=os.path.join(self.tmp_replays_dir, replay_file_name),
-            remote_path=os.path.join(self.tmp_contest_dir, "replay-0"),
+            remote_path=os.path.join(self.tmp_dir, "replay-0"),
         )
         ret_file_log = TransferableFile(
             local_path=os.path.join(self.tmp_logs_dir, log_file_name),
-            remote_path=os.path.join(self.tmp_contest_dir, "log-0"),
+            remote_path=os.path.join(self.tmp_dir, "log-0"),
         )
 
         return Job(
@@ -490,7 +481,7 @@ class ContestRunner:
                 red_team, blue_team, layout, exit_code, None, total_secs_taken
             )
 
-    def run_contest_remotely(self, hosts, resume_folder=None):
+    def run_contest_remotely(self, hosts, resume_folder=None, first=True):
         self.prepare_dirs()
 
         if resume_folder is not None:
@@ -508,13 +499,17 @@ class ContestRunner:
 
         #  This is the core package to be transferable to each host
         core_req_file = TransferableFile(
-            local_path=os.path.join(self.tmp_dir, CORE_CONTEST_TEAM_ZIP_FILE),
+            local_path=os.path.join(TMP_DIR, CORE_CONTEST_TEAM_ZIP_FILE),
             remote_path=os.path.join("/tmp", CORE_CONTEST_TEAM_ZIP_FILE),
         )
 
-        # create cluster with hots and jobs and run it by starting it, and then analyze output results
+        # create cluster with hosts and jobs and run it by starting it, and then analyze output results
         # results will contain all outputs from every game played
-        cm = ClusterManager(hosts, jobs, [core_req_file])
+        if first:
+            cm = ClusterManager(hosts, jobs, [core_req_file])
+        else:
+            # subsequent contests don't need to transfer the files again
+            cm = ClusterManager(hosts, jobs, None)
         # sys.exit(0)
         results = cm.start()
 

@@ -347,8 +347,10 @@ if __name__ == "__main__":
     logging.info("Will create contest runner with options: {}".format(settings))
 
     multi_contest = MultiContest(settings)
+    first = True
     for runner in multi_contest.create_contests():
-        runner.run_contest_remotely(hosts, resume_contest_folder)
+        runner.run_contest_remotely(hosts, resume_contest_folder, first)
+        first = False
 
         stats_file_url, replays_file_url, logs_file_url = runner.store_results()
         html_generator = HtmlGenerator(settings["www_dir"], settings["organizer"])
