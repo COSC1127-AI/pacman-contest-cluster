@@ -15,4 +15,5 @@ neat-python
 py_trees
 keras-rl
 gym
-tf-agents[reverb]
+tf-agents
+
