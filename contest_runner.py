@@ -319,64 +319,79 @@ class ContestRunner:
     def store_results(self):
         # Basic data stats
         data_stats = {
-            "games": self.games,
-            "team_stats": self.team_stats,
-            "random_layouts": [l for l in self.layouts if l.startswith("RANDOM")],
-            "fixed_layouts": [l for l in self.layouts if not l.startswith("RANDOM")],
-            "max_steps": self.max_steps,
-            "organizer": self.organizer,
-            "timestamp_id": self.contest_timestamp_id,
+            'games': self.games,
+            'team_stats': self.team_stats,
+            'random_layouts': [l for l in self.layouts if l.startswith('RANDOM')],
+            'fixed_layouts': [l for l in self.layouts if not l.startswith('RANDOM')],
+            'max_steps': self.max_steps,
+            'organizer' : self.organizer,
+            'timestamp_id' : self.contest_timestamp_id
         }
 
-        # Process replays: compress and upload
-        replays_archive_name = "replays_%s.tar" % self.contest_timestamp_id
-        replays_archive_name += ".gz" if self.compress_logs else ""
-        replays_archive_full_path = os.path.join(
-            self.replays_archive_dir, replays_archive_name
-        )
-        with tarfile.open(
-            replays_archive_full_path, "w:gz" if self.compress_logs else "w"
-        ) as tar:
-            tar.add(self.tmp_replays_dir, arcname="/")
+        # PROCESS REPLAYS: compress and upload
+        replays_archive_name = 'replays_%s.tar' % self.contest_timestamp_id
+        replays_archive_name += '.gz' if self.compress_logs else ''
+        replays_archive_full_path = os.path.join(self.replays_archive_dir, replays_archive_name)
+        with tarfile.open(replays_archive_full_path, 'w:gz' if self.compress_logs else 'w') as tar:
+            tar.add(self.TMP_REPLAYS_DIR, arcname='/')
         if self.upload_replays:
             try:
-                replays_file_url = self.upload_file(
-                    replays_archive_full_path, remove_local=False
-                )
-                data_stats["url_replays"] = replays_file_url.decode()
+                replays_file_url = self.upload_file(replays_archive_full_path, remove_local=False)
+                data_stats['url_replays'] = replays_file_url.decode()
             except Exception as e:
-                replays_file_url = os.path.relpath(
-                    replays_archive_full_path, self.www_dir
-                )
+                replays_file_url = os.path.relpath(replays_archive_full_path, self.www_dir)
         else:
-            replays_file_url = os.path.relpath(
-                replays_archive_full_path, self.www_dir
-            )  # stats-archive/stats_xxx.json
+            replays_file_url = os.path.relpath(replays_archive_full_path, self.www_dir)  # stats-archive/stats_xxx.json
 
-        # Process replays: compress and upload
-        logs_archive_name = "logs_%s.tar" % self.contest_timestamp_id
-        logs_archive_name += ".gz" if self.compress_logs else ""
+        # Copy folder
+        replays_folder_name = 'replays_%s' % self.contest_timestamp_id
+        replays_archive_full_path = os.path.join(self.replays_archive_dir, replays_folder_name)
+        shutil.copytree(self.TMP_REPLAYS_DIR, replays_archive_full_path)
+
+        # Create archive for each team
+        for t in self.team_stats.keys():
+            replays_folder_name = 'replays_%s' % self.contest_timestamp_id
+            replays_archive_name = f'replays_{t}.tar'
+            replays_archive_name += '.gz' if self.compress_logs else ''
+            replays_archive_full_path = os.path.join(self.replays_archive_dir, replays_folder_name, replays_archive_name)
+            replays_folder_full_path = os.path.join(self.replays_archive_dir, replays_folder_name)
+            os.system(f'tar zcf {replays_archive_full_path} {replays_folder_full_path}/*{t}*')
+           
+
+
+        # PROCESS LOGS: compress and upload
+        logs_archive_name = 'logs_%s.tar' % self.contest_timestamp_id
+        logs_archive_name += '.gz' if self.compress_logs else ''
         logs_archive_full_path = os.path.join(self.logs_archive_dir, logs_archive_name)
-        with tarfile.open(
-            logs_archive_full_path, "w:gz" if self.compress_logs else "w"
-        ) as tar:
-            tar.add(self.tmp_logs_dir, arcname="/")
+        with tarfile.open(logs_archive_full_path, 'w:gz' if self.compress_logs else 'w') as tar:
+            tar.add(self.TMP_LOGS_DIR, arcname='/')
         if self.upload_logs:
             try:
-                logs_file_url = self.upload_file(
-                    logs_archive_full_path, remove_local=False
-                )
-                data_stats["url_logs"] = logs_file_url.decode()
+                logs_file_url = self.upload_file(logs_archive_full_path, remove_local=False)
+                data_stats['url_logs'] = logs_file_url.decode()
             except Exception as e:
                 logs_file_url = os.path.relpath(logs_archive_full_path, self.www_dir)
         else:
             logs_file_url = os.path.relpath(logs_archive_full_path, self.www_dir)
 
-        # Store stats in a json file
-        stats_file_name = "stats_%s.json" % self.contest_timestamp_id  # stats_xxx.json
-        stats_file_full_path = os.path.join(
-            self.stats_archive_dir, stats_file_name
-        )  # www/stats-archive/stats_xxx.json
+
+        # Copy folder
+        logs_folder_name = 'logs_%s' % self.contest_timestamp_id
+        logs_archive_full_path = os.path.join(self.logs_archive_dir, logs_folder_name)
+        shutil.copytree(self.TMP_LOGS_DIR, logs_archive_full_path)
+
+        # Create archive for each team
+        for t in self.team_stats.keys():
+            logs_folder_name = 'logs_%s' % self.contest_timestamp_id
+            logs_archive_name = f'logs_{t}.tar'
+            logs_archive_name += '.gz' if self.compress_logs else ''
+            logs_archive_full_path = os.path.join(self.logs_archive_dir, logs_folder_name, logs_archive_name)
+            logs_folder_full_path = os.path.join(self.logs_archive_dir, logs_folder_name)
+            os.system(f'tar zcf {logs_archive_full_path} {logs_folder_full_path}/*{t}*')
+           
+        # STORE STATS in a json file
+        stats_file_name = 'stats_%s.json' % self.contest_timestamp_id  # stats_xxx.json
+        stats_file_full_path = os.path.join(self.stats_archive_dir, stats_file_name) # www/stats-archive/stats_xxx.json
         stats_file_rel_path = os.path.relpath(stats_file_full_path, self.www_dir)
         with open(stats_file_full_path, "w") as f:
             json.dump(data_stats, f)
