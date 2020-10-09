@@ -4,6 +4,7 @@ import shutil
 import os
 import json  
 from datetime import datetime
+import re
 
 DATA_URL = '/home/nirlipo/contest-2020/www'
 
@@ -18,7 +19,10 @@ def main():
 
         teams = d['team_stats'].keys()
         print(fname)
-        contest_timestamp_id = datetime.strptime(fname, 'stats_%Y-%m-%d-%H-%M.json').strftime('%Y-%m-%d-%H-%M')
+        match = re.search('stats_(.*)-?.json', fname)
+        print(match.group())
+        exit(0)
+        contest_timestamp_id = datetime.strptime(match, 'stats_%Y-%m-%d-%H-%M.json').strftime('%Y-%m-%d-%H-%M')
         
         # PROCESS REPLAYS: extract files
         replays_archive_name = 'replays_%s.tar.gz' % contest_timestamp_id
