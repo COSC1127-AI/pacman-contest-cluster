@@ -32,16 +32,11 @@ class MultiContest:
         self.settings = settings
 
         if not os.path.exists(os.path.join(DIR_SCRIPT, CONTEST_ZIP_FILE)):
-            logging.error(
-                "Contest zip file %s could not be found. Aborting." % CONTEST_ZIP_FILE
-            )
+            logging.error(f"Contest zip file {CONTEST_ZIP_FILE} could not be found. Aborting.")
             sys.exit(1)
 
         if not settings["fixed_layouts_file"]:
-            logging.error(
-                "Layouts file %s could not be found. Aborting."
-                % settings["fixed_layouts_file"]
-            )
+            logging.error(f"Layouts file {settings['fixed_layouts_file']} could not be found. Aborting.")
             sys.exit(1)
 
         self.tmp_contest_dir = os.path.join(TMP_DIR, TMP_CONTEST_DIR)
@@ -53,8 +48,8 @@ class MultiContest:
             self.tmp_contest_dir,
             settings["no_fixed_layouts"],
             settings["no_random_layouts"],
-            settings["fixed_layout_seeds"],
-            settings["random_layout_seeds"],
+            settings.get("fixed_layout_seeds", []),
+            settings.get("random_layout_seeds", []),
         )
         # Report layouts to be played, fixed and random (with seeds)
         self.log_layouts()
