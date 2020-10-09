@@ -458,11 +458,7 @@ class ContestRunner:
         )
 
     def _analyse_all_outputs(self, results):
-        logging.info(
-            "About to analyze game result outputs. Number of result output to analyze: {}".format(
-                len(results)
-            )
-        )
+        logging.info(f"About to analyze game result outputs. Number of result output to analyze: {len(results)}")
         for result in results:
             (
                 (red_team, blue_team, layout),
