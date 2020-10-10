@@ -3,10 +3,11 @@ import tarfile
 import shutil
 import os
 import json  
+import re
 from datetime import datetime
 import re
 
-DATA_URL = '/home/nirlipo/contest-2020/www'
+DATA_URL = '/mnt/ssardina-pacman/cosc1125-1127-AI/www.dashboard/'
 
 def main():
     json_files = sorted([f for f in os.listdir(f'{DATA_URL}/stats-archive/') if os.path.isfile(os.path.join(DATA_URL,'stats-archive', f))], reverse=True)
@@ -19,10 +20,8 @@ def main():
 
         teams = d['team_stats'].keys()
         print(fname)
-        match = re.search('stats_(.*)-?.json', fname)
-        print(match.group())
-        exit(0)
-        contest_timestamp_id = datetime.strptime(match, 'stats_%Y-%m-%d-%H-%M.json').strftime('%Y-%m-%d-%H-%M')
+        match = re.match('stats_(.*).json', fname)
+        contest_timestamp_id = match.group(1)
         
         # PROCESS REPLAYS: extract files
         replays_archive_name = 'replays_%s.tar.gz' % contest_timestamp_id
