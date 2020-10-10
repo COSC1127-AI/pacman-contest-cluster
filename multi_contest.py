@@ -132,7 +132,9 @@ class MultiContest:
         ]
         team_split = self.split_teams()
         self.settings["teams"] = team_split
+        self.settings["contest_timestamp_id"] = self.contest_timestamp_id
 
+        ## Dump config file for the whole multi-contest
         with open(os.path.join(TMP_DIR, DEFAULT_CONFIG_FILE), "w") as f:
             json.dump(
                 self.settings, f, sort_keys=True, indent=4, separators=(",", ": ")
