@@ -20,7 +20,7 @@ import streamlit.components.v1 as components
 from pandas import json_normalize 
 
 
-DATA_URL = ('/mnt/ssardina-pacman/cosc1125-1127-AI/www.dashboard/stats-archive')
+DATA_URL = ('/mnt/ssardina-pacman/cosc1125-1127-AI/www/feedback-final/stats-archive')
 DEPLOYED_URL = 'http://118.138.246.177/feedback-final'
 ORGANIZER = 'RMIT AI - COSC1125/1127'
 
@@ -79,12 +79,12 @@ def main():
     #date_time_obj = datetime.strptime(json_selectbox, 'stats_%Y-%m-%d-%H-%M.json')
     date_time_obj = get_date_from_json(json_selectbox)
 
-    st.title(f'Pacman {ORGANIZER} Dashboard')
+    st.title(f'Pacman {ORGANIZER} Pacman Dashboard')
     st.header(f'Date: {date_time_obj}')
 
     # Show Table
     if table_checkbox:
-        st.dataframe(df_stats.style.apply(lambda x: ['background: lightyellow' if ('staff_team' in x.name) else '' for i in x], axis=1), width=1200, height=600 )
+        st.dataframe(df_stats.style.apply(lambda x: ['background: lightyellow' if ('staff_team' in x.name) else '' for i in x], axis=1), width=1500, height=1500 )
         
  
     
@@ -164,7 +164,7 @@ def get_table_download_link(df):
  
 # Progress Chart
 def progress_chart(df_all_stats, teams_to_compare):
-    st.markdown('# Position Progress Since the Start of the Pre-Competitions')
+    st.markdown('# Position Progress Since Start of Feedback Contests')
     fig6 = go.Figure()
     fig6['layout']['yaxis']['autorange'] = "reversed"
     fig6['layout']['width']=1200
@@ -175,10 +175,13 @@ def progress_chart(df_all_stats, teams_to_compare):
         t_pos = []
         t_dates = []
         for competition in df_all_stats.keys():
+            no_teams = len(df_all_stats[competition])
             if tname in df_all_stats[competition].index:
-                t_pos += [df_all_stats[competition].Position[tname]]
-                t_dates += [get_date_from_json(competition)]
-        
+                # Records the % of position between 0 (top top) and 100 (very low)
+                t_pos += [(df_all_stats[competition].Position[tname] / no_teams) * 100]
+                # t_dates += [datetime.strptime(competition, 'stats_%Y-%m-%d-%H-%M.json')]
+                t_dates += [datetime.strptime(get_date_from_json(competition), '%Y-%m-%d-%H-%M')]
+
         fig6.add_trace(go.Scatter(x=t_dates, y=t_pos, name=tname))
 
     fig6.update_layout(
