@@ -567,7 +567,6 @@ class ContestRunner:
                             jobs.append(self._generate_job(red_team, blue_team, layout))
 
         else:
-
             for red_team, blue_team in combinations(self.teams, r=2):
                 for layout in self.layouts:
                     red_team_name, _ = red_team

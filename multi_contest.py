@@ -39,7 +39,9 @@ class MultiContest:
             logging.error(f"Layouts file {settings['fixed_layouts_file']} could not be found. Aborting.")
             sys.exit(1)
 
+        # this is a folder with the whole contest folder (with system + teams) in the multi-contest folder
         self.tmp_contest_dir = os.path.join(TMP_DIR, TMP_CONTEST_DIR)
+
 
         # Setup Pacman CTF environment by extracting it from a clean zip file
         self._prepare_platform(
