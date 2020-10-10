@@ -7,7 +7,7 @@ import re
 from datetime import datetime
 import re
 
-DATA_URL = '/mnt/ssardina-pacman/cosc1125-1127-AI/www.dashboard/'
+DATA_URL = '/mnt/ssardina-pacman/cosc1125-1127-AI/www/feedback-final/'
 
 def main():
     json_files = sorted([f for f in os.listdir(f'{DATA_URL}/stats-archive/') if os.path.isfile(os.path.join(DATA_URL,'stats-archive', f))], reverse=True)
@@ -29,7 +29,13 @@ def main():
         replays_archive_full_path = os.path.join(DATA_URL, 'replays-archive', replays_archive_name)
         replays_folder_full_path = os.path.join(DATA_URL, 'replays-archive', replays_folder_name)
 
-        print(f'\t Extract: {replays_archive_full_path}')
+        print(f'======> Extract: {replays_archive_full_path}')
+
+        # If this as already extracted, skip it...
+        if os.path.exists(replays_folder_full_path):
+            print('\t .. exist already, skipping')
+            continue
+
         os.system(f'mkdir {replays_folder_full_path}')
         os.system(f'tar zxf {replays_archive_full_path} -C {replays_folder_full_path}')
 
@@ -48,7 +54,7 @@ def main():
         logs_archive_full_path = os.path.join(DATA_URL, 'logs-archive', logs_archive_name)
         logs_folder_full_path = os.path.join(DATA_URL, 'logs-archive', logs_folder_name)
 
-        print(f'\t Extract: {logs_archive_full_path}')
+        print(f'======> Extract: {logs_archive_full_path}')
 
         os.system(f'mkdir {logs_folder_full_path}')
         os.system(f'tar zxf {logs_archive_full_path} -C {logs_folder_full_path}')
