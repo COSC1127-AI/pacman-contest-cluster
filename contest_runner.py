@@ -55,6 +55,7 @@ class ContestRunner:
         self.layouts = settings["layouts"]
 
         self.tmp_dir = settings["tmp_dir"]
+        self.tmp_contest = os.path.join(self.tmp_dir, TMP_CONTEST_DIR)
         self.tmp_replays_dir = os.path.join(self.tmp_dir, TMP_REPLAYS_DIR)
         self.tmp_logs_dir = os.path.join(self.tmp_dir, TMP_LOGS_DIR)
 
@@ -155,9 +156,8 @@ class ContestRunner:
             blue_team_name=blue_team_name,
         )
 
-        replays = glob.glob(os.path.join(self.tmp_dir, "replay*"))
+        replays = glob.glob(os.path.join(self.tmp_contest, "replay*"))
         if replays:
-            # results/results_<contest_timestamp_id>/{red_team_name}_vs_{blue_team_name}_{layout}.replay
             shutil.move(
                 replays[0], os.path.join(self.tmp_replays_dir, replay_file_name)
             )
@@ -409,6 +409,15 @@ class ContestRunner:
 
     # Generates a job to play read_team vs blue_team in layout
     def _generate_job(self, red_team, blue_team, layout):
+        """
+        Generates a job command to play red_team against blue team in a layout. This job is run inside the sandbox
+        folder for this particular game (e.g., /tmp/cluster_instance_xxxx)
+
+        :param red_team: the path to the red team (e.g., teams/targethdplus/myTeam.py)
+        :param blue_team: the path to the blue team (e.g., teams/targethdplus/myTeam.py)
+        :param layout: the name of the layout (e.g., RANDOM2737)
+        :return: a Job() object with the job to be scheduled in cluster
+        """
         red_team_name, _ = red_team
         blue_team_name, _ = blue_team
 

@@ -21,9 +21,9 @@ DEFAULT_REPLAYS_ARCHIVE_DIR = "replays-archive"
 
 TMP_DIR = "tmp"
 
-TMP_CONTEST_DIR = os.path.join(TMP_DIR, 'contest-run')
-TMP_REPLAYS_DIR = os.path.join(TMP_DIR, 'replays-run')
-TMP_LOGS_DIR = os.path.join(TMP_DIR, 'logs-run')
+TMP_CONTEST_DIR = 'contest-run'
+TMP_REPLAYS_DIR = 'replays-run'
+TMP_LOGS_DIR = 'logs-run'
 
 CONTEST_ZIP_FILE = "contest.zip"
 STAFF_TEAM_ZIP_FILE = [
