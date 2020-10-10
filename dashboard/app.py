@@ -20,9 +20,28 @@ import streamlit.components.v1 as components
 from pandas import json_normalize 
 
 
-DATA_URL = ('/data/www/stats-archive')
-DEPLOYED_URL = 'http://115.146.95.253'
-ORGANIZER = 'UNIMELB - COMP90054/2020'
+DATA_URL = ('/mnt/ssardina-pacman/cosc1125-1127-AI/www.dashboard/stats-archive')
+DEPLOYED_URL = 'http://118.138.246.177/feedback-final'
+ORGANIZER = 'RMIT AI - COSC1125/1127'
+
+FORMAT_DATE_FILE = '.*(\d{4}-\d{2}-\d{2}-\d{2}-\d{2}).*\.json'
+
+
+def get_date_from_json(filename):
+    """
+    Extracts the date part of the json stat file
+    :param filename:
+    :return:
+    """
+    return re.match(FORMAT_DATE_FILE, filename).group(1)
+
+def get_id_from_json(filename):
+    """
+    Extracts the date part of the json stat file
+    :param filename:
+    :return:
+    """
+    return re.match('stats_(.*).json', filename).group(1)
 
 
 # Streamlit encourages well-structured code, like starting execution in a main() function.
@@ -40,7 +59,8 @@ def main():
         "Select Tournament",
         options=json_files,
         index=0,
-        format_func=lambda x: datetime.strptime(x, 'stats_%Y-%m-%d-%H-%M.json')
+        #format_func=lambda x: datetime.strptime(x, 'stats_%Y-%m-%d-%H-%M.json')
+        format_func=lambda x: get_id_from_json(x)
     )
 
     table_checkbox = st.sidebar.checkbox('Show Table',value=True)
@@ -51,11 +71,13 @@ def main():
 
     df_games = df_all_games[json_selectbox]
     df_stats = df_all_stats[json_selectbox]
-    timestamp_id = datetime.strptime(json_selectbox, 'stats_%Y-%m-%d-%H-%M.json').strftime('%Y-%m-%d-%H-%M')
+    timestamp_id = get_id_from_json(json_selectbox)
 
     # Title Bar
 
-    date_time_obj = datetime.strptime(json_selectbox, 'stats_%Y-%m-%d-%H-%M.json')
+
+    #date_time_obj = datetime.strptime(json_selectbox, 'stats_%Y-%m-%d-%H-%M.json')
+    date_time_obj = get_date_from_json(json_selectbox)
 
     st.title(f'Pacman {ORGANIZER} Dashboard')
     st.header(f'Date: {date_time_obj}')
@@ -155,7 +177,7 @@ def progress_chart(df_all_stats, teams_to_compare):
         for competition in df_all_stats.keys():
             if tname in df_all_stats[competition].index:
                 t_pos += [df_all_stats[competition].Position[tname]]
-                t_dates += [datetime.strptime(competition, 'stats_%Y-%m-%d-%H-%M.json')]
+                t_dates += [get_date_from_json(competition)]
         
         fig6.add_trace(go.Scatter(x=t_dates, y=t_pos, name=tname))
 
