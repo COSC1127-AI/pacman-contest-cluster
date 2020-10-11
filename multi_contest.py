@@ -217,17 +217,12 @@ class MultiContest:
             exit(1)
         if len(fixed_layout_seeds) > no_fixed_layouts:
             logging.error(
-                "Too many fixed seeds layouts selected (%d) for a total of %d fixed layouts requested to play."
-                % (len(fixed_layout_seeds), no_fixed_layouts)
-            )
+                f"Too many fixed seeds layouts selected ({len(fixed_layout_seeds)}) for a total of {no_fixed_layouts} fixed layouts requested to play.")
             exit(1)
         if not fixed_layout_seeds.issubset(
             layouts_available
         ):  # NOT empty, list of layouts provided
-            logging.error(
-                "There are fixed layout seeds  that are not available: %s."
-                % fixed_layout_seeds.difference(layouts_available)
-            )
+            logging.error(f"There are fixed layout seeds that are not available: {fixed_layout_seeds.difference(layouts_available)}.")
             exit(1)
 
         # assign the set of fixed layouts to be used: the seeds given and complete with random picks from available
@@ -241,9 +236,7 @@ class MultiContest:
         # Next, pick the random layouts, and included all the seeds provided if any
         if len(random_seeds) > no_random_layouts:
             logging.error(
-                "Too many random seeds layouts selected (%d) for a total of %d random layouts requested to play."
-                % (len(fixed_layout_seeds), no_fixed_layouts)
-            )
+                f"Too many random seeds layouts ({len(random_seeds)}) for a total of {no_random_layouts} random layouts requested to play.")
             exit(1)
 
         # complete the mising random layouts
