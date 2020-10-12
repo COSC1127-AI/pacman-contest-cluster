@@ -87,7 +87,7 @@ class ContestRunner:
         (red_team_name, red_team_agent_factory) = red_team
         (blue_team_name, blue_team_agent_factory) = blue_team
         # TODO: make the -c an option at the meta level to "Catch exceptions and enforce time limits"
-        command = 'python3 capture.py -c -r "{red_team_agent_factory}" -b "{blue_team_agent_factory}" -l {layout} -i {steps} -q --record --recordLog --delay 0.0'.format(
+        command = 'python3 capture.py -c -r "{red_team_agent_factory}" -b "{blue_team_agent_factory}" -l {layout} -i {steps} -q --record --recordLog --delay 0.0 --fixRandomSeed'.format(
             red_team_agent_factory=red_team_agent_factory,
             blue_team_agent_factory=blue_team_agent_factory,
             layout=layout,
