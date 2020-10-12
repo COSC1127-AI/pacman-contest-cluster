@@ -44,6 +44,19 @@ def get_id_from_json(filename):
     return re.match('stats_(.*).json', filename).group(1)
 
 
+def normalize(x, min, max, min_new, max_new):
+    """
+    Normalize x in range (min, max) into new range (min_new, max_new)
+    :param x:
+    :param min:
+    :param max:
+    :param min_new:
+    :param max_new:
+    :return:
+    """
+    return (max_new - min_new) // (max - min) * (x - min) + min_new
+
+
 # Streamlit encourages well-structured code, like starting execution in a main() function.
 def main():
     max_width_layout()
@@ -64,7 +77,8 @@ def main():
     )
 
     table_checkbox = st.sidebar.checkbox('Show Table',value=True)
-    teams_progress_checkbox = st.sidebar.checkbox('Show Teams Progress Chart',value=True)
+    teams_progress_checkbox = False
+    # teams_progress_checkbox = st.sidebar.checkbox('Show Teams Progress Chart',value=True)
     games_checkbox = st.sidebar.checkbox('Show Games',value=True)
     games_pie_checkbox = st.sidebar.checkbox('Show Games Chart',value=True)
 
@@ -164,7 +178,7 @@ def get_table_download_link(df):
  
 # Progress Chart
 def progress_chart(df_all_stats, teams_to_compare):
-    st.markdown('# Position Progress Since Start of Feedback Contests')
+    st.markdown('# Position Progress (normalized 1-100) Since Start of Feedback Contests')
     fig6 = go.Figure()
     fig6['layout']['yaxis']['autorange'] = "reversed"
     fig6['layout']['width']=1200
@@ -178,7 +192,10 @@ def progress_chart(df_all_stats, teams_to_compare):
             no_teams = len(df_all_stats[competition])
             if tname in df_all_stats[competition].index:
                 # Records the % of position between 0 (top top) and 100 (very low)
-                t_pos += [(df_all_stats[competition].Position[tname] / no_teams) * 100]
+                # t_pos += [(df_all_stats[competition].Position[tname] / no_teams) * 100]
+                normalized_rank = normalize(df_all_stats[competition].Position[tname], 1, no_teams, 1, 100)
+                t_pos += [normalized_rank]
+
                 # t_dates += [datetime.strptime(competition, 'stats_%Y-%m-%d-%H-%M.json')]
                 t_dates += [datetime.strptime(get_date_from_json(competition), '%Y-%m-%d-%H-%M')]
 
@@ -282,7 +299,9 @@ def load_data(json_files):
 
 
         # Create Table dataframe
-        df_stats[fname] = pd.DataFrame(columns=['Points', 'Win', 'Tie', 'Lost', 'FAILED','Score'], data=d['team_stats'].values(), index=d['team_stats'].keys()).sort_values(by='Points',ascending=False)
+        df_stats[fname] = pd.DataFrame(columns=['Points', 'Win', 'Tie', 'Lost', 'FAILED', 'Score'],
+                                       data=d['team_stats'].values(),
+                                       index=d['team_stats'].keys()).sort_values(by=['Points','Win', 'Score'], ascending=False)
 
         # Create Position in the Table
         df_stats[fname]['Position'] = list(range(1,len(df_stats[fname].index)+1))
