@@ -351,7 +351,8 @@ class MultiContest:
 
         if team_name not in self.submission_times:
             if submission_zip_file is None:
-                shutil.copytree(submission_path, team_destination_dir)
+                shutil.copytree(submission_path, team_destination_dir, ignore=shutil.ignore_patterns(
+                    '.git', '*.log', '*.replay', '*.gz', '*img*', '*layouts*', '*wiki*'))
             else:
                 submission_zip_file.extractall(team_destination_dir)
             if is_staff_team:
@@ -366,7 +367,8 @@ class MultiContest:
         ):
             shutil.rmtree(team_destination_dir)
             if submission_zip_file is None:
-                shutil.copy(submission_path, team_destination_dir)
+                shutil.copy(submission_path, team_destination_dir, ignore=shutil.ignore_patterns(
+                    '.git', '*.log', '*.replay', '*.gz', '*img*', '*layouts*', '*wiki*'))
             else:
                 submission_zip_file.extractall(team_destination_dir)
             self.submission_times[team_name] = submission_time
