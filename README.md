@@ -21,6 +21,7 @@ Table of Contents
   * [Run contest only vs staff teams](#run-contest-only-vs-staff-teams)
   * [Resume partial contest](#resume-partial-contest)
   * [Re-run only some teams in a given contest](#re-run-only-some-teams-in-a-given-contest)
+  * [Re-run only updated teams](re-run-only-updated-teams)
 - [WEB PAGE GENERATION](#web-page-generation)
 - [SCHEDULE COMPETITION](#schedule-competition)
   * [Test command to schedule](#test-command-to-schedule)
@@ -285,6 +286,18 @@ If only one or a few teams failed, one can just re-run those ones by basically d
 3. Re-run the competition using the same method commented above. 
 
 That will only run the games for the logs you deleted.
+
+### Re-run only updated teams
+
+One quick and good strategy is to run a big contest but re-playing all games where one of the teams was updated.
+
+To do so, we use the above method but we first delete all the logs of the teams that have been updated:
+
+```bash
+for d in `cat ai20-contest-timestamps.csv | grep updated | awk -F "\"*,\"*" '{print $1}'` ; do find tmp-failed/contest-a/logs-run/ -name \*$d* ; done
+```
+
+This takes advantage of the cloning script that leaves a column in the csv file stating whether the repo was updated or not from the last cloning.
 
 
 ## WEB PAGE GENERATION
