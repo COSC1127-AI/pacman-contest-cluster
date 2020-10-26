@@ -282,10 +282,16 @@ However, if you need to recover the layouts played in the `tmp/` subdirectory, y
 If only one or a few teams failed, one can just re-run those ones by basically deleting their logs from the temporary folder:
 
 1. Load the new code of the team.
-2. Remove all the logs from the temporal folder.
+2. Remove all the logs of the teams to be re-run from the temporary folder.
 3. Re-run the competition using the same method commented above. 
 
 That will only run the games for the logs you deleted.
+
+To delete the logs of a given team, use:
+
+```bash
+find tmp-faild -name \*<TEAM NAME>.log -exec rm -f {} \;
+```
 
 ### Re-run only updated teams
 
@@ -294,7 +300,7 @@ One quick and good strategy is to run a big contest but re-playing all games whe
 To do so, we use the above method but we first delete all the logs of the teams that have been updated:
 
 ```bash
-for d in `cat ai20-contest-timestamps.csv | grep updated | awk -F "\"*,\"*" '{print $1}'` ; do find tmp-failed/contest-a/logs-run/ -name \*$d* ; done
+for d in `cat ai20-contest-timestamps.csv | grep updated | awk -F "\"*,\"*" '{print $1}'` ; do find tmp-failed/contest-a/logs-run/ -name \*$d*.log ; done
 ```
 
 This takes advantage of the cloning script that leaves a column in the csv file stating whether the repo was updated or not from the last cloning.
