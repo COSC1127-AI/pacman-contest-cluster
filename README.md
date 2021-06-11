@@ -11,24 +11,26 @@ The system runs on Python 3.x. Currently used on Python 3.6.
 Table of Contents
 =================
 
-- [OVERVIEW](#overview)
-  * [Features](#features)
-  * [Dependencies](#dependencies)
-- [MAIN COMPONENTS](#main-components)
-- [OVERVIEW OF MARKING PROCESS](#overview-of-marking-process)
-- [EXAMPLE RUNS](#example-runs)
-  * [Run a contest](#run-a-contest)
-  * [Run contest only vs staff teams](#run-contest-only-vs-staff-teams)
-  * [Resume partial contest](#resume-partial-contest)
-  * [Re-run only some teams in a given contest](#re-run-only-some-teams-in-a-given-contest)
-- [WEB PAGE GENERATION](#web-page-generation)
-- [SCHEDULE COMPETITION](#schedule-competition)
-  * [Test command to schedule](#test-command-to-schedule)
-  * [Setting up cron](#setting-up-cron)
-- [MODIFYING THE CONTEST GAME](#modifying-the-contest-game)
-- [TROUBLESHOOTING](#troubleshooting)
-- [SCREENSHOT](#screenshot)
-- [LICENSE](#license)
+- [PACMAN CAPTURE THE FLAG - CONTEST SCRIPT](#pacman-capture-the-flag---contest-script)
+- [Table of Contents](#table-of-contents)
+  - [OVERVIEW](#overview)
+    - [Features](#features)
+    - [Dependencies](#dependencies)
+  - [MAIN COMPONENTS](#main-components)
+  - [OVERVIEW OF MARKING PROCESS](#overview-of-marking-process)
+  - [EXAMPLE RUNS](#example-runs)
+    - [Run a contest](#run-a-contest)
+    - [Run contest only vs staff teams](#run-contest-only-vs-staff-teams)
+    - [Resume partial contest](#resume-partial-contest)
+    - [Re-run only some teams in a given contest](#re-run-only-some-teams-in-a-given-contest)
+  - [WEB PAGE GENERATION & DASHBOARD](#web-page-generation--dashboard)
+  - [SCHEDULE COMPETITION](#schedule-competition)
+    - [Test command to schedule](#test-command-to-schedule)
+    - [Setting up cron](#setting-up-cron)
+  - [MODIFYING THE CONTEST GAME](#modifying-the-contest-game)
+  - [TROUBLESHOOTING](#troubleshooting)
+  - [SCREENSHOT](#screenshot)
+  - [LICENSE](#license)
 
 
 
@@ -287,28 +289,33 @@ If only one or a few teams failed, one can just re-run those ones by basically d
 That will only run the games for the logs you deleted.
 
 
-## WEB PAGE GENERATION
+## WEB PAGE GENERATION & DASHBOARD
 
 A contest will leave JSON files with all stats, replays, and logs, from which a web page can be produced.
 
 For example, to build web page in `www/` from stats, replays, and logs dirs:
 
-````bash
+```shell
 $ python3 pacman_html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" \
     --www-dir www/ \
     --stats-archive-dir stats-archive/  \
     --replays-archive-dir replays-archive/ \ 
     --logs-archive-dir logs-archive/
-````
+```
 
 or if all stats, replays, and logs are within `www/` then just:
 
-````bash
+```shell
 $ python3 pacman_html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" --www-dir www/
-````
+```
 
 **Observation:** If the stats file for a run has the `transfer.sh` URL for logs/replays, those will be used.
 
+As of 2020, the system includes a pretty visual dashboard that can display the results of the various contests carried out in an interactive manner. Students can select which teams to display, and compare selectively.
+
+The dashboard will be served as a web-server, by default on port 8501.
+
+See `/dashboard/` folder for more information how to set-it up and run the dashboard system.
 
 ## SCHEDULE COMPETITION
 
