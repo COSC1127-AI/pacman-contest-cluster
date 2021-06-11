@@ -10,7 +10,7 @@ The dashboard uses [streamlist](https://streamlit.io/), so this must be installe
 $ pip3 install streamlit
 ```
 
-Then, update the information in `app.py` with the correct data:
+Then, update the information in `config.py` with the correct data for your system. For example:
 
 ```shell
 STATS_FOLDER = ('/data/www/stats-archive')

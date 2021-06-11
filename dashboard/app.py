@@ -19,14 +19,8 @@ import streamlit.components.v1 as components
 
 from pandas import json_normalize 
 
-################################################################################
-#   UPDATE THIS INFORMATION WITH YOUR CONTEST DETAILS
-#
-STATS_FOLDER = ('/mnt/ssardina-pacman/cosc1125-1127-AI20/project-contest/www/feedback-final/stats-archive')
-DEPLOYED_URL = 'http://118.138.246.177/feedback-final'
-ORGANIZER = 'RMIT AI - COSC1125/1127'
-################################################################################
-
+# import all configurations
+from config import *
 
 FORMAT_DATE_FILE = '.*(\d{4}-\d{2}-\d{2}-\d{2}-\d{2}).*\.json'
 
@@ -81,8 +75,8 @@ def main():
     )
 
     table_checkbox = st.sidebar.checkbox('Show Table',value=True)
-    teams_progress_checkbox = False
-    # teams_progress_checkbox = st.sidebar.checkbox('Show Teams Progress Chart',value=True)
+    if teams_progress_checkbox:
+        teams_progress_checkbox = st.sidebar.checkbox('Show Teams Progress Chart',value=True)
     games_checkbox = st.sidebar.checkbox('Show Games',value=True)
     games_pie_checkbox = st.sidebar.checkbox('Show Games Chart',value=True)
 
@@ -103,9 +97,9 @@ def main():
     # Show Table
     if table_checkbox:
         st.dataframe(df_stats.style.apply(lambda x: ['background: lightyellow' if ('staff_team' in x.name) else '' for i in x], axis=1), width=1500, height=1500 )
-        
- 
-    
+
+
+
     # Show Results
     st.markdown('# Games')
 
@@ -317,6 +311,5 @@ def load_data(json_files):
 
     return df_games, df_stats
 
-    
 if __name__ == "__main__":
     main()
