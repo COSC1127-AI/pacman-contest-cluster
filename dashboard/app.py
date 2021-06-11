@@ -302,10 +302,9 @@ def load_data(json_files):
         df_games[fname].columns = ['Team1', 'Team2',
                                    'Layout', 'Score', 'Winner', 'Time']
 
-        df_games[fname] = df_games[fname].assign(ReplayFile="<a target=\"_blank\" onclick=\"alert('Right click to save. Alternatively, Refresh the new page opened and the dowload will start.')\" href=\"" +
-                                                 DEPLOYED_URL+"/replays-archive/replays_"+timestamp_id+"/"+df_games[fname].Team1 + "_vs_" + df_games[fname].Team2 + "_" + df_games[fname].Layout + ".replay\"> Download Replay </a>")
-        df_games[fname] = df_games[fname].assign(LogFile="<a target=\"_blank\" href=\""+DEPLOYED_URL+"/logs-archive/logs_"+timestamp_id +
-                                                 "/"+df_games[fname].Team1 + "_vs_" + df_games[fname].Team2 + "_" + df_games[fname].Layout + ".log\"> Download Log </a>")
+        df_games[fname] = df_games[fname].assign(ReplayFile=f"<a target=\"_blank\" onclick=\"alert('Right click to save. Alternatively, Refresh the new page opened and the dowload will start.')\" href=\"{DEPLOYED_URL}/replays-archive/replays_{timestamp_id}/{df_games[fname].Team1}_vs_{df_games[fname].Team2} {df_games[fname].Layout}.replay\"> Download Replay </a>")
+
+        df_games[fname] = df_games[fname].assign(LogFile="<a target=\"_blank\" href=\"{DEPLOYED_URL}/logs-archive/logs_{timestamp_id}/{df_games[fname].Team1} vs_{df_games[fname].Team2} {df_games[fname].Layout}.log\"> Download Log </a>")
 
         # Create Table dataframe
         df_stats[fname] = pd.DataFrame(columns=['Points', 'Win', 'Tie', 'Lost', 'FAILED', 'Score'],
