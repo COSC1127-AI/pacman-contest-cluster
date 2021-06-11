@@ -19,10 +19,14 @@ import streamlit.components.v1 as components
 
 from pandas import json_normalize 
 
-
-DATA_URL = ('/mnt/ssardina-pacman/cosc1125-1127-AI20/project-contest/www/feedback-final/stats-archive')
+################################################################################
+#   UPDATE THIS INFORMATION WITH YOUR CONTEST DETAILS
+#
+STATS_FOLDER = ('/mnt/ssardina-pacman/cosc1125-1127-AI20/project-contest/www/feedback-final/stats-archive')
 DEPLOYED_URL = 'http://118.138.246.177/feedback-final'
 ORGANIZER = 'RMIT AI - COSC1125/1127'
+################################################################################
+
 
 FORMAT_DATE_FILE = '.*(\d{4}-\d{2}-\d{2}-\d{2}-\d{2}).*\.json'
 
@@ -62,7 +66,7 @@ def main():
     max_width_layout()
 
     # Load Data
-    json_files = sorted([f for f in os.listdir(DATA_URL) if os.path.isfile(os.path.join(DATA_URL, f))], reverse=True)
+    json_files = sorted([f for f in os.listdir(STATS_FOLDER) if os.path.isfile(os.path.join(STATS_FOLDER, f))], reverse=True)
 
     df_all_games, df_all_stats = load_data( json_files )
 
@@ -93,7 +97,7 @@ def main():
     #date_time_obj = datetime.strptime(json_selectbox, 'stats_%Y-%m-%d-%H-%M.json')
     date_time_obj = get_date_from_json(json_selectbox)
 
-    st.title(f'Pacman {ORGANIZER} Pacman Dashboard')
+    st.title(f'Pacman {ORGANIZER} Dashboard')
     st.header(f'Date: {date_time_obj}')
 
     # Show Table
@@ -286,7 +290,7 @@ def load_data(json_files):
     df_games = {}
     df_stats = {}
     for fname in json_files:
-        with open( f'{DATA_URL}/{fname}') as f: 
+        with open( f'{STATS_FOLDER}/{fname}') as f: 
             d = json.load(f) 
 
         # Create Games Dataframe 

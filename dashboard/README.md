@@ -13,12 +13,14 @@ $ pip3 install streamlit
 Then, update the information in `app.py` with the correct data:
 
 ```shell
-DATA_URL = ('/data/www/stats-archive')
-DEPLOYED_URL = 'http://115.146.95.253'
+STATS_FOLDER = ('/data/www/stats-archive')
+DEPLOYED_URL = 'http://115.146.95.253/preliminary-contest'
 ORGANIZER = 'UNIMELB - COMP90054/2020'
 ```
 
-The `DATA_URL` should point to the stats folder containing the JSON files produced by the pacman contest cluster script.
+The `STATS_FOLDER` variable should point to the stats folder containing the JSON files produced by the pacman contest cluster script.
+
+The `DEPLOYED_URL` variable should point to the exact URL where the www information produced by the pacman contest cluster script is hosted.
 
 ## Run
 
