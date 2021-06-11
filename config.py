@@ -9,6 +9,8 @@ DIR_SCRIPT = sys.path[0]
 
 ERROR_SCORE = 9999
 
+DEFAULT_ORGANIZER = "Uni Pacman"
+
 # Output directories:
 #  run_replays/{red_team_name}_vs_{blue_team_name}_{layout}.replay
 #  run_logs/{red_team_name}_vs_{blue_team_name}_{layout}.log
@@ -44,3 +46,5 @@ DEFAULT_FIXED_LAYOUTS = 3
 DEFAULT_LAYOUTS_ZIP_FILE = os.path.join(DIR_SCRIPT, "layouts.zip")
 DEFAULT_RANDOM_LAYOUTS = 3
 DEFAULT_CONFIG_FILE = "config.json"
+
+DEFAULT_NO_SPLIT = 1

@@ -26,7 +26,8 @@ class ContestRunner:
         self.www_dir = settings["www_dir"]
         self.stats_archive_dir = os.path.join(
             self.www_dir,
-            settings.get("stats_archive_dir", None) or DEFAULT_STATS_ARCHIVE_DIR,
+            settings.get("stats_archive_dir",
+                         None) or DEFAULT_STATS_ARCHIVE_DIR,
         )
         self.logs_archive_dir = os.path.join(
             self.www_dir,
@@ -34,7 +35,8 @@ class ContestRunner:
         )
         self.replays_archive_dir = os.path.join(
             self.www_dir,
-            settings.get("replays_archive_dir", None) or DEFAULT_REPLAYS_ARCHIVE_DIR,
+            settings.get("replays_archive_dir",
+                         None) or DEFAULT_REPLAYS_ARCHIVE_DIR,
         )
 
         self.upload_replays = settings["upload_replays"]
@@ -87,7 +89,7 @@ class ContestRunner:
         (red_team_name, red_team_agent_factory) = red_team
         (blue_team_name, blue_team_agent_factory) = blue_team
         # TODO: make the -c an option at the meta level to "Catch exceptions and enforce time limits"
-        command = 'python3 capture.py -c -r "{red_team_agent_factory}" -b "{blue_team_agent_factory}" -l {layout} -i {steps} -q --record --recordLog --delay 0.0'.format(
+        command = 'python3 capture.py -c -r "{red_team_agent_factory}" -b "{blue_team_agent_factory}" -l {layout} -i {steps} -q --record --recordLog --delay 0.0 --fixRandomSeed'.format(
             red_team_agent_factory=red_team_agent_factory,
             blue_team_agent_factory=blue_team_agent_factory,
             layout=layout,
@@ -159,7 +161,8 @@ class ContestRunner:
         replays = glob.glob(os.path.join(self.tmp_contest, "replay*"))
         if replays:
             shutil.move(
-                replays[0], os.path.join(self.tmp_replays_dir, replay_file_name)
+                replays[0], os.path.join(
+                    self.tmp_replays_dir, replay_file_name)
             )
         if not bug:
             self.games.append(
@@ -167,7 +170,8 @@ class ContestRunner:
             )
         else:
             self.games.append(
-                (red_team_name, blue_team_name, layout, ERROR_SCORE, winner, totaltime)
+                (red_team_name, blue_team_name, layout,
+                 ERROR_SCORE, winner, totaltime)
             )
 
     def _parse_result(self, output, red_team_name, blue_team_name, layout):
@@ -229,7 +233,8 @@ class ContestRunner:
         else:
             for line in output.splitlines():
                 if line.find("wins by") != -1:
-                    score = abs(int(line.split("wins by")[1].split("points")[0]))
+                    score = abs(
+                        int(line.split("wins by")[1].split("points")[0]))
                     if line.find("Red") != -1:
                         winner = red_team_name
                         loser = blue_team_name
@@ -296,7 +301,8 @@ class ContestRunner:
             # This will yield a byte, not a str (at least in Python 3)
             transfer_url = subprocess.check_output(transfer_cmd, shell=True)
             if "Could not save metadata" in transfer_url:
-                raise ValueError("Transfer.sh returns incorrect url: %s" % transfer_url)
+                raise ValueError(
+                    "Transfer.sh returns incorrect url: %s" % transfer_url)
             if remove_local:
                 print("rm %s" % file_full_path)
                 os.system("rm %s" % file_full_path)
@@ -319,36 +325,46 @@ class ContestRunner:
     def store_results(self):
         # Basic data stats
         data_stats = {
-            'games': self.games,
-            'team_stats': self.team_stats,
-            'random_layouts': [l for l in self.layouts if l.startswith('RANDOM')],
-            'fixed_layouts': [l for l in self.layouts if not l.startswith('RANDOM')],
-            'max_steps': self.max_steps,
-            'organizer' : self.organizer,
-            'timestamp_id' : self.contest_timestamp_id
+            "games": self.games,
+            "team_stats": self.team_stats,
+            "random_layouts": [l for l in self.layouts if l.startswith("RANDOM")],
+            "fixed_layouts": [l for l in self.layouts if not l.startswith("RANDOM")],
+            "max_steps": self.max_steps,
+            "organizer": self.organizer,
+            "timestamp_id": self.contest_timestamp_id,
         }
 
         # PROCESS REPLAYS: compress and upload
-        replays_archive_name = 'replays_%s.tar' % self.contest_timestamp_id
-        replays_archive_name += '.gz' if self.compress_logs else ''
-        replays_archive_full_path = os.path.join(self.replays_archive_dir, replays_archive_name)
-        with tarfile.open(replays_archive_full_path, 'w:gz' if self.compress_logs else 'w') as tar:
-            tar.add(self.TMP_REPLAYS_DIR, arcname='/')
+        replays_archive_name = "replays_%s.tar" % self.contest_timestamp_id
+        replays_archive_name += ".gz" if self.compress_logs else ""
+        replays_archive_full_path = os.path.join(
+            self.replays_archive_dir, replays_archive_name
+        )
+        with tarfile.open(
+            replays_archive_full_path, "w:gz" if self.compress_logs else "w"
+        ) as tar:
+            tar.add(self.tmp_replays_dir, arcname="/")
         if self.upload_replays:
             try:
-                replays_file_url = self.upload_file(replays_archive_full_path, remove_local=False)
-                data_stats['url_replays'] = replays_file_url.decode()
+                replays_file_url = self.upload_file(
+                    replays_archive_full_path, remove_local=False
+                )
+                data_stats["url_replays"] = replays_file_url.decode()
             except Exception as e:
-                replays_file_url = os.path.relpath(replays_archive_full_path, self.www_dir)
+                replays_file_url = os.path.relpath(
+                    replays_archive_full_path, self.www_dir
+                )
         else:
-            replays_file_url = os.path.relpath(replays_archive_full_path, self.www_dir)  # stats-archive/stats_xxx.json
+            replays_file_url = os.path.relpath(
+                replays_archive_full_path, self.www_dir
+            )  # stats-archive/stats_xxx.json
 
         # Copy folder
         replays_folder_name = 'replays_%s' % self.contest_timestamp_id
         replays_archive_full_path = os.path.join(self.replays_archive_dir, replays_folder_name)
-        shutil.copytree(self.TMP_REPLAYS_DIR, replays_archive_full_path)
+        shutil.copytree(self.tmp_replays_dir, replays_archive_full_path)
 
-        # Create archive for each team
+        # Create replay archives for each team
         for t in self.team_stats.keys():
             replays_folder_name = 'replays_%s' % self.contest_timestamp_id
             replays_archive_name = f'replays_{t}.tar'
@@ -358,29 +374,35 @@ class ContestRunner:
             os.system(f'tar zcf {replays_archive_full_path} {replays_folder_full_path}/*{t}*')
            
 
-
         # PROCESS LOGS: compress and upload
-        logs_archive_name = 'logs_%s.tar' % self.contest_timestamp_id
-        logs_archive_name += '.gz' if self.compress_logs else ''
-        logs_archive_full_path = os.path.join(self.logs_archive_dir, logs_archive_name)
-        with tarfile.open(logs_archive_full_path, 'w:gz' if self.compress_logs else 'w') as tar:
-            tar.add(self.TMP_LOGS_DIR, arcname='/')
+        logs_archive_name = "logs_%s.tar" % self.contest_timestamp_id
+        logs_archive_name += ".gz" if self.compress_logs else ""
+        logs_archive_full_path = os.path.join(
+            self.logs_archive_dir, logs_archive_name)
+        with tarfile.open(
+            logs_archive_full_path, "w:gz" if self.compress_logs else "w"
+        ) as tar:
+            tar.add(self.tmp_logs_dir, arcname="/")
         if self.upload_logs:
             try:
-                logs_file_url = self.upload_file(logs_archive_full_path, remove_local=False)
-                data_stats['url_logs'] = logs_file_url.decode()
+                logs_file_url = self.upload_file(
+                    logs_archive_full_path, remove_local=False
+                )
+                data_stats["url_logs"] = logs_file_url.decode()
             except Exception as e:
-                logs_file_url = os.path.relpath(logs_archive_full_path, self.www_dir)
+                logs_file_url = os.path.relpath(
+                    logs_archive_full_path, self.www_dir)
         else:
-            logs_file_url = os.path.relpath(logs_archive_full_path, self.www_dir)
+            logs_file_url = os.path.relpath(
+                logs_archive_full_path, self.www_dir)
 
 
         # Copy folder
         logs_folder_name = 'logs_%s' % self.contest_timestamp_id
         logs_archive_full_path = os.path.join(self.logs_archive_dir, logs_folder_name)
-        shutil.copytree(self.TMP_LOGS_DIR, logs_archive_full_path)
+        shutil.copytree(self.tmp_logs_dir, logs_archive_full_path)
 
-        # Create archive for each team
+	 # Create log archives for each team
         for t in self.team_stats.keys():
             logs_folder_name = 'logs_%s' % self.contest_timestamp_id
             logs_archive_name = f'logs_{t}.tar'
@@ -390,9 +412,12 @@ class ContestRunner:
             os.system(f'tar zcf {logs_archive_full_path} {logs_folder_full_path}/*{t}*')
            
         # STORE STATS in a json file
-        stats_file_name = 'stats_%s.json' % self.contest_timestamp_id  # stats_xxx.json
-        stats_file_full_path = os.path.join(self.stats_archive_dir, stats_file_name) # www/stats-archive/stats_xxx.json
-        stats_file_rel_path = os.path.relpath(stats_file_full_path, self.www_dir)
+        stats_file_name = "stats_%s.json" % self.contest_timestamp_id  # stats_xxx.json
+        stats_file_full_path = os.path.join(
+            self.stats_archive_dir, stats_file_name
+        )  # www/stats-archive/stats_xxx.json
+        stats_file_rel_path = os.path.relpath(
+            stats_file_full_path, self.www_dir)
         with open(stats_file_full_path, "w") as f:
             json.dump(data_stats, f)
 
@@ -482,7 +507,8 @@ class ContestRunner:
         )
 
     def _analyse_all_outputs(self, results):
-        logging.info(f"About to analyze game result outputs. Number of result output to analyze: {len(results)}")
+        logging.info(
+            f"About to analyze game result outputs. Number of result output to analyze: {len(results)}")
         for result in results:
             (
                 (red_team, blue_team, layout),
@@ -508,10 +534,12 @@ class ContestRunner:
             contest_folder = os.path.split(self.tmp_dir)[1]
             resume_folder = os.path.join(resume_folder, contest_folder)
             shutil.rmtree(self.tmp_logs_dir)
-            shutil.copytree(os.path.join(resume_folder, "logs-run"), self.tmp_logs_dir)
+            shutil.copytree(os.path.join(
+                resume_folder, "logs-run"), self.tmp_logs_dir)
             shutil.rmtree(self.tmp_replays_dir)
             shutil.copytree(
-                os.path.join(resume_folder, "replays-run"), self.tmp_replays_dir
+                os.path.join(
+                    resume_folder, "replays-run"), self.tmp_replays_dir
             )
             jobs = self.resume_contest_jobs()
         else:
@@ -547,11 +575,13 @@ class ContestRunner:
                     if red_team in self.staff_teams:
                         continue  # do not play a staff team against another staff team
                     for layout in self.layouts:
-                        jobs.append(self._generate_job(red_team, blue_team, layout))
+                        jobs.append(self._generate_job(
+                            red_team, blue_team, layout))
         else:
             for red_team, blue_team in combinations(self.teams, r=2):
                 for layout in self.layouts:
-                    jobs.append(self._generate_job(red_team, blue_team, layout))
+                    jobs.append(self._generate_job(
+                        red_team, blue_team, layout))
         return jobs
 
     def resume_contest_jobs(self):
@@ -573,13 +603,17 @@ class ContestRunner:
                             os.path.join(self.tmp_logs_dir, log_file_name)
                         ):
                             games_restored += 1
-                            # print( "{id} Game {log} restored".format(id=games_restored, log=log_file_name) )
+                            print(
+                                f"{games_restored} Game {log_file_name} restored")
                             jobs.append(
-                                self._generate_empty_job(red_team, blue_team, layout)
+                                self._generate_empty_job(
+                                    red_team, blue_team, layout)
                             )
                         else:
-                            print(f"{games_restored} Game {log_file_name} MISSING")
-                            jobs.append(self._generate_job(red_team, blue_team, layout))
+                            print(
+                                f"{games_restored} Game {log_file_name} MISSING")
+                            jobs.append(self._generate_job(
+                                red_team, blue_team, layout))
 
         else:
 
@@ -594,7 +628,8 @@ class ContestRunner:
                         games_restored += 1
                         print(f"{games_restored} Game {log_file_name} restored")
                         jobs.append(
-                            self._generate_empty_job(red_team, blue_team, layout)
+                            self._generate_empty_job(
+                                red_team, blue_team, layout)
                         )
                     elif os.path.isfile(
                         os.path.join(self.tmp_logs_dir, log_file_name2)
@@ -602,10 +637,14 @@ class ContestRunner:
                         games_restored += 1
                         print(f"{games_restored} Game {log_file_name} restored")
                         jobs.append(
-                            self._generate_empty_job(blue_team, red_team, layout)
+                            self._generate_empty_job(
+                                blue_team, red_team, layout)
                         )
                     else:
-                        jobs.append(self._generate_job(red_team, blue_team, layout))
+                        jobs.append(self._generate_job(
+                            red_team, blue_team, layout))
+        print(
+            f'A total of {games_restored} games have been restored', flush=True)
         return jobs
 
     def _calculate_team_stats(self):

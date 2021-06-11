@@ -39,7 +39,9 @@ class MultiContest:
             logging.error(f"Layouts file {settings['fixed_layouts_file']} could not be found. Aborting.")
             sys.exit(1)
 
+        # this is a folder with the whole contest folder (with system + teams) in the multi-contest folder
         self.tmp_contest_dir = os.path.join(TMP_DIR, TMP_CONTEST_DIR)
+
 
         # Setup Pacman CTF environment by extracting it from a clean zip file
         self._prepare_platform(
@@ -132,7 +134,9 @@ class MultiContest:
         ]
         team_split = self.split_teams()
         self.settings["teams"] = team_split
+        self.settings["contest_timestamp_id"] = self.contest_timestamp_id
 
+        ## Dump config file for the whole multi-contest
         with open(os.path.join(TMP_DIR, DEFAULT_CONFIG_FILE), "w") as f:
             json.dump(
                 self.settings, f, sort_keys=True, indent=4, separators=(",", ": ")
@@ -213,17 +217,12 @@ class MultiContest:
             exit(1)
         if len(fixed_layout_seeds) > no_fixed_layouts:
             logging.error(
-                "Too many fixed seeds layouts selected (%d) for a total of %d fixed layouts requested to play."
-                % (len(fixed_layout_seeds), no_fixed_layouts)
-            )
+                f"Too many fixed seeds layouts selected ({len(fixed_layout_seeds)}) for a total of {no_fixed_layouts} fixed layouts requested to play.")
             exit(1)
         if not fixed_layout_seeds.issubset(
             layouts_available
         ):  # NOT empty, list of layouts provided
-            logging.error(
-                "There are fixed layout seeds  that are not available: %s."
-                % fixed_layout_seeds.difference(layouts_available)
-            )
+            logging.error(f"There are fixed layout seeds that are not available: {fixed_layout_seeds.difference(layouts_available)}.")
             exit(1)
 
         # assign the set of fixed layouts to be used: the seeds given and complete with random picks from available
@@ -237,9 +236,7 @@ class MultiContest:
         # Next, pick the random layouts, and included all the seeds provided if any
         if len(random_seeds) > no_random_layouts:
             logging.error(
-                "Too many random seeds layouts selected (%d) for a total of %d random layouts requested to play."
-                % (len(fixed_layout_seeds), no_fixed_layouts)
-            )
+                f"Too many random seeds layouts ({len(random_seeds)}) for a total of {no_random_layouts} random layouts requested to play.")
             exit(1)
 
         # complete the mising random layouts
@@ -354,7 +351,8 @@ class MultiContest:
 
         if team_name not in self.submission_times:
             if submission_zip_file is None:
-                shutil.copytree(submission_path, team_destination_dir)
+                shutil.copytree(submission_path, team_destination_dir, ignore=shutil.ignore_patterns(
+                    '.git', '*.log', '*.replay', '*.gz', '*img*', '*layouts*', '*wiki*'))
             else:
                 submission_zip_file.extractall(team_destination_dir)
             if is_staff_team:
@@ -369,7 +367,8 @@ class MultiContest:
         ):
             shutil.rmtree(team_destination_dir)
             if submission_zip_file is None:
-                shutil.copy(submission_path, team_destination_dir)
+                shutil.copy(submission_path, team_destination_dir, ignore=shutil.ignore_patterns(
+                    '.git', '*.log', '*.replay', '*.gz', '*img*', '*layouts*', '*wiki*'))
             else:
                 submission_zip_file.extractall(team_destination_dir)
             self.submission_times[team_name] = submission_time
