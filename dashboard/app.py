@@ -148,7 +148,7 @@ def main():
         st.write('Number of matches: ', len(comparison))
 
     # Progress Chart
-    if team_progress_checkbox:
+    if SHOW_TEAMS_PROGRESS_CHECKBOX:
         progress_chart(df_all_stats, teams_to_compare)
 
     # Plot Pie Chart
