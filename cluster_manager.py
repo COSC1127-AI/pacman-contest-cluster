@@ -44,14 +44,13 @@ logging.getLogger("paramiko").setLevel(logging.WARNING)
 
 Host = namedtuple(
     "Host",
-    ["no_cpu", "hostname", "username", "password", "key_filename", "key_password"],
-    verbose=False,
+    ["no_cpu", "hostname", "username", "password", "key_filename", "key_password"]
 )
 Job = namedtuple(
-    "Job", ["command", "required_files", "return_files", "id", "data"], verbose=False
+    "Job", ["command", "required_files", "return_files", "id", "data"]
 )
 TransferableFile = namedtuple(
-    "TransferableFile", ["local_path", "remote_path"], verbose=False
+    "TransferableFile", ["local_path", "remote_path"]
 )
 
 # Keep track of the number of total jobs to run and number of jobs completed (for reporting)
