@@ -15,7 +15,7 @@ Table of Contents
 - [Table of Contents](#table-of-contents)
   - [OVERVIEW](#overview)
     - [Features](#features)
-    - [Dependencies](#dependencies)
+    - [Setup & Dependencies](#setup--dependencies)
   - [MAIN COMPONENTS](#main-components)
   - [OVERVIEW OF MARKING PROCESS](#overview-of-marking-process)
   - [EXAMPLE RUNS](#example-runs)
@@ -24,7 +24,8 @@ Table of Contents
     - [Run a multi/split contest](#run-a-multisplit-contest)
     - [Resume partial contest](#resume-partial-contest)
     - [Re-run only some teams in a given contest](#re-run-only-some-teams-in-a-given-contest)
-  - [WEB PAGE GENERATION & DASHBOARD](#web-page-generation--dashboard)
+    - [Re-run only updated teams](#re-run-only-updated-teams)
+  - [WEB PAGE GENERATION](#web-page-generation)
   - [SCHEDULE COMPETITION](#schedule-competition)
     - [Test command to schedule](#test-command-to-schedule)
     - [Setting up cron](#setting-up-cron)
@@ -49,11 +50,11 @@ The system contains two main scripts:
 To see options available run:
 
 ```bash
-$ python3  pacman_contest_cluster.py -h
+python3  pacman_contest_cluster.py -h
 ```
 
 ```bash
-$ python3 pacman_html_generator.py --h
+python3 pacman_html_generator.py --h
 ```
 
 ### Features
@@ -75,9 +76,7 @@ $ python3 pacman_html_generator.py --h
 - Automate tournament using a `driver.py` script and `cron`.
 - Save options into a JSON file `config.json` for future runs using `--build-config-file` option.
 
-   
-    
-### Dependencies
+### Setup & Dependencies
 
 In **each machine in the cluster**:
 
@@ -255,7 +254,6 @@ To _resume_ the competition (so that all games played are used and not re-played
 
 The `--fixed-layout-seeds` and `--random-seeds` options are also useful if you want to force the script to use some specific layouts. Look in folder [layouts/](layouts/) for available fixed, non-random, layouts.
 
-
 Note that if the seeds given are less than the number of layouts asked for, the remaining are completed randomly.
 
 The seeds for the fixed and random layouts used at each tournament are printed at the start, so one can recover them.
@@ -272,7 +270,6 @@ However, if you need to recover the layouts played in the `tmp/` subdirectory, y
     ```bash
     $ ls -la tmp/logs-run/ |  grep -v RANDOM | grep log | sed -e "s/.*_\(.*\)\.log/\1\,/g" | sort -u | xargs -n 100
     ```
-
 
 ### Re-run only some teams in a given contest
 
@@ -332,7 +329,6 @@ See `/dashboard/` folder for more information how to set-it up and run the dashb
 
 ## SCHEDULE COMPETITION
 
-
 If you want to automate the tournament, use the `driver.py` provided. It has the following options:
 
 ```bash
@@ -386,6 +382,7 @@ and introduce the following line into **cronfile** (change *username* appropriat
 ```
 
 Now you can test the command you want to schedule by running
+
 ```
 ./run-as-cron /home/username/cron-env "<command>"
 ```
