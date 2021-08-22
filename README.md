@@ -15,7 +15,7 @@ Table of Contents
 - [Table of Contents](#table-of-contents)
   - [OVERVIEW](#overview)
     - [Features](#features)
-    - [Dependencies](#dependencies)
+    - [Setup & Dependencies](#setup--dependencies)
   - [MAIN COMPONENTS](#main-components)
   - [OVERVIEW OF MARKING PROCESS](#overview-of-marking-process)
   - [EXAMPLE RUNS](#example-runs)
@@ -76,7 +76,7 @@ python3 pacman_html_generator.py --h
 - Automate tournament using a `driver.py` script and `cron`.
 - Save options into a JSON file `config.json` for future runs using `--build-config-file` option.
 
-### Dependencies
+### Setup & Dependencies
 
 In **each machine in the cluster**:
 
