@@ -33,7 +33,8 @@ STAFF_TEAM_ZIP_FILE = [
     "staff_team_medium.zip",
     "staff_team_top.zip",
 ]
-STAFF_TEAM_FILENAME_PATTERN = re.compile(r"^staff\_team\_.+\.zip$")
+# STAFF_TEAM_FILENAME_PATTERN = re.compile(r"^staff\_team\_.+\.zip$")
+STAFF_TEAM_FILENAME_PATTERN = re.compile(r"^staff\_team\_.+$")
 TEAMS_SUBDIR = "teams"
 RESULTS_DIR = "results"
 TIMEZONE = timezone("Australia/Melbourne")

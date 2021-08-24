@@ -32,16 +32,17 @@ class MultiContest:
         self.settings = settings
 
         if not os.path.exists(os.path.join(DIR_SCRIPT, CONTEST_ZIP_FILE)):
-            logging.error(f"Contest zip file {CONTEST_ZIP_FILE} could not be found. Aborting.")
+            logging.error(
+                f"Contest zip file {CONTEST_ZIP_FILE} could not be found. Aborting.")
             sys.exit(1)
 
         if not settings["fixed_layouts_file"]:
-            logging.error(f"Layouts file {settings['fixed_layouts_file']} could not be found. Aborting.")
+            logging.error(
+                f"Layouts file {settings['fixed_layouts_file']} could not be found. Aborting.")
             sys.exit(1)
 
         # this is a folder with the whole contest folder (with system + teams) in the multi-contest folder
         self.tmp_contest_dir = os.path.join(TMP_DIR, TMP_CONTEST_DIR)
-
 
         # Setup Pacman CTF environment by extracting it from a clean zip file
         self._prepare_platform(
@@ -90,7 +91,8 @@ class MultiContest:
         self.submission_times = {}
 
         for submission_file in os.listdir(settings["teams_root"]):
-            submission_path = os.path.join(settings["teams_root"], submission_file)
+            submission_path = os.path.join(
+                settings["teams_root"], submission_file)
             if submission_file.endswith(".zip") or os.path.isdir(submission_path):
                 self._setup_team(
                     submission_path,
@@ -103,19 +105,20 @@ class MultiContest:
 
         # Include staff teams if available (ones with pattern STAFF_TEAM_FILENAME_PATTERN)
         if settings["include_staff_team"]:
-            for staff_team_submission_file in os.listdir(settings["staff_teams_dir"]):
+            for staff_team_path in os.listdir(settings["staff_teams_dir"]):
                 match = re.match(
                     STAFF_TEAM_FILENAME_PATTERN,
-                    os.path.basename(staff_team_submission_file),
+                    os.path.basename(staff_team_path),
                 )
                 if match:
                     submission_path = os.path.join(
-                        settings["staff_teams_dir"], staff_team_submission_file
+                        settings["staff_teams_dir"], staff_team_path
                     )
-                    if staff_team_submission_file.endswith(".zip") or os.path.isdir(
+                    if staff_team_path.endswith(".zip") or os.path.isdir(
                         submission_path
                     ):
-                        self._setup_team(submission_path, teams_dir, True, False, True)
+                        self._setup_team(
+                            submission_path, teams_dir, True, False, True)
 
         # zip directory for transfer to remote workers; zip goes into temp directory
         shutil.make_archive(
@@ -149,8 +152,10 @@ class MultiContest:
 
         for i, teams in enumerate(team_split):
             settings = copy.deepcopy(self.settings)
-            settings["teams"] = [(team, get_agent_factory(team)) for team in teams]
-            settings["tmp_dir"] = os.path.join(TMP_DIR, "contest-" + ascii_lowercase[i])
+            settings["teams"] = [(team, get_agent_factory(team))
+                                 for team in teams]
+            settings["tmp_dir"] = os.path.join(
+                TMP_DIR, "contest-" + ascii_lowercase[i])
             settings["contest_timestamp_id"] = (
                 self.contest_timestamp_id + "-" + ascii_lowercase[i]
             )
@@ -222,7 +227,8 @@ class MultiContest:
         if not fixed_layout_seeds.issubset(
             layouts_available
         ):  # NOT empty, list of layouts provided
-            logging.error(f"There are fixed layout seeds that are not available: {fixed_layout_seeds.difference(layouts_available)}.")
+            logging.error(
+                f"There are fixed layout seeds that are not available: {fixed_layout_seeds.difference(layouts_available)}.")
             exit(1)
 
         # assign the set of fixed layouts to be used: the seeds given and complete with random picks from available
@@ -251,7 +257,8 @@ class MultiContest:
         random_layouts_selected = set(
             [x for x in self.layouts if re.compile(r"RANDOM[0-9]*").match(x)]
         )
-        fixed_layouts_selected = self.layouts.difference(random_layouts_selected)
+        fixed_layouts_selected = self.layouts.difference(
+            random_layouts_selected)
 
         seeds_strings = [
             m.group(1)
@@ -307,7 +314,8 @@ class MultiContest:
 
         # Get team name from submission: if in self.team_names mapping, then use mapping; otherwise use filename
 
-        match = re.match(SUBMISSION_FILENAME_PATTERN, os.path.basename(submission_path))
+        match = re.match(SUBMISSION_FILENAME_PATTERN,
+                         os.path.basename(submission_path))
         submission_time = None
         if match:
             student_id = match.group(1)
@@ -344,7 +352,8 @@ class MultiContest:
                 )
                 return
             team_name = os.path.basename(submission_path)
-            team_name = team_name[:-4] if team_name.endswith(".zip") else team_name
+            team_name = team_name[:-
+                                  4] if team_name.endswith(".zip") else team_name
 
         # This submission will be temporarily expanded into team_destination_dir
         team_destination_dir = os.path.join(destination, team_name)
@@ -389,9 +398,11 @@ class MultiContest:
                 student_id = row[student_id_col]
 
                 # couple of controls
-                team_name = row[team_col].replace("/", "NOT_FUNNY").replace(" ", "_")
+                team_name = row[team_col].replace(
+                    "/", "NOT_FUNNY").replace(" ", "_")
                 if team_name == "staff_team":
-                    logging.warning("staff_team is a reserved team name. Skipping.")
+                    logging.warning(
+                        "staff_team is a reserved team name. Skipping.")
                     continue
 
                 if not student_id or not team_name:
