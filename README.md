@@ -16,6 +16,9 @@ Table of Contents
   - [OVERVIEW](#overview)
     - [Features](#features)
     - [Setup & Dependencies](#setup--dependencies)
+      - [Worker machines](#worker-machines)
+      - [Central Script Host](#central-script-host)
+      - [Web-server configuration](#web-server-configuration)
   - [MAIN COMPONENTS](#main-components)
   - [OVERVIEW OF MARKING PROCESS](#overview-of-marking-process)
   - [EXAMPLE RUNS](#example-runs)
@@ -78,7 +81,7 @@ python3 pacman_html_generator.py --h
 
 ### Setup & Dependencies
 
-In **each machine in the cluster**:
+#### Worker machines
 
 - unzip & zip commands (to pack and unpack submissions and files for transfer)
   - `sudo apt-get install -y unzip zip vim`
@@ -112,6 +115,8 @@ In **each machine in the cluster**:
   ```shell
     sudo cp planners/ff /usr/local/bin/.
   ```
+
+#### Central Script Host
 
 In the **local machine** (e.g., your laptop) that will dispatch game jobs to the cluster via the `pacman_contest_cluster.py` script:
 
@@ -151,6 +156,47 @@ Hence, the user of this system must provide:
 - `TEAMS-STUDENT-MAPPING.csv` [optional]: a CSV mapping student ids to team names (for option `--team-names-file`)
   - Main columns are: `STUDENT_ID` and `TEAM_NAME`
   - If no file provided is provided, team names are taken directly from the submitted zip files (this is the option used at unimelb).
+
+#### Web-server configuration
+
+Install Apache web-server first:
+
+```shell
+$ sudo apt-get install apache2
+```
+
+The default Ubuntu document root is `/var/www/html`, so it first serve  `/var/www/html/index.html` when accessing the server.
+
+A very easy way to serve multiple folders elswhere is to create symbolic links from there to the root of your site. For example:
+
+```shell
+$ sudo ln -s /home/ssardina/ssardina-volume/cosc1125-1127-AI/AI21/p-contest/www/ /var/www/html/prelim
+```
+
+To set-up the web-page for preliminary contests at `http://<ip server>/prelim`
+
+To allow directory listing and configure per directory, first disable listig by default by changing `/etc/apache/apache2.conf` as follows:
+
+```sml
+<Directory /var/www/>
+        #Options Indexes FollowSymLinks
+        Options FollowSymLinks
+        AllowOverride all
+        Require all granted
+</Directory>
+```
+
+The key here is to disable out `Indexes` and `FollowSymLinks` by default, and allow overrriding via `.htaacess` files with `AllowOverride all`.
+
+Then, to allow listing in a folder, add `.htaccess` file (permission `0755`) there with:
+
+```
+Options Indexes FollowSymLinks
+IndexOptions FancyIndexing FoldersFirst NameWidth=* DescriptionWidth=*
+```
+
+NOTE: One could install the lighter Lighttpd web-server, but it happens that it does not use `.htaccess` so it is more difficult to set-up per directory listing.
+
 
 ## MAIN COMPONENTS
 
