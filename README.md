@@ -107,7 +107,7 @@ python3 pacman_html_generator.py --h
 - Many students benefit from the availability other tools, like [TensorFlow](https://www.tensorflow.org/), [scikit-learn](http://scikit-learn.org/), [neat-python](https://github.com/CodeReclaimers/neat-python):
 
     ```shell
-    pip3 install tensorflow sklearn sklearn scipy neat-python --user
+    pip3 install tensorflow sklearn scipy neat-python --user
     ```
 
 - If students want to use planners to solve pacman PDDL models for their solutions, copy any planner to `/usr/local/bin`. For example, in the NeCTAR cluster:
