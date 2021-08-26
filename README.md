@@ -290,48 +290,61 @@ So, if a run fails and is incomplete, all the logs generated so far can be found
 
 To _resume_ the competition (so that all games played are used and not re-played):
 
-1. Copy the temporal files into a different temporal folder: `mv tmp tmp-failed`. This is important, the folder `tmp/` as is cannot be used as it will be re-generated for each contest.
-2. Tell the script to use that folder to get the existing logs by appending `--resume-contest-folder tmp-failed/`
-3. Tell the script which are all the layouts to be used (those that were originally used in the failed run):
-    - Use  `--fixed-layout-seeds` followed by the names of all fixed layouts that are to be used, separated by commas.
-        - E.g., `--fixed-layout-seeds contest05Capture,contest16Capture,contest20Capture`
-    - Use `--random-seeds` followed by the seed numbers of all random layouts that are to be used, separated by commas.
-        - E.g., `--random-seeds 7669,1332`
+1. Copy the temporal files into a different temporal folder: `mv tmp tmp-failed`. 
+   * This is important, the folder `tmp/` as is cannot be used as it will be re-generated for each contest.
+2. Tell the script to use that folder to get the existing logs by appending `--resume-contest-folder tmp-failed/` and the configuration file stored in that existing contest:
 
-The `--fixed-layout-seeds` and `--random-seeds` options are also useful if you want to force the script to use some specific layouts. Look in folder [layouts/](layouts/) for available fixed, non-random, layouts.
+```shell
+$ python pacman-contest-cluster.git/pacman_contest_cluster.py  --resume-contest-folder tmp-failed
+```
 
-Note that if the seeds given are less than the number of layouts asked for, the remaining are completed randomly.
+This will run the exact configuration used in the contest being resumed by reading and using saved configuration `tmp-failed/config.json`. 
 
-The seeds for the fixed and random layouts used at each tournament are printed at the start, so one can recover them.
-However, if you need to recover the layouts played in the `tmp/` subdirectory, you can get them as follows:
+To extend an existing contest with more layout games, use options `--no-fixed-layouts` and `--no-random-layouts` with greater numbers than the one in the contest done. For example, if the contest in `tmp-failed/` included 2 fixed and 3 random layouts, we can extend it with more one more of each type as follows:
+
+```shell
+$ python pacman-contest-cluster.git/pacman_contest_cluster.py --no-random-layouts 3 --no-fixed-layouts 4 --resume-contest-folder tmp-failed
+```
+
+This will add one more fixed and one more random layout, both chosen randomly.
+
+If you want to control exactly which fixed or random layout to add, then use options `--fixed-layout-seeds` and `--random-layout-seeds`. This will force the script to use specific layouts (look in folder [layouts/](layouts/) for available fixed, non-random, layouts). 
+* When using these options, the information stored in the previous contest configuration file on which layouts were used will be disregarded. 
+* Thus, one has to specify ALL the layouts that the new contest must use, including the previous ones and the specific ones one wants to add. 
+* If the seeds given are less than the number of layouts asked for, the remaining are completed randomly.
+
+For example, if the previous contest used `contest05Capture` and `contest16Capture` fixed layouts and `7669,1332,765`, one can extend it further with specific layouts `contest20Capture` and `1111` as follows:
+
+```shell
+$ python pacman-contest-cluster.git/pacman_contest_cluster.py --no-random-layouts 3 --no-fixed-layouts 4 --fixed-layout-seeds contest05Capture,contest16Capture,contest20Capture --random-layout-seeds 7669,1332,765,1111 --resume-contest-folder tmp-failed
+```
+
+Remember the seeds of the layouts used in the previous contests are always saved in file `config.json`. It can also be manually extracted from log file names as follows:
 
 1. For the random seeds:
 
     ```bash
-    $ ls -la tmp/logs-run/ |  grep RANDOM | sed -e "s/.*RANDOM\(.*\)\.log/\1\,/g" | sort -u | xargs -n 100
+    $ ls -la tmp-failed/logs-run/ |  grep RANDOM | sed -e "s/.*RANDOM\(.*\)\.log/\1\,/g" | sort -u | xargs -n 100
     ```
 
 2. For the fixed layouts:
 
     ```bash
-    $ ls -la tmp/logs-run/ |  grep -v RANDOM | grep log | sed -e "s/.*_\(.*\)\.log/\1\,/g" | sort -u | xargs -n 100
+    $ ls -la tmp-failed/logs-run/ |  grep -v RANDOM | grep log | sed -e "s/.*_\(.*\)\.log/\1\,/g" | sort -u | xargs -n 100
     ```
 
 ### Re-run only some teams in a given contest
 
-If only one or a few teams failed, one can just re-run those ones by basically deleting their logs from the temporary folder:
+If only one or a few teams failed, one can just re-run those ones by basically deleting their logs from the temporary folder and re-running/resuming a contest as above.
 
-1. Load the new code of the team.
-2. Remove all the logs of the teams to be re-run from the temporary folder.
-3. Re-run the competition using the same method commented above.
-
-That will only run the games for the logs you deleted.
-
-To delete the logs of a given team, use:
+To delete the logs of a given team:
 
 ```bash
-$ find tmp-faild -name \*<TEAM NAME>.log -exec rm -f {} \;
+$ find tmp-failed -name \*<TEAM NAME>\*.log -delete
 ```
+
+When resuming the contest in `tmp-failed/`, it will only run the games for the logs you just deleted.
+
 
 ### Re-run only updated teams
 
