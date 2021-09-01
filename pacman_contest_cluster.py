@@ -133,6 +133,11 @@ def load_settings():
     parser.add_argument("--hide-staff-teams",
                         help="if set to true, it will hide the staff teams from the final leaderboard table. ",
                         action="store_true")
+    parser.add_argument("--score-thresholds",
+                        nargs='+',
+                        type=int,
+                        help="Score thresholds to be highlighted in final leaderboard table, "
+                             "e.g., 5 8 10 20 50")
     args = vars(parser.parse_args())
 
 
@@ -159,6 +164,7 @@ def load_settings():
     settings_default["upload_logs"] = False
     settings_default["allow_non_registered_students"] = False
     settings_default["hide_staff_teams"] = False
+    settings_default["score_thresholds"] = None
 
     # Then set the settings from config file, if any provided
     settings_json = {}
@@ -269,7 +275,7 @@ if __name__ == "__main__":
         first = False
 
         stats_file_url, replays_file_url, logs_file_url = runner.store_results()
-        html_generator = HtmlGenerator(settings["www_dir"], settings["organizer"])
+        html_generator = HtmlGenerator(settings["www_dir"], settings["organizer"], settings["score_thresholds"])
         html_generator.add_run(
             runner.contest_timestamp_id, stats_file_url, replays_file_url, logs_file_url
         )

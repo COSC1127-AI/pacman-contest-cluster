@@ -116,7 +116,7 @@ class HtmlGenerator:
     RESULTS_DIR = 'results'
     TIMEZONE = timezone('Australia/Melbourne')
 
-    def __init__(self, www_dir, organizer):
+    def __init__(self, www_dir, organizer, score_thresholds=None):
         """
         Initializes this generator.
 
@@ -129,6 +129,7 @@ class HtmlGenerator:
 
         # just used in html as a readable string
         self.organizer = organizer
+        self.score_thresholds = score_thresholds
 
 
     def _close(self):
@@ -295,11 +296,18 @@ class HtmlGenerator:
             output += """<th>Score Balance</th>"""
             output += """</tr>\n"""
 
-            # Sort teams by points v[1][0] first, then no. of wins, then score points.
+            # If score thresholds exist for table, sort in reverse order and add -1 as terminal boundary
+            score_thresholds = sorted(self.score_thresholds,reverse=True) + [-1]
+            next_threshold_index = 0
+
+            # Sort teams by points_pct v[1][0] first, then no. of wins, then score points.
             # example list(team_stats.items() = [('TYGA_THUG', [6, 2, 0, 0, 0, 2]), ('RationalAgents_', [0, 0, 0, 2, 2, -2])]
             sorted_team_stats = sorted(list(team_stats.items()), key=lambda v: (v[1][0], v[1][2], v[1][6]), reverse=True)
             position = 0
             for key, (points_pct, points, wins, draws, losses, errors, sum_score) in sorted_team_stats:
+                while score_thresholds[next_threshold_index] > points_pct:
+                    output +="""<tr bgcolor="#D35400"><td colspan="10" style="text-align:center">%d%% </td></tr>\n""" % score_thresholds[next_threshold_index]
+                    next_threshold_index+=1
                 position += 1
                 output += """<tr>"""
                 output += """<td>%d</td>""" % position
