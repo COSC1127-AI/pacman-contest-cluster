@@ -130,6 +130,9 @@ def load_settings():
     parser.add_argument("--split",
                         help=f"split contest into n leagues (default: {DEFAULT_NO_SPLIT}).",
                         type=int)
+    parser.add_argument("--hide-staff-teams",
+                        help="if set to true, it will hide the staff teams from the final leaderboard table. ",
+                        action="store_true")
     args = vars(parser.parse_args())
 
 
@@ -155,6 +158,7 @@ def load_settings():
     settings_default["upload_replays"] = False
     settings_default["upload_logs"] = False
     settings_default["allow_non_registered_students"] = False
+    settings_default["hide_staff_teams"] = False
 
     # Then set the settings from config file, if any provided
     settings_json = {}

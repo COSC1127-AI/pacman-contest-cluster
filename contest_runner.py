@@ -52,6 +52,9 @@ class ContestRunner:
         # a flag indicating whether to compress the logs
         self.compress_logs = settings["compress_logs"]
 
+        # a flag indicating whether to hide staff teams in the output
+        self.hide_staff_teams = settings["hide_staff_teams"]
+
         self.teams = settings["teams"] + settings["staff_teams"]
         self.staff_teams = settings["staff_teams"]
         self.layouts = settings["layouts"]
@@ -620,7 +623,11 @@ class ContestRunner:
         """
         Compute ladder and create html with results. The html is saved in results_<contest_timestamp_id>/results.html.
         """
+        staff_team_names = [t[0] for t in self.staff_teams]
         for team, scores in self.ladder.items():
+            if self.hide_staff_teams and team in staff_team_names:
+                self.team_stats.pop(team, None) #remove staff team from dictionary.
+                continue
             wins = 0
             draws = 0
             loses = 0
