@@ -3,8 +3,8 @@
 """
 Generates the HTML output given logs of the past tournament runs.
 """
-__author__      = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
-__copyright__   = "Copyright 2017-2018"
+__author__      = "Sebastian Sardina, Marco Tamassia, Nir Lipovetzky, and Andrew Chester"
+__copyright__   = "Copyright 2017-2021"
 __license__     = "GPLv3"
 
 #  ----------------------------------------------------------------------------------------------------------------------
