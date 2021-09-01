@@ -13,7 +13,7 @@ student Marco Tamassia. The script is in turn based on an original script from N
 
 It is currently maintained by Sebastian Sardina and Nir Lipovetzky; contact them for any question.
 """
-__author__ = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
+__author__ = "Sebastian Sardina, Marco Tamassia, Nir Lipovetzky, and Andrew Chester"
 __copyright__ = "Copyright 2017-2020"
 __license__ = "GPLv3"
 __repo__ = "https://github.com/AI4EDUC/pacman-contest-cluster"
