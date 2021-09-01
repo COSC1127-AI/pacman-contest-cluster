@@ -643,8 +643,10 @@ class ContestRunner:
                     loses += 1
                 sum_score += s
 
+            points = (wins * 3) + draws
             self.team_stats[team] = [
-                ((wins * 3) + draws),
+                ((points*100)/(3*(wins+draws+loses))),
+                points,
                 wins,
                 draws,
                 loses,

@@ -285,6 +285,7 @@ class HtmlGenerator:
             output += """<tr>"""
             output += """<th>Position</th>"""
             output += """<th>Team</th>"""
+            output += """<th>Points %</th>"""
             output += """<th>Points</th>"""
             output += """<th>Win</th>"""
             output += """<th>Tie</th>"""
@@ -296,13 +297,14 @@ class HtmlGenerator:
 
             # Sort teams by points v[1][0] first, then no. of wins, then score points.
             # example list(team_stats.items() = [('TYGA_THUG', [6, 2, 0, 0, 0, 2]), ('RationalAgents_', [0, 0, 0, 2, 2, -2])]
-            sorted_team_stats = sorted(list(team_stats.items()), key=lambda v: (v[1][0], v[1][1], v[1][5]), reverse=True)
+            sorted_team_stats = sorted(list(team_stats.items()), key=lambda v: (v[1][0], v[1][2], v[1][6]), reverse=True)
             position = 0
-            for key, (points, wins, draws, losses, errors, sum_score) in sorted_team_stats:
+            for key, (points_pct, points, wins, draws, losses, errors, sum_score) in sorted_team_stats:
                 position += 1
                 output += """<tr>"""
                 output += """<td>%d</td>""" % position
                 output += """<td>%s</td>""" % key
+                output += """<td>%d%%</td>""" % points_pct
                 output += """<td>%d</td>""" % points
                 output += """<td>%d</td>""" % wins
                 output += """<td >%d</td>""" % draws
