@@ -405,9 +405,9 @@ class ContestRunner:
         logs_archive_full_path = os.path.join(self.logs_archive_dir, logs_folder_name)
         shutil.copytree(self.tmp_logs_dir, logs_archive_full_path)
 
-	 # Create log archives for each team
+	    # Create tar.gz log archives for each team
         for t in self.team_stats.keys():
-            logs_folder_name = 'logs_%s' % self.contest_timestamp_id
+            logs_folder_name = f'logs_{self.contest_timestamp_id}'
             logs_archive_name = f'logs_{t}.tar'
             logs_archive_name += '.gz' if self.compress_logs else ''
             logs_archive_full_path = os.path.join(self.logs_archive_dir, logs_folder_name, logs_archive_name)
