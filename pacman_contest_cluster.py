@@ -77,9 +77,6 @@ def load_settings():
                         help="replays archive output directory.")
     parser.add_argument("--logs-archive-dir",
                         help="logs archive output directory.")
-    parser.add_argument("--compress-logs",
-                        help="compress logs in a tar.gz file (otherwise, logs will be archived in a tar file).",
-                        action="store_true")
     parser.add_argument("--workers-file",
                         help="json file with workers details.")
     parser.add_argument("--teams-root",
