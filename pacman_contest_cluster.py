@@ -268,7 +268,16 @@ if __name__ == "__main__":
 
     logging.info("Will create contest runner with options: {}".format(settings))
 
+    # Build a multi-contest object
     multi_contest = MultiContest(settings)
+
+    if len(multi_contest.teams) == 0:
+        print("No teams to play...")
+        exit(1)
+    elif len(multi_contest.staff_teams) == 0 and settings['staff_teams_vs_others_only']:
+        print("Asked to play against staff team only but none available...")
+        exit(1)
+
     first = True
     for runner in multi_contest.create_contests():
         runner.run_contest_remotely(hosts, resume_contest_folder, first)

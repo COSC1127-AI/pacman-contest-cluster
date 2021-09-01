@@ -337,7 +337,7 @@ class ContestRunner:
             "timestamp_id": self.contest_timestamp_id,
         }
 
-        # Process replays: compress and upload
+        # PROCESS REPLAYS: compress and upload
         replays_archive_name = "replays_%s.tar" % self.contest_timestamp_id
         replays_archive_name += ".gz" if self.compress_logs else ""
         replays_archive_full_path = os.path.join(
@@ -362,7 +362,22 @@ class ContestRunner:
                 replays_archive_full_path, self.www_dir
             )  # stats-archive/stats_xxx.json
 
-        # Process replays: compress and upload
+        # Copy folder
+        replays_folder_name = 'replays_%s' % self.contest_timestamp_id
+        replays_archive_full_path = os.path.join(self.replays_archive_dir, replays_folder_name)
+        shutil.copytree(self.tmp_replays_dir, replays_archive_full_path)
+
+        # Create replay archives for each team
+        for t in self.team_stats.keys():
+            replays_folder_name = 'replays_%s' % self.contest_timestamp_id
+            replays_archive_name = f'replays_{t}.tar'
+            replays_archive_name += '.gz' if self.compress_logs else ''
+            replays_archive_full_path = os.path.join(self.replays_archive_dir, replays_folder_name, replays_archive_name)
+            replays_folder_full_path = os.path.join(self.replays_archive_dir, replays_folder_name)
+            os.system(f'tar zcf {replays_archive_full_path} {replays_folder_full_path}/*{t}*')
+           
+
+        # PROCESS LOGS: compress and upload
         logs_archive_name = "logs_%s.tar" % self.contest_timestamp_id
         logs_archive_name += ".gz" if self.compress_logs else ""
         logs_archive_full_path = os.path.join(
@@ -384,7 +399,22 @@ class ContestRunner:
             logs_file_url = os.path.relpath(
                 logs_archive_full_path, self.www_dir)
 
-        # Store stats in a json file
+
+        # Copy folder
+        logs_folder_name = 'logs_%s' % self.contest_timestamp_id
+        logs_archive_full_path = os.path.join(self.logs_archive_dir, logs_folder_name)
+        shutil.copytree(self.tmp_logs_dir, logs_archive_full_path)
+
+	 # Create log archives for each team
+        for t in self.team_stats.keys():
+            logs_folder_name = 'logs_%s' % self.contest_timestamp_id
+            logs_archive_name = f'logs_{t}.tar'
+            logs_archive_name += '.gz' if self.compress_logs else ''
+            logs_archive_full_path = os.path.join(self.logs_archive_dir, logs_folder_name, logs_archive_name)
+            logs_folder_full_path = os.path.join(self.logs_archive_dir, logs_folder_name)
+            os.system(f'tar zcf {logs_archive_full_path} {logs_folder_full_path}/*{t}*')
+           
+        # STORE STATS in a json file
         stats_file_name = "stats_%s.json" % self.contest_timestamp_id  # stats_xxx.json
         stats_file_full_path = os.path.join(
             self.stats_archive_dir, stats_file_name
@@ -589,6 +619,7 @@ class ContestRunner:
                                 red_team, blue_team, layout))
 
         else:
+
             for red_team, blue_team in combinations(self.teams, r=2):
                 for layout in self.layouts:
                     red_team_name, _ = red_team

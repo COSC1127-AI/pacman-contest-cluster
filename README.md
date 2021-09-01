@@ -16,6 +16,9 @@ Table of Contents
   - [OVERVIEW](#overview)
     - [Features](#features)
     - [Setup & Dependencies](#setup--dependencies)
+      - [Worker machines](#worker-machines)
+      - [Central Script Host](#central-script-host)
+      - [Web-server configuration](#web-server-configuration)
   - [MAIN COMPONENTS](#main-components)
   - [OVERVIEW OF MARKING PROCESS](#overview-of-marking-process)
   - [EXAMPLE RUNS](#example-runs)
@@ -78,7 +81,7 @@ python3 pacman_html_generator.py --h
 
 ### Setup & Dependencies
 
-In **each machine in the cluster**:
+#### Worker machines
 
 - unzip & zip commands (to pack and unpack submissions and files for transfer)
   - `sudo apt-get install -y unzip zip vim`
@@ -104,7 +107,7 @@ In **each machine in the cluster**:
 - Many students benefit from the availability other tools, like [TensorFlow](https://www.tensorflow.org/), [scikit-learn](http://scikit-learn.org/), [neat-python](https://github.com/CodeReclaimers/neat-python):
 
     ```shell
-    pip3 install tensorflow sklearn sklearn scipy neat-python --user
+    pip3 install tensorflow sklearn scipy neat-python --user
     ```
 
 - If students want to use planners to solve pacman PDDL models for their solutions, copy any planner to `/usr/local/bin`. For example, in the NeCTAR cluster:
@@ -112,6 +115,8 @@ In **each machine in the cluster**:
   ```shell
     sudo cp planners/ff /usr/local/bin/.
   ```
+
+#### Central Script Host
 
 In the **local machine** (e.g., your laptop) that will dispatch game jobs to the cluster via the `pacman_contest_cluster.py` script:
 
@@ -151,6 +156,47 @@ Hence, the user of this system must provide:
 - `TEAMS-STUDENT-MAPPING.csv` [optional]: a CSV mapping student ids to team names (for option `--team-names-file`)
   - Main columns are: `STUDENT_ID` and `TEAM_NAME`
   - If no file provided is provided, team names are taken directly from the submitted zip files (this is the option used at unimelb).
+
+#### Web-server configuration
+
+Install Apache web-server first:
+
+```shell
+$ sudo apt-get install apache2
+```
+
+The default Ubuntu document root is `/var/www/html`, so it first serve  `/var/www/html/index.html` when accessing the server.
+
+A very easy way to serve multiple folders elswhere is to create symbolic links from there to the root of your site. For example:
+
+```shell
+$ sudo ln -s /home/ssardina/ssardina-volume/cosc1125-1127-AI/AI21/p-contest/www/ /var/www/html/prelim
+```
+
+To set-up the web-page for preliminary contests at `http://<ip server>/prelim`
+
+To allow directory listing and configure per directory, first disable listig by default by changing `/etc/apache/apache2.conf` as follows:
+
+```sml
+<Directory /var/www/>
+        #Options Indexes FollowSymLinks
+        Options FollowSymLinks
+        AllowOverride all
+        Require all granted
+</Directory>
+```
+
+The key here is to disable out `Indexes` and `FollowSymLinks` by default, and allow overrriding via `.htaacess` files with `AllowOverride all`.
+
+Then, to allow listing in a folder, add `.htaccess` file (permission `0755`) there with:
+
+```
+Options Indexes FollowSymLinks
+IndexOptions FancyIndexing FoldersFirst NameWidth=* DescriptionWidth=*
+```
+
+NOTE: One could install the lighter Lighttpd web-server, but it happens that it does not use `.htaccess` so it is more difficult to set-up per directory listing.
+
 
 ## MAIN COMPONENTS
 
@@ -244,48 +290,61 @@ So, if a run fails and is incomplete, all the logs generated so far can be found
 
 To _resume_ the competition (so that all games played are used and not re-played):
 
-1. Copy the temporal files into a different temporal folder: `mv tmp tmp-failed`. This is important, the folder `tmp/` as is cannot be used as it will be re-generated for each contest.
-2. Tell the script to use that folder to get the existing logs by appending `--resume-contest-folder tmp-failed/`
-3. Tell the script which are all the layouts to be used (those that were originally used in the failed run):
-    - Use  `--fixed-layout-seeds` followed by the names of all fixed layouts that are to be used, separated by commas.
-        - E.g., `--fixed-layout-seeds contest05Capture,contest16Capture,contest20Capture`
-    - Use `--random-seeds` followed by the seed numbers of all random layouts that are to be used, separated by commas.
-        - E.g., `--random-seeds 7669,1332`
+1. Copy the temporal files into a different temporal folder: `mv tmp tmp-failed`. 
+   * This is important, the folder `tmp/` as is cannot be used as it will be re-generated for each contest.
+2. Tell the script to use that folder to get the existing logs by appending `--resume-contest-folder tmp-failed/` and the configuration file stored in that existing contest:
 
-The `--fixed-layout-seeds` and `--random-seeds` options are also useful if you want to force the script to use some specific layouts. Look in folder [layouts/](layouts/) for available fixed, non-random, layouts.
+```shell
+$ python pacman-contest-cluster.git/pacman_contest_cluster.py  --resume-contest-folder tmp-failed
+```
 
-Note that if the seeds given are less than the number of layouts asked for, the remaining are completed randomly.
+This will run the exact configuration used in the contest being resumed by reading and using saved configuration `tmp-failed/config.json`. 
 
-The seeds for the fixed and random layouts used at each tournament are printed at the start, so one can recover them.
-However, if you need to recover the layouts played in the `tmp/` subdirectory, you can get them as follows:
+To extend an existing contest with more layout games, use options `--no-fixed-layouts` and `--no-random-layouts` with greater numbers than the one in the contest done. For example, if the contest in `tmp-failed/` included 2 fixed and 3 random layouts, we can extend it with more one more of each type as follows:
+
+```shell
+$ python pacman-contest-cluster.git/pacman_contest_cluster.py --no-random-layouts 3 --no-fixed-layouts 4 --resume-contest-folder tmp-failed
+```
+
+This will add one more fixed and one more random layout, both chosen randomly.
+
+If you want to control exactly which fixed or random layout to add, then use options `--fixed-layout-seeds` and `--random-layout-seeds`. This will force the script to use specific layouts (look in folder [layouts/](layouts/) for available fixed, non-random, layouts). 
+* When using these options, the information stored in the previous contest configuration file on which layouts were used will be disregarded. 
+* Thus, one has to specify ALL the layouts that the new contest must use, including the previous ones and the specific ones one wants to add. 
+* If the seeds given are less than the number of layouts asked for, the remaining are completed randomly.
+
+For example, if the previous contest used `contest05Capture` and `contest16Capture` fixed layouts and `7669,1332,765`, one can extend it further with specific layouts `contest20Capture` and `1111` as follows:
+
+```shell
+$ python pacman-contest-cluster.git/pacman_contest_cluster.py --no-random-layouts 3 --no-fixed-layouts 4 --fixed-layout-seeds contest05Capture,contest16Capture,contest20Capture --random-layout-seeds 7669,1332,765,1111 --resume-contest-folder tmp-failed
+```
+
+Remember the seeds of the layouts used in the previous contests are always saved in file `config.json`. It can also be manually extracted from log file names as follows:
 
 1. For the random seeds:
 
     ```bash
-    ls -la tmp/logs-run/ |  grep RANDOM | sed -e "s/.*RANDOM\(.*\)\.log/\1\,/g" | sort -u | xargs -n 100
+    $ ls -la tmp-failed/logs-run/ |  grep RANDOM | sed -e "s/.*RANDOM\(.*\)\.log/\1\,/g" | sort -u | xargs -n 100
     ```
 
 2. For the fixed layouts:
 
     ```bash
-    ls -la tmp/logs-run/ |  grep -v RANDOM | grep log | sed -e "s/.*_\(.*\)\.log/\1\,/g" | sort -u | xargs -n 100
+    $ ls -la tmp-failed/logs-run/ |  grep -v RANDOM | grep log | sed -e "s/.*_\(.*\)\.log/\1\,/g" | sort -u | xargs -n 100
     ```
 
 ### Re-run only some teams in a given contest
 
-If only one or a few teams failed, one can just re-run those ones by basically deleting their logs from the temporary folder:
+If only one or a few teams failed, one can just re-run those ones by basically deleting their logs from the temporary folder and re-running/resuming a contest as above.
 
-1. Load the new code of the team.
-2. Remove all the logs of the teams to be re-run from the temporary folder.
-3. Re-run the competition using the same method commented above.
-
-That will only run the games for the logs you deleted.
-
-To delete the logs of a given team, use:
+To delete the logs of a given team:
 
 ```bash
-find tmp-faild -name \*<TEAM NAME>.log -exec rm -f {} \;
+$ find tmp-failed -name \*<TEAM NAME>\*.log -delete
 ```
+
+When resuming the contest in `tmp-failed/`, it will only run the games for the logs you just deleted.
+
 
 ### Re-run only updated teams
 
@@ -294,7 +353,7 @@ One quick and good strategy is to run a big contest but re-playing all games whe
 To do so, we use the above method but we first delete all the logs of the teams that have been updated:
 
 ```bash
-for d in `cat ai20-contest-timestamps.csv | grep updated | awk -F "\"*,\"*" '{print $1}'` ; do find tmp-failed/contest-a/logs-run/ -name \*$d*.log ; done
+$ for d in `cat ai20-contest-timestamps.csv | grep updated | awk -F "\"*,\"*" '{print $1}'` ; do find tmp-failed/contest-a/logs-run/ -name \*$d*.log ; done
 ```
 
 This takes advantage of the cloning script that leaves a column in the csv file stating whether the repo was updated or not from the last cloning.
@@ -305,21 +364,27 @@ A contest will leave JSON files with all stats, replays, and logs, from which a 
 
 For example, to build web page in `www/` from stats, replays, and logs dirs:
 
-````bash
+```shell
 $ python3 pacman_html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" \
     --www-dir www/ \
     --stats-archive-dir stats-archive/  \
     --replays-archive-dir replays-archive/ \ 
     --logs-archive-dir logs-archive/
-````
+```
 
 or if all stats, replays, and logs are within `www/` then just:
 
-````bash
-python3 pacman_html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" --www-dir www/
-````
+```shell
+$ python3 pacman_html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" --www-dir www/
+```
 
 **Observation:** If the stats file for a run has the `transfer.sh` URL for logs/replays, those will be used.
+
+As of 2020, the system includes a pretty visual dashboard that can display the results of the various contests carried out in an interactive manner. Students can select which teams to display, and compare selectively.
+
+The dashboard will be served as a web-server, by default on port 8501.
+
+See `/dashboard/` folder for more information how to set-it up and run the dashboard system.
 
 ## SCHEDULE COMPETITION
 
@@ -350,7 +415,7 @@ If you want to automate the tournament, use the `driver.py` provided. It has the
 You can run a competition using the following command:
 
 ```bash
-driver.py --dest-www '' --teams-git-csv xxx --tournament-cmd '--compress-log --organizer "UoM COMP90054/2018 - AI Planning" ...'
+$ driver.py --dest-www '' --teams-git-csv xxx --tournament-cmd '--compress-log --organizer "UoM COMP90054/2018 - AI Planning" ...'
 ```
 
 It uses a csv file with the links to github/bitbucket/gitlab or any git server containing the code of each team, and downloads the submissions that have the *tag submission-contest* (see [driver.py](driver.py#lines-37)).
@@ -414,15 +479,15 @@ Note that the submodule source under `contest/` is NOT used for the actual clust
 It is however left there under `contest/` just in case one wants to run and test specific single games, if needed. For example, if we assume that `contest/teams` points to a set of teams, we can run one game as follows:
 
 ```bash
-cd contest/
-python3 capture.py -r teams/staff_team_super/myTeam.py -b teams/staff_team_medium/myTeam.py
+$ cd contest/
+$ python3 capture.py -r teams/staff_team_super/myTeam.py -b teams/staff_team_medium/myTeam.py
 ```
 
 Remember that to get the source from its repo, one needs to do this before:
 
 ```bash
-git submodule init
-git submodule update --remote
+$ git submodule init
+$ git submodule update --remote
 ```
 
 Since the actual simulator code used by the cluster contest script is the one packed in `contest.zip`, any changes, fixes, upgrades, extensions to the simulator have to be done outside and zipped it into `contest.zip` file again.
@@ -430,7 +495,7 @@ Since the actual simulator code used by the cluster contest script is the one pa
 For example, if one modifies the code in `contest/`, a new `contest.zip` can be generated as follows:
 
 ```bash
-rm -f contest.zip ; cd contest/ ; zip -r  ../contest.zip * ; cd ..
+$ rm -f contest.zip ; cd contest/ ; zip -r  ../contest.zip * ; cd ..
 ```
 
 ## TROUBLESHOOTING
@@ -444,6 +509,8 @@ rm -f contest.zip ; cd contest/ ; zip -r  ../contest.zip * ; cd ..
 ## SCREENSHOT
 
 ![Contest Result](extras/screenshot01.png)
+
+
 
 ## LICENSE
 
