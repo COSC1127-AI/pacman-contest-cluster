@@ -29,6 +29,7 @@ Table of Contents
     - [Re-run only some teams in a given contest](#re-run-only-some-teams-in-a-given-contest)
     - [Re-run only updated teams](#re-run-only-updated-teams)
   - [WEB PAGE GENERATION](#web-page-generation)
+    - [Interactive Dashboard](#interactive-dashboard)
   - [SCHEDULE COMPETITION](#schedule-competition)
     - [Test command to schedule](#test-command-to-schedule)
     - [Setting up cron](#setting-up-cron)
@@ -274,13 +275,17 @@ $ python3  pacman_contest_cluster.py --compress-log \
 
 ### Run contest only vs staff teams
 
-Append this option to the command above ```--staff-teams-vs-others-only```
+To make the teams play only the staff teams (but not between them), use the  `--staff-teams-vs-others-only` option.
+
+To hide the staff teams from the final leaderboard table, use `--hide-staff-teams`.
+
+Finally, one can higlight different levels of performance using option `--score-thresholds`.
 
 ### Run a multi/split contest
 
 When having too many teams, you can use the `--split n` option to generate `n` balanced contests from the pool of teams. Each team will be assigned randomly to one contest. Sub-contests will have the timestamp but a letter as suffix, e.g., `A`, `B`, etc.
 
-For example, to run a split multi-contest with 5 sub-contests use ```--split 5```.
+For example, to run a split multi-contest with 5 sub-contests use `--split 5`.
 
 ### Resume partial contest
 
@@ -379,6 +384,8 @@ $ python3 pacman_html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" 
 ```
 
 **Observation:** If the stats file for a run has the `transfer.sh` URL for logs/replays, those will be used.
+
+### Interactive Dashboard
 
 As of 2020, the system includes a pretty visual dashboard that can display the results of the various contests carried out in an interactive manner. Students can select which teams to display, and compare selectively.
 
