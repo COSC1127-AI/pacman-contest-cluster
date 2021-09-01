@@ -11,7 +11,7 @@ ERROR_SCORE = 9999
 
 DEFAULT_ORGANIZER = "Uni Pacman"
 
-# Output directories:
+# Output directories (all inside the WWW folder):
 #  run_replays/{red_team_name}_vs_{blue_team_name}_{layout}.replay
 #  run_logs/{red_team_name}_vs_{blue_team_name}_{layout}.log
 #  replays_archive/replays_{contest_timestamp_id}.tar.gz  # lots of .replay files
