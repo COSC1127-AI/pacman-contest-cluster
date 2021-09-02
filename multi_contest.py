@@ -278,7 +278,7 @@ class MultiContest:
         self,
         submission_path,
         destination,
-        ignore_file_name_format=False,
+        ignore_file_name_format=True,
         is_staff_team=False,
     ):
         """
@@ -309,41 +309,30 @@ class MultiContest:
                 )
                 return
 
-        # Set team name from submission file name
-        match = re.match(SUBMISSION_FILENAME_PATTERN,
-                         os.path.basename(submission_path))
-        submission_time = None
-        if match:
-            submission_filename = match.group(1)
-
-            # first get the team of this submission
-            if allow_non_registered_students:
-                team_name = submission_filename
-            else:
-                logging.warning(
-                    f'Student not registered: "{submission_filename}" (file {submission_path}). Skipping')
-                return
-
-            # next get the submission date (encoded in filename)
-            try:
-                submission_time = iso8601.parse_date(match.group(3)).astimezone(
-                    TIMEZONE
-                )
-            except iso8601.iso8601.ParseError:
-                if not ignore_file_name_format:
-                    logging.warning(
-                        f'Team zip file "{submission_path}" name has invalid date format. Skipping'
-                    )
-                    return
-        else:
-            if not ignore_file_name_format:
-                logging.warning(
-                    f'Submission zip file "{submission_path}" does not correspond to any team. Skipping'
-                )
-                return
+        if ignore_file_name_format: # use exact name of file as team name
             team_name = os.path.basename(submission_path)
             team_name = team_name[:-
                                   4] if team_name.endswith(".zip") else team_name
+            submission_time = None
+        else:
+            # Set team name from submission file name - extract given pattern
+            match = re.match(SUBMISSION_FILENAME_PATTERN,
+                            os.path.basename(submission_path))
+            submission_time = None
+            if match:
+                team_name = match.group(1)
+
+                # next get the submission date (encoded in filename)
+                try:
+                    submission_time = iso8601.parse_date(match.group(3)).astimezone(
+                        TIMEZONE
+                    )
+                except iso8601.iso8601.ParseError:
+                    if not ignore_file_name_format:
+                        logging.warning(
+                            f'Team zip file "{submission_path}" name has invalid date format. Skipping'
+                        )
+                        return
 
         # This submission will be temporarily expanded into team_destination_dir
         team_destination_dir = os.path.join(destination, team_name)
