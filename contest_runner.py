@@ -562,11 +562,10 @@ class ContestRunner:
         # sys.exit(0)
         results = cm.start()
 
-        print(
-            "========================= GAMES FINISHED - NEXT ANALYSING OUTPUT OF GAMES ========================= "
-        )
+        logging.info("########## GAMES FINISHED - NEXT ANALYSING OUTPUT OF GAMES")
         self._analyse_all_outputs(results)
         self._calculate_team_stats()
+        logging.info("########## ANALYSIS OF GAME OUTPUTS COMPLETED")
 
     def run_contest_jobs(self):
         jobs = []

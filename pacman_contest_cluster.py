@@ -285,6 +285,8 @@ if __name__ == "__main__":
         html_generator.add_run(
             runner.contest_timestamp_id, stats_file_url, replays_file_url, logs_file_url
         )
-        logging.info("Web pages generated. Now cleaning up and closing... Thank you!")
+        logging.info(f"########## Web pages generated for the split contest: {runner.contest_timestamp_id}. Next cleaning up contest split...")
 
         runner.clean_up()
+    logging.info("########## All contest split ran... Thank you!")
+        

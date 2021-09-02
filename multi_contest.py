@@ -128,6 +128,11 @@ class MultiContest:
         )
 
     def create_contests(self):
+        """Builds a list of ContestRunner objects, one per split contest
+
+        Returns:
+            [list(ContestRunner)]: a list of ContestRunner, one per split
+        """
         contests = []
         self.settings["fixed_layout_seeds"] = [
             l for l in self.layouts if not l.startswith("RANDOM")
@@ -155,10 +160,8 @@ class MultiContest:
             settings["teams"] = [(team, get_agent_factory(team))
                                  for team in teams]
             settings["tmp_dir"] = os.path.join(
-                TMP_DIR, "contest-" + ascii_lowercase[i])
-            settings["contest_timestamp_id"] = (
-                self.contest_timestamp_id + "-" + ascii_lowercase[i]
-            )
+                TMP_DIR, f"contest-{ascii_lowercase[i]}")
+            settings["contest_timestamp_id"] = f"{self.contest_timestamp_id}-{ascii_lowercase[i]}"
             contests.append(ContestRunner(settings))
 
         return contests

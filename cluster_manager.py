@@ -90,7 +90,7 @@ class ClusterManager:
         no_successful_jobs = 0
         no_failed_jobs = 0
         logging.info(
-            "ABOUT TO RUN %d jobs in %d hosts (%d CPUs) #####################"
+            "########## ABOUT TO RUN %d jobs in %d hosts (%d CPUs)"
             % (no_total_jobs, len(hosts), total_no_workers)
         )
 
@@ -146,9 +146,6 @@ class ClusterManager:
                 results = (
                     results + good_results
                 )  # keep non-error results only (rest will be re-tried)
-                print(
-                    "============================ ONE FULL PASS ON JOBS COMPLETED ============================"
-                )
             else:
                 # tough luck, include failed jobs in results as they came with score = -1 (failed)...
                 results = results + results_run
@@ -161,7 +158,7 @@ class ClusterManager:
             avg_secs_game = 0
             max_secs_game = 0
         logging.info(
-            "STATISTICS: {} games played / {} per game / {} the longest game".format(
+            "########## STATISTICS: {} games played / {} per game / {} the longest game".format(
                 no_successful_jobs,
                 str(datetime.timedelta(seconds=avg_secs_game)),
                 str(datetime.timedelta(seconds=max_secs_game)),
