@@ -70,8 +70,6 @@ python3 pacman_html_generator.py --h
   - connection via ssh with tunneling support if needed.
 - Able to use variable number of fixed layouts and randomly generated layouts.
   - options `--no-fixed-layouts` and `--no-random-layouts`
-- Map individual student submissions to teams.
-  - Via student-team mapping file; option `--team-names`
 - Generate an HTML page with the contest result and full details, including links to replay files.
   - Ability to store replays and logs into [`https://transfer.sh`](https://transfer.sh) service to avoid filling local www space.
   - Ranking generation: 3 points per win; 1 point per tie. Failed games are loses. Ordered by: points first, no. of wins second, score points third.
@@ -132,11 +130,9 @@ In the **local machine** (e.g., your laptop) that will dispatch game jobs to the
 
 In addition to that:
 
-- Each submission is a `.zip` file or a directory; they should all go in a directory (e.g., `teams/`)
+- Each submission is a `.zip` file or a directory; all within some folder (e.g., `teams/`)
   - The player agent should be in the _root_ of the team zip file or team directory.
-  - The name convention of a submission file/dir will depend on `--team-names-file` option.
-
-- If option `--team-names-file` is passed, then submission file/dir names will be treated as student number and will be mapped to an actual team name using the mapping `.csv` file provided. Otherwise, submission file/dir name will be used as the team name.
+  - Submission file/dir name will be used as the team name.
   - zip/dir should start with "`s`", continue with student number, then `_`, and then date in [iso8601 format](https://en.wikipedia.org/wiki/ISO_8601), then `.zip`
   - Format stored regexp `SUBMISSION_FILENAME_PATTERN`: `r'^(s\d+)_(.+)?\.zip$'`
   - Examples of legal team zip files:
@@ -224,8 +220,8 @@ In a nutshell, the script follows the following steps:
 
 1. Authenticates to all workers specified.
 2. Collect all the teams.
-    - If option `--ignore-file-name-format` is given, then it will simply collect the team names from the `<teamname>.zip` files.
-    - Otherwise, it will assume a file name `s<student number>_<timestamp>.zip`. The student number will be mapped to the team name (via the provided mapping in `--team-names-file`) and the last submission (using the timetsamps) will be selected.
+    - If option `--ignore-file-name-format` is given, then it will simply collect the team names from the `<team-name>.zip` files.
+    - Otherwise, it will assume a file name `s<team-name>_<timestamp>.zip`. 
 3. Take `contest.zip`, `layouts.zip` (where some fixed layouts are stored), and the set of collected set of teams and:
     1. create a temporary full contest dir `contest-tmp`;
     2. zip it into `contest_and_teams.zip` file;
@@ -251,7 +247,6 @@ Using a CSV file to specify team names, include staff teams:
 $ python3  pacman_contest_cluster.py --compress-log \
         --organizer "RMIT COSC1125/1127 - Intro to AI" \
         --teams-root AI17-contest/teams/  \
-        --team-names-file AI17-contest/AI17-Contest-TEAMS.csv  \
         --www-dir www/ \
         --max-steps 1200 \
         --no-fixed-layouts 5 --no-random-layouts 10 \
