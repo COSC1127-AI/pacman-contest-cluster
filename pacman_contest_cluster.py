@@ -71,12 +71,6 @@ def load_settings():
                         help=f"name of contest organizer (default: {DEFAULT_ORGANIZER}).")
     parser.add_argument("--www-dir",
                         help="www output directory.")
-    parser.add_argument("--stats-archive-dir",
-                        help="stats archive output directory.")
-    parser.add_argument("--replays-archive-dir",
-                        help="replays archive output directory.")
-    parser.add_argument("--logs-archive-dir",
-                        help="logs archive output directory.")
     parser.add_argument("--workers-file",
                         help="json file with workers details.")
     parser.add_argument("--teams-root",

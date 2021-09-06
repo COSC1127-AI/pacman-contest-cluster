@@ -25,18 +25,13 @@ class ContestRunner:
 
         self.www_dir = settings["www_dir"]
         self.stats_archive_dir = os.path.join(
-            self.www_dir,
-            settings.get("stats_archive_dir",
-                         None) or DEFAULT_STATS_ARCHIVE_DIR,
+            self.www_dir, STATS_ARCHIVE_DIR,
         )
         self.logs_archive_dir = os.path.join(
-            self.www_dir,
-            settings.get("logs_archive_dir", None) or DEFAULT_LOGS_ARCHIVE_DIR,
+            self.www_dir, LOGS_ARCHIVE_DIR,
         )
         self.replays_archive_dir = os.path.join(
-            self.www_dir,
-            settings.get("replays_archive_dir",
-                         None) or DEFAULT_REPLAYS_ARCHIVE_DIR,
+            self.www_dir, REPLAYS_ARCHIVE_DIR,
         )
 
         self.upload_replays = settings["upload_replays"]
@@ -358,12 +353,12 @@ class ContestRunner:
             )  # stats-archive/stats_xxx.json
 
         # Copy folder
-        replays_folder_name = 'replays_%s' % self.contest_timestamp_id
+        replays_folder_name = f'replays_{self.contest_timestamp_id}'
         replays_archive_full_path = os.path.join(
             self.replays_archive_dir, replays_folder_name)
         shutil.copytree(self.tmp_replays_dir, replays_archive_full_path)
 
-        # Create replay archives for each team
+        # Create replay compress archives for each team
         for t in self.team_stats.keys():
             replays_folder_name = f'replays_{self.contest_timestamp_id}'
             replays_archive_name = f'replays_{t}.tar.gz'
