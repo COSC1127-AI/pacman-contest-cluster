@@ -71,22 +71,10 @@ def load_settings():
                         help=f"name of contest organizer (default: {DEFAULT_ORGANIZER}).")
     parser.add_argument("--www-dir",
                         help="www output directory.")
-    parser.add_argument("--stats-archive-dir",
-                        help="stats archive output directory.")
-    parser.add_argument("--replays-archive-dir",
-                        help="replays archive output directory.")
-    parser.add_argument("--logs-archive-dir",
-                        help="logs archive output directory.")
-    parser.add_argument("--compress-logs",
-                        help="compress logs in a tar.gz file (otherwise, logs will be archived in a tar file).",
-                        action="store_true")
     parser.add_argument("--workers-file",
                         help="json file with workers details.")
     parser.add_argument("--teams-root",
                         help="directory containing the zip files or directories of the teams. See README for format on names.")
-    parser.add_argument("--team-names-file",
-                        help='the path of the csv that maps "STUDENT_ID" ot "TEAM_NAME". '
-                             'If passed, files/dirs have to be of a certain format "<student no>_TIMESTAMP.zip"')
     parser.add_argument("--staff-teams-dir",
                         help="if given, include staff teams in the given directory (with name staff_team_xxxx.zip).")
     parser.add_argument("--staff-teams-vs-others-only",
@@ -113,9 +101,6 @@ def load_settings():
     parser.add_argument("--resume-contest-folder",
                         help="directory containing the logs and replays from the last failed competition. "
                              "Can be found in /tmp folder. Rename it to use the folder as an argument.")
-    parser.add_argument("--allow-non-registered-students",
-                        help="if passed and --team-names-file is given, students without a team are still allowed to participate",
-                        action="store_true")
     parser.add_argument("--build-config-file",
                         help="name of JSON file to write the current options used")
     parser.add_argument("--upload-replays",
@@ -159,10 +144,8 @@ def load_settings():
     settings_default["staff_teams_dir"] = None
     settings_default["staff_teams_vs_others_only"] = False
     settings_default["ignore_file_name_format"] = True
-    settings_default["team_names_file"] = None
     settings_default["upload_replays"] = False
     settings_default["upload_logs"] = False
-    settings_default["allow_non_registered_students"] = False
     settings_default["hide_staff_teams"] = False
     settings_default["score_thresholds"] = None
 
@@ -210,8 +193,6 @@ def load_settings():
 
     if args['staff_teams_dir']:
         settings_cli["include_staff_team"] = True
-    if args['team_names_file']:
-        settings_cli["ignore_file_name_format"] = False
     if args['upload_all']:
         settings_cli["upload_replays"] = True
         settings_cli["upload_logs"] = True
@@ -288,6 +269,8 @@ if __name__ == "__main__":
         html_generator.add_run(
             runner.contest_timestamp_id, stats_file_url, replays_file_url, logs_file_url
         )
-        logging.info("Web pages generated. Now cleaning up and closing... Thank you!")
+        logging.info(f"########## Web pages generated for the split contest: {runner.contest_timestamp_id}. Next cleaning up contest split...")
 
         runner.clean_up()
+    logging.info("########## All contest split ran... Thank you!")
+        

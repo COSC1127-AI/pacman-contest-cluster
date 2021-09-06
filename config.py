@@ -17,9 +17,9 @@ DEFAULT_ORGANIZER = "Uni Pacman"
 #  replays_archive/replays_{contest_timestamp_id}.tar.gz  # lots of .replay files
 #  logs_archive/replays_{contest_timestamp_id}.tar.gz  # lots of .log files
 #  stats_archive/replays_{contest_timestamp_id}.json
-DEFAULT_STATS_ARCHIVE_DIR = "stats-archive"
-DEFAULT_LOGS_ARCHIVE_DIR = "logs-archive"
-DEFAULT_REPLAYS_ARCHIVE_DIR = "replays-archive"
+STATS_ARCHIVE_DIR = "stats-archive"
+LOGS_ARCHIVE_DIR = "logs-archive"
+REPLAYS_ARCHIVE_DIR = "replays-archive"
 
 TMP_DIR = "tmp"
 
@@ -49,3 +49,5 @@ DEFAULT_RANDOM_LAYOUTS = 3
 DEFAULT_CONFIG_FILE = "config.json"
 
 DEFAULT_NO_SPLIT = 1
+
+HIGHLIGHT_LOG_TEXT = "##########"

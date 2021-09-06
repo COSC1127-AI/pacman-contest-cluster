@@ -30,6 +30,7 @@ class MultiContest:
         self.layouts = set()
         self.split = settings["split"]
         self.settings = settings
+        self.team_names = None
 
         if not os.path.exists(os.path.join(DIR_SCRIPT, CONTEST_ZIP_FILE)):
             logging.error(
@@ -78,11 +79,7 @@ class MultiContest:
             shutil.rmtree(teams_dir)
         os.makedirs(teams_dir)
 
-        # Get all team name mapping from mapping file, If no file is specified, all zip files in team folder will be taken.
-        if settings["team_names_file"] is None:
-            self.team_names = None
-        else:
-            self.team_names = self._load_teams(settings["team_names_file"])
+        self.team_names = None
 
         # setup all team directories under contest/team subdir for contest (copy content in .zip to team dirs)
 
@@ -97,10 +94,8 @@ class MultiContest:
                 self._setup_team(
                     submission_path,
                     teams_dir,
-                    settings["ignore_file_name_format"],
-                    allow_non_registered_students=settings[
-                        "allow_non_registered_students"
-                    ],
+                    ignore_file_name_format=settings["ignore_file_name_format"],
+                    is_staff_team=False
                 )
 
         # Include staff teams if available (ones with pattern STAFF_TEAM_FILENAME_PATTERN)
@@ -118,7 +113,9 @@ class MultiContest:
                         submission_path
                     ):
                         self._setup_team(
-                            submission_path, teams_dir, True, False, True)
+                            submission_path, teams_dir, 
+                            ignore_file_name_format=True,
+                            is_staff_team=True)
 
         # zip directory for transfer to remote workers; zip goes into temp directory
         shutil.make_archive(
@@ -128,6 +125,11 @@ class MultiContest:
         )
 
     def create_contests(self):
+        """Builds a list of ContestRunner objects, one per split contest
+
+        Returns:
+            [list(ContestRunner)]: a list of ContestRunner, one per split
+        """
         contests = []
         self.settings["fixed_layout_seeds"] = [
             l for l in self.layouts if not l.startswith("RANDOM")
@@ -155,10 +157,8 @@ class MultiContest:
             settings["teams"] = [(team, get_agent_factory(team))
                                  for team in teams]
             settings["tmp_dir"] = os.path.join(
-                TMP_DIR, "contest-" + ascii_lowercase[i])
-            settings["contest_timestamp_id"] = (
-                self.contest_timestamp_id + "-" + ascii_lowercase[i]
-            )
+                TMP_DIR, f"contest-{ascii_lowercase[i]}")
+            settings["contest_timestamp_id"] = f"{self.contest_timestamp_id}-{ascii_lowercase[i]}"
             contests.append(ContestRunner(settings))
 
         return contests
@@ -269,18 +269,16 @@ class MultiContest:
             if m
         ]
         seeds = list(map(lambda x: int(x), seeds_strings))
-        logging.info("Seeds for RANDOM layouts to be played: %s" % seeds)
+        logging.info(f"Seeds for RANDOM layouts to be played: {seeds}")
         logging.info(
-            "Seeds for FIXED layouts to be played: %s"
-            % ",".join(fixed_layouts_selected)
+            f"Seeds for FIXED layouts to be played: {','.join(fixed_layouts_selected)}"
         )
 
     def _setup_team(
         self,
         submission_path,
         destination,
-        ignore_file_name_format=False,
-        allow_non_registered_students=False,
+        ignore_file_name_format=True,
         is_staff_team=False,
     ):
         """
@@ -307,53 +305,34 @@ class MultiContest:
                 submission_zip_file = zipfile.ZipFile(submission_path)
             except zipfile.BadZipfile:
                 logging.warning(
-                    "Submission is not a valid ZIP file nor a folder: %s. Skipping"
-                    % submission_path
+                    f"Submission is not a valid ZIP file nor a folder: {submission_path}. Skipping"
                 )
                 return
 
-        # Get team name from submission: if in self.team_names mapping, then use mapping; otherwise use filename
-
-        match = re.match(SUBMISSION_FILENAME_PATTERN,
-                         os.path.basename(submission_path))
-        submission_time = None
-        if match:
-            student_id = match.group(1)
-
-            # first get the team of this submission
-            if student_id in self.team_names:
-                team_name = self.team_names[student_id]
-            elif allow_non_registered_students:
-                team_name = student_id
-            else:
-                logging.warning(
-                    'Student not registered: "%s" (file %s). Skipping'
-                    % (student_id, submission_path)
-                )
-                return
-
-            # next get the submission date (encoded in filename)
-            try:
-                submission_time = iso8601.parse_date(match.group(3)).astimezone(
-                    TIMEZONE
-                )
-            except iso8601.iso8601.ParseError:
-                if not ignore_file_name_format:
-                    logging.warning(
-                        'Team zip file "%s" name has invalid date format. Skipping'
-                        % submission_path
-                    )
-                    return
-        else:
-            if not ignore_file_name_format:
-                logging.warning(
-                    'Submission zip file "%s" does not correspond to any team. Skipping'
-                    % submission_path
-                )
-                return
+        if ignore_file_name_format: # use exact name of file as team name
             team_name = os.path.basename(submission_path)
             team_name = team_name[:-
                                   4] if team_name.endswith(".zip") else team_name
+            submission_time = None
+        else:
+            # Set team name from submission file name - extract given pattern
+            match = re.match(SUBMISSION_FILENAME_PATTERN,
+                            os.path.basename(submission_path))
+            submission_time = None
+            if match:
+                team_name = match.group(1)
+
+                # next get the submission date (encoded in filename)
+                try:
+                    submission_time = iso8601.parse_date(match.group(3)).astimezone(
+                        TIMEZONE
+                    )
+                except iso8601.iso8601.ParseError:
+                    if not ignore_file_name_format:
+                        logging.warning(
+                            f'Team zip file "{submission_path}" name has invalid date format. Skipping'
+                        )
+                        return
 
         # This submission will be temporarily expanded into team_destination_dir
         team_destination_dir = os.path.join(destination, team_name)
@@ -382,8 +361,19 @@ class MultiContest:
                 submission_zip_file.extractall(team_destination_dir)
             self.submission_times[team_name] = submission_time
 
+    
+    
+    
     @staticmethod
     def _load_teams(team_names_file):
+        """DEPRECATED: NOT USED ANYMORE BUT LEFT HERE IN CASE WE WANT TO RESUSE TO FILTER TEAMS GIVEN IN A FILE
+
+        Args:
+            team_names_file ([type]): [description]
+
+        Returns:
+            [type]: [description]
+        """
         team_names = {}
         with open(team_names_file, "r") as f:
             reader = csv.reader(f, delimiter=",", quotechar='"')
