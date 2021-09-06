@@ -23,6 +23,7 @@ import sys
 import argparse
 import json
 import logging
+import datetime
 
 # from dataclasses import dataclass
 from cluster_manager import Host
@@ -260,6 +261,8 @@ if __name__ == "__main__":
         exit(1)
 
     first = True
+    start_time = datetime.datetime.now()
+    logging.info(f########## Starting contest at: {start_time.astimezone(TIMEZONE).strftime('%Y-%m-%d-%H-%M')}")
     for runner in multi_contest.create_contests():
         runner.run_contest_remotely(hosts, resume_contest_folder, first)
         first = False
@@ -272,5 +275,8 @@ if __name__ == "__main__":
         logging.info(f"########## Web pages generated for the split contest: {runner.contest_timestamp_id}. Next cleaning up contest split...")
 
         runner.clean_up()
+    end_time = datetime.datetime.now()
+    logging.info(f"########## Ending contest at: {end_time.astimezone(TIMEZONE).strftime('%Y-%m-%d-%H-%M')}")
+    logging.info(f"########## Contest duration: {end_time - start_time}")
     logging.info("########## All contest split ran... Thank you!")
         

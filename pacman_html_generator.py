@@ -94,7 +94,7 @@ def load_settings():
 class HtmlGenerator:
     ERROR_SCORE = 9999
     RESULTS_DIR = 'results'
-    TIMEZONE = timezone('Australia/Melbourne')
+    # TIMEZONE = timezone('Australia/Melbourne')    # obtained from config.py
 
     def __init__(self, www_dir, organizer, score_thresholds=None):
         """

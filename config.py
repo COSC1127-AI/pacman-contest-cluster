@@ -3,9 +3,7 @@ import re
 import sys
 from pytz import timezone
 
-
 DIR_SCRIPT = sys.path[0]
-
 
 ERROR_SCORE = 9999
 
@@ -50,4 +48,4 @@ DEFAULT_CONFIG_FILE = "config.json"
 
 DEFAULT_NO_SPLIT = 1
 
-HIGHLIGHT_LOG_TEXT = "##########"
+LOG_HEADER_MARK = "##########"
