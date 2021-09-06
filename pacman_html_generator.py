@@ -20,6 +20,8 @@ import logging
 import re
 import datetime
 from pytz import timezone
+from config import *
+
 
 # logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG, datefmt='%a, %d %b %Y %H:%M:%S')
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO,
@@ -38,26 +40,13 @@ def load_settings():
     parser = argparse.ArgumentParser(
         description='This script generates the HTML structure given the logs of all the runs of this tournament.'
     )
-
     parser.add_argument(
         dest='organizer', type=str,
         help='name of the organizer of the contest'
     )
     parser.add_argument(
-        '--stats-archive-dir',
-        help='stats directory (default <www-dir>/stats-archive)'
-    )
-    parser.add_argument(
-        '--replays-archive-dir',
-        help='replays directory (default <www-dir>/replays-archive)'
-    )
-    parser.add_argument(
-        '--logs-archive-dir',
-        help='logs directory (default <www-dir>/logs-archive)'
-    )
-    parser.add_argument(
         dest='www_dir', type=str,
-        help='output directory'
+        help='output directory containing sats, replays, and log files'
     )
     args = parser.parse_args()
 
@@ -91,18 +80,9 @@ def load_settings():
         parser.print_help()
         sys.exit(1)
 
-    if args.stats_archive_dir:
-        settings['stats_archive_dir'] = args.stats_archive_dir
-    else:
-        settings['stats_archive_dir'] = os.path.join(settings['www_dir'], 'stats-archive')
-    if args.replays_archive_dir:
-        settings['replays_archive_dir'] = args.replays_archive_dir
-    else:
-        settings['replays_archive_dir'] = os.path.join(settings['www_dir'], 'replays-archive')
-    if args.logs_archive_dir:
-        settings['logs_archive_dir'] = args.logs_archive_dir
-    else:
-        settings['logs_archive_dir'] = os.path.join(settings['www_dir'], 'logs-archive')
+    settings['stats_archive_dir'] = os.path.join(settings['www_dir'], STATS_ARCHIVE_DIR)
+    settings['replays_archive_dir'] = os.path.join(settings['www_dir'], REPLAYS_ARCHIVE_DIR)
+    settings['logs_archive_dir'] = os.path.join(settings['www_dir'], LOGS_ARCHIVE_DIR)
 
     logging.info('Script will run with this configuration: %s' % settings)
 
@@ -141,15 +121,15 @@ class HtmlGenerator:
         """
         shutil.rmtree(self.www_dir)
 
-    def add_run(self, run_id, stats_url, replays_url, logs_url):
+    def add_run(self, run_id, stats_dir, replays_dir, logs_dir):
         """
         (Re)Generates the HTML for the given run and updates the HTML index.
         :return:
         """
-        self._save_run_html(run_id, stats_url, replays_url, logs_url)
+        self._save_run_html(run_id, stats_dir, replays_dir, logs_dir)
         self._generate_main_html()
 
-    def _save_run_html(self, run_id, stats_file_url, replays_file_url, logs_file_url):
+    def _save_run_html(self, run_id, stats_file, replays_file, logs_file):
         """
         Generates the HTML of a contest run and saves it in www/results_<run_id>/results.html.
 
@@ -161,27 +141,27 @@ class HtmlGenerator:
         """
         # The URLs may be in byte format - convert them to strings if needed
         try:
-            stats_file_url = stats_file_url.decode()
+            stats_file = stats_file.decode()
         except AttributeError:
             pass
         try:
-            replays_file_url= replays_file_url.decode()
+            replays_file= replays_file.decode()
         except AttributeError:
             pass
         try:
-            logs_file_url= logs_file_url.decode()
+            logs_file= logs_file.decode()
         except AttributeError:
             pass
 
         # Get the information in the stats file
-        if stats_file_url.startswith('http'):  # http url
+        if stats_file.startswith('http'):  # http url
             import urllib.request as request
-            content = request(stats_file_url).read()
+            content = request(stats_file).read()
             data = json.loads(content)
 
         else:  # relative path
             # prepend www/ so the file can be opened by this script, which is somewhere else
-            stats_file_path = os.path.join(self.www_dir, stats_file_url)
+            stats_file_path = os.path.join(self.www_dir, stats_file)
 
             with open(stats_file_path, 'r') as f:
                 data = json.load(f)
@@ -202,9 +182,9 @@ class HtmlGenerator:
 
         #  check if json data file contains the links to the replays and logs, if so, used them!
         if 'url_replays' in data:
-            replays_file_url = data['url_replays']
+            replays_file = data['url_replays']
         if 'url_logs' in data:
-            logs_file_url = data['url_logs']
+            logs_file = data['url_logs']
 
         if not os.path.exists(self.www_dir):
             os.makedirs(self.www_dir)
@@ -214,7 +194,7 @@ class HtmlGenerator:
 
         run_html = self._generate_output(run_id, date_run, organizer, games, team_stats, random_layouts, fixed_layouts,
                                          max_steps,
-                                         stats_file_url, replays_file_url, logs_file_url)
+                                         stats_file, replays_file, logs_file)
 
         html_full_path = os.path.join(self.www_dir, f'results_{run_id}.html')
         with open(html_full_path, "w") as f:
@@ -241,7 +221,7 @@ class HtmlGenerator:
             print(main_html, file=f)
 
     def _generate_output(self, run_id, date_run, organizer, games, team_stats, random_layouts, fixed_layouts, max_steps,
-                         stats_url, replays_url, logs_url):
+                         stats_dir, replays_dir, logs_dir):
         """
         Generates the HTML of the report of the run.
         """
@@ -332,12 +312,12 @@ class HtmlGenerator:
                       % (len(games), str(datetime.timedelta(seconds=round(sum(times_taken) / len(times_taken),0))),
                          str(datetime.timedelta(seconds=max(times_taken))))
 
-            if replays_url:
-                output += """<a href="%s">DOWNLOAD REPLAYS</a><br/>\n""" % replays_url
-            if logs_url:
-                output += """<a href="%s">DOWNLOAD LOGS</a><br/>\n""" % logs_url
-            if stats_url:
-                output += """<a href="%s">DOWNLOAD STATS</a><br/>\n\n""" % stats_url
+            if replays_dir:
+                output += """<a href="%s">DOWNLOAD REPLAYS</a><br/>\n""" % replays_dir
+            if logs_dir:
+                output += """<a href="%s">DOWNLOAD LOGS</a><br/>\n""" % logs_dir
+            if stats_dir:
+                output += """<a href="%s">DOWNLOAD STATS</a><br/>\n\n""" % stats_dir
             output += """<table border="1">"""
             output += """<tr>"""
             output += """<th>Team 1</th>"""
@@ -398,8 +378,8 @@ if __name__ == '__main__':
     settings = load_settings()
 
     stats_dir = settings['stats_archive_dir']
-    replays_url = settings['replays_archive_dir']
-    logs_url = settings['logs_archive_dir']
+    replays_dir = settings['replays_archive_dir']
+    logs_dir = settings['logs_archive_dir']
 
     html_generator = HtmlGenerator(settings['www_dir'], settings['organizer'])
 
@@ -412,8 +392,8 @@ if __name__ == '__main__':
         # make paths relative to www_dir
         www_dir = settings['www_dir']
         stats_dir = os.path.relpath(stats_dir, www_dir)
-        replays_url = os.path.relpath(replays_url, www_dir) if replays_url else None
-        logs_url = os.path.relpath(logs_url, www_dir) if logs_url else None
+        replays_dir = os.path.relpath(replays_dir, www_dir) if replays_dir else None
+        logs_dir = os.path.relpath(logs_dir, www_dir) if logs_dir else None
 
         # Process each .json stat file - 1 per contest ran
         for stats_file_name in all_files:
@@ -427,8 +407,8 @@ if __name__ == '__main__':
             logs_file_name = 'logs_%s.tar' % run_id
 
             stats_file_full_path = os.path.join(stats_dir, stats_file_name)
-            replays_file_full_path = os.path.join(replays_url, replays_file_name) if replays_url else None
-            logs_file_full_path = os.path.join(logs_url, logs_file_name) if logs_url else None
+            replays_file_full_path = os.path.join(replays_dir, replays_file_name) if replays_dir else None
+            logs_file_full_path = os.path.join(logs_dir, logs_file_name) if logs_dir else None
 
             replays_file_full_path += '.gz' if not os.path.exists(replays_file_full_path) else ''
             logs_file_full_path += '.gz' if not os.path.exists(logs_file_full_path) else ''
