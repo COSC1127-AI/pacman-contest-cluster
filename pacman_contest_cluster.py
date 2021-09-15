@@ -262,8 +262,9 @@ if __name__ == "__main__":
 
     first = True
     start_time = datetime.datetime.now()
-    logging.info(f########## Starting contest at: {start_time.astimezone(TIMEZONE).strftime('%Y-%m-%d-%H-%M')}")
+    logging.info(f"########## Starting contest at: {start_time.astimezone(TIMEZONE).strftime('%Y-%m-%d-%H-%M')}")
     for runner in multi_contest.create_contests():
+        start_time_runner = datetime.datetime.now()
         runner.run_contest_remotely(hosts, resume_contest_folder, first)
         first = False
 
