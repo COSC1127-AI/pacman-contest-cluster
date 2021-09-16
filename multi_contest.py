@@ -87,35 +87,38 @@ class MultiContest:
         self.staff_teams = []
         self.submission_times = {}
 
-        for submission_file in os.listdir(settings["teams_root"]):
-            submission_path = os.path.join(
-                settings["teams_root"], submission_file)
-            if submission_file.endswith(".zip") or os.path.isdir(submission_path):
-                self._setup_team(
-                    submission_path,
-                    teams_dir,
-                    ignore_file_name_format=settings["ignore_file_name_format"],
-                    is_staff_team=False
-                )
+        # settings["teams_roots"] is a list of folders
+        for team_root in settings["teams_roots"]:
+            for submission_file in os.listdir(team_root):
+                submission_path = os.path.join(
+                    team_root, submission_file)
+                if submission_file.endswith(".zip") or os.path.isdir(submission_path):
+                    self._setup_team(
+                        submission_path,
+                        teams_dir,
+                        ignore_file_name_format=settings["ignore_file_name_format"],
+                        is_staff_team=False
+                    )
 
         # Include staff teams if available (ones with pattern STAFF_TEAM_FILENAME_PATTERN)
         if settings["include_staff_team"]:
-            for staff_team_path in os.listdir(settings["staff_teams_dir"]):
-                match = re.match(
-                    STAFF_TEAM_FILENAME_PATTERN,
-                    os.path.basename(staff_team_path),
-                )
-                if match:
-                    submission_path = os.path.join(
-                        settings["staff_teams_dir"], staff_team_path
+            for staff_teams_root in settings["staff_teams_roots"]:
+                for staff_team_path in os.listdir(staff_teams_root):
+                    match = re.match(
+                        STAFF_TEAM_FILENAME_PATTERN,
+                        os.path.basename(staff_team_path),
                     )
-                    if staff_team_path.endswith(".zip") or os.path.isdir(
-                        submission_path
-                    ):
-                        self._setup_team(
-                            submission_path, teams_dir, 
-                            ignore_file_name_format=True,
-                            is_staff_team=True)
+                    if match:
+                        submission_path = os.path.join(
+                            staff_teams_root, staff_team_path
+                        )
+                        if staff_team_path.endswith(".zip") or os.path.isdir(
+                            submission_path
+                        ):
+                            self._setup_team(
+                                submission_path, teams_dir, 
+                                ignore_file_name_format=True,
+                                is_staff_team=True)
 
         # zip directory for transfer to remote workers; zip goes into temp directory
         shutil.make_archive(

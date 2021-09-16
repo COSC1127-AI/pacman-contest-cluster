@@ -203,7 +203,7 @@ The main script `pacman_contest_cluster.py` runs a full contest and uses:
 - `contest.zip`: the actual main contest infrastructure, based on that one from UC (with minor fixes, e.g., delay in replays, upgraded to Python 3.x)
 - `layouts.zip`: some interesting layouts that can be used (beyond the randomly generated ones)
 - `staff_team_{basic,medium,top}.zip`: the teams from staff, used for `--include-staff-team` option.
-  - You can point to the directory containing all three staff agents using `--staff-teams-dir` (default is current dir)
+  - You can point to the directory containing all three staff agents using `--staff-teams-roots` (default is current dir)
   - You can use your own basic, medium, top agents, as long as they are named accordingly.  
   - If you want to use our agents, co ntact us. These teams are not shared as they are used for marking purposes. So, if
      you get access to them, please do not distribute.
@@ -246,12 +246,12 @@ Using a CSV file to specify team names, include staff teams:
 ````shell
 $ python3  pacman_contest_cluster.py --compress-log \
         --organizer "RMIT COSC1125/1127 - Intro to AI" \
-        --teams-root AI17-contest/teams/  \
+        --teams-roots AI17-contest/teams1/ AI17-contest/teams2/  \
         --www-dir www/ \
         --max-steps 1200 \
         --no-fixed-layouts 5 --no-random-layouts 10 \
         --workers-file AI1-contest/workers/nectar-workers.jason  
-        --staff-teams-dir AI17-contest/staff-teams/
+        --staff-teams-roots AI17-contest/staff-teams/
 ````
 
 Collecting submitted files in teams, and using the zip filename as teamname, and uploading the replays file only into a sharing file service instead of your local directory:
@@ -259,12 +259,12 @@ Collecting submitted files in teams, and using the zip filename as teamname, and
 ````shell
 $ python3  pacman_contest_cluster.py --compress-log \
         --organizer "UoM COMP90054/2018 - AI Planning" \
-        --teams-root AI17-contest/teams/  \
+        --teams-roots AI17-contest/teams/  \
         --www-dir www/ \
         --max-steps 1200 \
         --no-fixed-layouts 5 --no-random-layouts 10 \
         --workers-file AI1-contest/workers/nectar-workers.jason  
-        --staff-teams-dir AI17-contest/staff-teams/
+        --staff-teams-roots AI17-contest/staff-teams/
         --upload-www-replays
 ````
 

@@ -74,9 +74,11 @@ def load_settings():
                         help="www output directory.")
     parser.add_argument("--workers-file",
                         help="json file with workers details.")
-    parser.add_argument("--teams-root",
+    parser.add_argument("--teams-roots",
+                        nargs='+',
                         help="directory containing the zip files or directories of the teams. See README for format on names.")
-    parser.add_argument("--staff-teams-dir",
+    parser.add_argument("--staff-teams-roots",
+                        nargs='+',
                         help="if given, include staff teams in the given directory (with name staff_team_xxxx.zip).")
     parser.add_argument("--staff-teams-vs-others-only",
                         help="if set to true, it will create only games for each student team vs the staff teams. ",
@@ -192,7 +194,7 @@ def load_settings():
     # Discard every item that is None or a False boolean (i..e, discard all unset options)
     settings_cli = dict(filter(lambda item: (item[1] is not None and (not isinstance(item[1], bool) or item[1])), args.items()))
 
-    if args['staff_teams_dir']:
+    if args['staff_teams_roots']:
         settings_cli["include_staff_team"] = True
     if args['upload_all']:
         settings_cli["upload_replays"] = True
