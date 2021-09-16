@@ -277,7 +277,11 @@ class HtmlGenerator:
             output += """</tr>\n"""
 
             # If score thresholds exist for table, sort in reverse order and add -1 as terminal boundary
-            score_thresholds = sorted(self.score_thresholds,reverse=True) + [-1]
+            if self.score_thresholds is None:
+                score_thresholds = [-1]
+            else:
+                score_thresholds = sorted(self.score_thresholds,reverse=True) + [-1]
+
             next_threshold_index = 0
 
             # Sort teams by points_pct v[1][0] first, then no. of wins, then score points.
