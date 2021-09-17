@@ -30,9 +30,7 @@ Table of Contents
     - [Re-run only updated teams](#re-run-only-updated-teams)
   - [WEB PAGE GENERATION](#web-page-generation)
     - [Interactive Dashboard](#interactive-dashboard)
-  - [SCHEDULE COMPETITION](#schedule-competition)
-    - [Test command to schedule](#test-command-to-schedule)
-    - [Setting up cron](#setting-up-cron)
+    - [Schedule contest runs](#schedule-contest-runs)
   - [MODIFYING THE CONTEST GAME](#modifying-the-contest-game)
   - [TROUBLESHOOTING](#troubleshooting)
   - [SCREENSHOT](#screenshot)
@@ -75,7 +73,6 @@ python3 pacman_html_generator.py --h
   - Ranking generation: 3 points per win; 1 point per tie. Failed games are loses. Ordered by: points first, no. of wins second, score points third.
 - Handle latest submission per team, by sorting via timestamp recorded in file name.
 - Can resume a partial ran contest or extend an existing contest.
-- Automate tournament using a `driver.py` script and `cron`.
 - Save options into a JSON file `config.json` for future runs using `--build-config-file` option.
 
 ### Setup & Dependencies
@@ -194,7 +191,6 @@ IndexOptions FancyIndexing FoldersFirst NameWidth=* DescriptionWidth=*
 
 NOTE: One could install the lighter Lighttpd web-server, but it happens that it does not use `.htaccess` so it is more difficult to set-up per directory listing.
 
-
 ## MAIN COMPONENTS
 
 The main script `pacman_contest_cluster.py` runs a full contest and uses:
@@ -208,11 +204,8 @@ The main script `pacman_contest_cluster.py` runs a full contest and uses:
   - If you want to use our agents, co ntact us. These teams are not shared as they are used for marking purposes. So, if
      you get access to them, please do not distribute.
 - `TEAMS-STUDENT-MAPPING.csv`: example of a mapping file
-
-In addition:
-
-- `driver.py`: downloads teams from submissions server, runs `pacman_contest_cluster.py` and upload results into the web.
 - `contest/` folder: developing place for `contest.zip`.
+- `extras/` folder: additional scripts and resources; some of them may be out-dated.
 
 ## OVERVIEW OF MARKING PROCESS
 
@@ -388,87 +381,57 @@ The dashboard will be served as a web-server, by default on port 8501.
 
 See `/dashboard/` folder for more information how to set-it up and run the dashboard system.
 
-## SCHEDULE COMPETITION
+### Schedule contest runs
 
-If you want to automate the tournament, use the `driver.py` provided. It has the following options:
+It is convenient to set-up a script that will update all repos and then run a contest. This script can then be scheduled to run every day.
 
-```bash
-  --username [USERNAME]
-                        username for --teams-server-url or for https git connection
-  --password [PASSWORD]
-                        password for --teams-server-url or for https git connection
-  --dest-www [DEST_WWW]
-                        Destination folder to publish www data in a web
-                        server. (it is recommended to map a web-server folder
-                        using smb)
-  --teams-server-folder [TEAMS_SERVER_FOLDER]
-                        folder containing all the teams submitted at the
-                        server specified at --teams-server-name
-  --teams-server-url [TEAMS_SERVER_URL]
-                        server address containing the teams submitted
-  --teams-git-csv [TEAMS_GIT_CSV] 
-                        CSV containining columns TEAM, 'GitLab SSH repository link' and 'GitLab https repository link' 
-  --tournament-cmd [TOURNAMENT_CMD]
-                        specify all the options to run pacman-ssh-contesy.py
-  --cron-script-folder [CRON_SCRIPT_FOLDER]
-                        specify the folder to the scripts in order to run cron
+First, here is a template script `run-contest.sh`:
+
+```shell
+#!/bin/bash
+
+now=`date +"%Y-%m-%d--%H-%M"`
+log_file="contest-${now}.log"
+
+SUBMISSIONS=submissions
+TAG=testing
+WWW=www-test
+DESCRIPTION="RMIT COSC1127/1125 AI'21 (Prof. Sebastian Sardina) - Feedback Contest"
+RANDOM_LAYOUTS=$2
+FIXED_LAYOUTS=$1
+
+cd /mnt/ssardina-volume/cosc1125-1127-AI/AI21/p-contest/preliminary
+
+python ../../../git-hw-submissions.git/git_clone_submissions.py --file-timestamps pc-timestamps.csv pc-repos.csv $TAG $SUBMISSIONS  >> $log_file 2>> $log_file
+
+echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" >> $log_file
+
+python  ../pacman-contest-cluster.git/pacman_contest_cluster.py --organizer "$DESCRIPTION"  --www-dir $WWW  --max-steps 1200 --no-fixed-layouts $FIXED_LAYOUTS --no-random-layouts $RANDOM_LAYOUTS --build-config-file config-feedback.json  --workers-file ../workers-nectar21.json --staff-teams-vs-others-only  --hide-staff-teams --score-thresholds 25 38 53 88 --teams-roots $SUBMISSIONS --staff-teams-roots ../reference-contest/reference-teams >> $log_file 2>> $log_file
 ```
 
-You can run a competition using the following command:
+To run it interactively:
 
-```bash
-$ driver.py --dest-www '' --teams-git-csv xxx --tournament-cmd '--compress-log --organizer "UoM COMP90054/2018 - AI Planning" ...'
+```shell
+$ ./run-contest.sh 5 4
 ```
 
-It uses a csv file with the links to github/bitbucket/gitlab or any git server containing the code of each team, and downloads the submissions that have the *tag submission-contest* (see [driver.py](driver.py#lines-37)).
+We can then schedule it via **cron**. To do that, run the following command
 
-### Test command to schedule
-
-We strongly recommend to test the command you want to schedule in **cron**
-
-Run the following command:
-
-```
+```shell
 crontab -e
 ```
 
-and introduce the following line into **cronfile** (change *username* appropriately)
+and introduce the following line:
 
-```
+```shell
 # For more information see the manual pages of crontab(5) and cron(8)
 # 
 # m h  dom mon dow   command
 
-* * * * *  /usr/bin/env > /home/username/cron-env
+01 00 * * * <path/to/script/>run-contest.sh 5 10
 ```
 
-Now you can test the command you want to schedule by running
-
-```
-./run-as-cron /home/username/cron-env "<command>"
-```
-
-This will run you command with the same environment settings as cron jobs do. If the command succeeds, then you can set up your command now.
-
-### Setting up cron
-
-Run the following command:
-
-```bash
-crontab -e
-```
-
-Remove the line you introduced before and introduce the following line:
-
-```bash
-# For more information see the manual pages of crontab(5) and cron(8)
-# 
-# m h  dom mon dow   command
-
-01 00 * * * python driver.py --username xxx --password xxx --cron-script-folder ''  --dest-www '' --teams-server-folder '' --teams-server-url xxx --tournament-cmd ''
-```
-
-Now your script will run every midnight at 00:01
+Now your script will run every midnight at 00:01 and a log will be left.
 
 ## MODIFYING THE CONTEST GAME
 
