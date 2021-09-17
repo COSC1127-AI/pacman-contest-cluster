@@ -359,15 +359,17 @@ class ContestRunner:
         shutil.copytree(self.tmp_replays_dir, replays_archive_full_path)
 
         # Create replay compress archives for each team
+        # store the files without the folders
         for t in self.team_stats.keys():
             replays_folder_name = f'replays_{self.contest_timestamp_id}'
             replays_archive_name = f'replays_{t}.tar.gz'
-            replays_archive_full_path = os.path.join(
-                self.replays_archive_dir, replays_folder_name, replays_archive_name)
-            replays_folder_full_path = os.path.join(
-                self.replays_archive_dir, replays_folder_name)
+            replays_archive_full_path =os.path.abspath(os.path.join(
+                self.replays_archive_dir, replays_folder_name, replays_archive_name))
+            replays_folder_full_path = os.path.abspath(os.path.join(
+                self.replays_archive_dir, replays_folder_name))
+            replay_files_to_pack = ' '.join([os.path.basename(f) for f in glob.glob(f"{replays_folder_full_path}/*{t}*")])
             os.system(
-                f'tar zcf {replays_archive_full_path} {replays_folder_full_path}/*{t}*')
+                f'tar zcf {replays_archive_full_path} -C {replays_folder_full_path} {replay_files_to_pack}')
 
         # PROCESS LOGS: compress and upload
         logs_archive_name = f"logs_{self.contest_timestamp_id}.tar.gz"
@@ -396,6 +398,7 @@ class ContestRunner:
         shutil.copytree(self.tmp_logs_dir, logs_archive_full_path)
 
         # Create tar.gz log archives for each team
+        # store the files without the folders
         for t in self.team_stats.keys():
             logs_folder_name = f'logs_{self.contest_timestamp_id}'
             logs_archive_name = f'logs_{t}.tar.gz'
@@ -403,8 +406,10 @@ class ContestRunner:
                 self.logs_archive_dir, logs_folder_name, logs_archive_name)
             logs_folder_full_path = os.path.join(
                 self.logs_archive_dir, logs_folder_name)
+
+            log_files_to_pack = ' '.join([os.path.basename(f) for f in glob.glob(f"{logs_folder_full_path}/*{t}*")])
             os.system(
-                f'tar zcf {logs_archive_full_path} {logs_folder_full_path}/*{t}*')
+                f'tar zcf {logs_archive_full_path} -C {logs_folder_full_path} {log_files_to_pack}')
 
         # STORE STATS in a json file
         # stats_xxx.json
