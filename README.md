@@ -385,34 +385,12 @@ See `/dashboard/` folder for more information how to set-it up and run the dashb
 
 It is convenient to set-up a script that will update all repos and then run a contest. This script can then be scheduled to run every day.
 
-First, here is a template script `run-contest.sh`:
+An example script can be found in `run-contest.sh`.
+
+To run it interactively, split 2, 5 fixed and 4 random layouts, and description "Feedback":
 
 ```shell
-#!/bin/bash
-
-now=`date +"%Y-%m-%d--%H-%M"`
-log_file="contest-${now}.log"
-
-SUBMISSIONS=submissions
-TAG=testing
-WWW=www-test
-DESCRIPTION="RMIT COSC1127/1125 AI'21 (Prof. Sebastian Sardina) - Feedback Contest"
-RANDOM_LAYOUTS=$2
-FIXED_LAYOUTS=$1
-
-cd /mnt/ssardina-volume/cosc1125-1127-AI/AI21/p-contest/preliminary
-
-python ../../../git-hw-submissions.git/git_clone_submissions.py --file-timestamps pc-timestamps.csv pc-repos.csv $TAG $SUBMISSIONS  >> $log_file 2>> $log_file
-
-echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" >> $log_file
-
-python  ../pacman-contest-cluster.git/pacman_contest_cluster.py --organizer "$DESCRIPTION"  --www-dir $WWW  --max-steps 1200 --no-fixed-layouts $FIXED_LAYOUTS --no-random-layouts $RANDOM_LAYOUTS --build-config-file config-feedback.json  --workers-file ../workers-nectar21.json --staff-teams-vs-others-only  --hide-staff-teams --score-thresholds 25 38 53 88 --teams-roots $SUBMISSIONS --staff-teams-roots ../reference-contest/reference-teams >> $log_file 2>> $log_file
-```
-
-To run it interactively:
-
-```shell
-$ ./run-contest.sh 5 4
+$ ./run-contest.sh 1 5 4 Feedback
 ```
 
 We can then schedule it via **cron**. To do that, run the following command
@@ -428,10 +406,11 @@ and introduce the following line:
 # 
 # m h  dom mon dow   command
 
-01 00 * * * <path/to/script/>run-contest.sh 5 10
+# m h  dom mon dow   command
+1 16 * * * <path/to/script/run-contest.sh 1 2 3 Feedback
 ```
 
-Now your script will run every midnight at 00:01 and a log will be left.
+Now your script will run every midnight at 16:01 and a log will be left.
 
 ## MODIFYING THE CONTEST GAME
 
