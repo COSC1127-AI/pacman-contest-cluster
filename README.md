@@ -30,7 +30,7 @@ Table of Contents
     - [Re-run only updated teams](#re-run-only-updated-teams)
   - [WEB PAGE GENERATION](#web-page-generation)
     - [Interactive Dashboard](#interactive-dashboard)
-    - [Schedule contest runs](#schedule-contest-runs)
+  - [AUTOMATE/SCHEDULE CONTEST RUNS](#automateschedule-contest-runs)
   - [MODIFYING THE CONTEST GAME](#modifying-the-contest-game)
   - [TROUBLESHOOTING](#troubleshooting)
   - [SCREENSHOT](#screenshot)
@@ -381,13 +381,21 @@ The dashboard will be served as a web-server, by default on port 8501.
 
 See `/dashboard/` folder for more information how to set-it up and run the dashboard system.
 
-### Schedule contest runs
+## AUTOMATE/SCHEDULE CONTEST RUNS
 
 It is convenient to set-up a script that will update all repos and then run a contest. This script can then be scheduled to run every day.
 
-An example script can be found in `run-contest.sh`.
+An example script can be found in `run-contest.sh`:
 
-To run it interactively, split 2, 5 fixed and 4 random layouts, and description "Feedback":
+```shell
+$ ./run-contest.sh
+
+usage: ./run-contest.sh <no splits> <no random layouts> <no fixed layouts> <description>
+```
+
+First, copy the script to your working folder for the contest/course edition and update all the variables in it.
+
+For example, to run a contest with split 2, 5 fixed and 4 random layouts, and description "Feedback":
 
 ```shell
 $ ./run-contest.sh 1 5 4 Feedback
