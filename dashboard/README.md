@@ -7,7 +7,7 @@ This package will allow to display an interactive dashboard against the results 
 The dashboard uses [streamlist](https://streamlit.io/), so this must be installed:
 
 ```shell
-$ pip3 install streamlit
+$ pip install streamlit plotly seaborn
 ```
 
 Then, update the information in `config.py` with the correct data for your system. For example:
@@ -27,7 +27,7 @@ The `DEPLOYED_URL` variable should point to the exact URL where the www informat
 To run the web-server serving the dashboard,  open a `screen` or `tmux` virtual terminal and run the server as follows:
 
 ```shell
-$ streamlit run app.py
+$ streamlit run dashboard.py
 ```
 
 The server will be listening on port 8501 by default.
@@ -36,7 +36,7 @@ The reason to use `screen` or `tmux` is that this server will often be run in th
 
 ## Unpacking logs and replays
 
-The old version of the contest cluster script did not unpack the replays and logs that are needed for the dashboard server (they were just inside compressed `tar.gz` files). 
+The old version of the contest cluster script did not unpack the replays and logs that are needed for the dashboard server (they were just inside compressed `tar.gz` files).
 
 To unpack them manually you can use the script `extras\process_www_dashboard.py` as follows:
 

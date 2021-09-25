@@ -103,12 +103,16 @@ def main():
     # Show Results
     st.markdown('# Games')
 
+    # Extract set of teams
     team_names = np.unique(df_games[['Team1', 'Team2']].values)
+    team_names_set = set(list(team_names))
+    team_names_staff = set([x for x in team_names_set if x.startswith("staff_team")])
+    team_names_students = team_names_set.difference(team_names_staff)
 
     # Select Team Results
 
     team_filter = st.selectbox('Filter by your team', options=[
-                               "N/A"] + list(team_names), index=0)
+                               "N/A"] + list(team_names_students), index=0)
 
     if team_filter != "N/A":
         #comparison = comparison.loc[(comparison['Team1'] == team_filter) | (comparison['Team2'] == team_filter) ]
@@ -131,15 +135,14 @@ def main():
         if select_teams_radio == 'All Teams':
             select_teams = team_names
         elif select_teams_radio == 'Staff Teams':
-            select_teams += ['staff_team_basic', 'staff_team_medium',
-                             'staff_team_top', 'staff_team_super']
+            select_teams += team_names_staff
         elif select_teams_radio == 'None' and team_filter != "N/A":
             select_teams = [team_filter]
         elif select_teams_radio == 'None' and team_filter == "N/A":
             select_teams = []
 
         teams_to_compare = st.multiselect(
-            'Picked Teams', options=list(team_names), default=select_teams)
+            'Picked Teams', options=team_names_set, default=select_teams)
 
         comparison = df_games[(df_games['Team1'].isin(teams_to_compare)) & (
             df_games['Team2'].isin(teams_to_compare))]
@@ -293,7 +296,8 @@ def load_data(json_files):
     df_games = {}
     df_stats = {}
     for fname in json_files:
-        with open(f'{STATS_FOLDER}/{fname}') as f:
+        stats_file = os.path.join(STATS_FOLDER, fname)
+        with open(stats_file) as f:
             d = json.load(f)
 
         # Create Games Dataframe
@@ -302,22 +306,33 @@ def load_data(json_files):
         df_games[fname].columns = ['Team1', 'Team2',
                                    'Layout', 'Score', 'Winner', 'Time']
 
-        df_games[fname] = df_games[fname].assign(ReplayFile=f"<a target=\"_blank\" onclick=\"alert('Right click to save. Alternatively, Refresh the new page opened and the dowload will start.')\" href=\"{DEPLOYED_URL}/replays-archive/replays_{timestamp_id}/{df_games[fname].Team1}_vs_{df_games[fname].Team2} {df_games[fname].Layout}.replay\"> Download Replay </a>")
+        
+        # Build replay download link per row; not sure why I cannot use formatted strings!
+        replay_link_text = lambda t1, t2, lay: f"<a target=\"_blank\" onclick=\"alert('Right click to save. Alternatively, Refresh the new page opened and the dowload will start.')\" href=\"{DEPLOYED_URL}/replays-archive/replays_{timestamp_id}/" + t1 + "_vs_" + t2 + "_" + lay + ".replay\"> Download Replay </a>"
+        df_games[fname] = df_games[fname].assign(ReplayFile=replay_link_text(df_games[fname]['Team1'], df_games[fname]['Team2'], df_games[fname]['Layout']))
 
-        df_games[fname] = df_games[fname].assign(LogFile="<a target=\"_blank\" href=\"{DEPLOYED_URL}/logs-archive/logs_{timestamp_id}/{df_games[fname].Team1} vs_{df_games[fname].Team2} {df_games[fname].Layout}.log\"> Download Log </a>")
+        
+        # Build log download link per row; not sure why I cannot use formatted strings!
+        log_link_text = lambda t1, t2, lay: f"<a target=\"_blank\" href=\"{DEPLOYED_URL}/logs-archive/logs_{timestamp_id}/" + t1 + "_vs_" + t2 + "_" + lay + ".log\"> Download Log </a>"
+        df_games[fname] = df_games[fname].assign(LogFile=log_link_text(df_games[fname].Team1 , df_games[fname].Team2, df_games[fname].Layout))
 
-        # Create Table dataframe
-        df_stats[fname] = pd.DataFrame(columns=['Points', 'Win', 'Tie', 'Lost', 'FAILED', 'Score'],
+        # Create loeaderboard dataframe
+        df_stats[fname] = pd.DataFrame(columns=['Percentage', 'Points', 'Win', 'Tie', 'Lost', 'FAILED', 'Score'],
                                        data=d['team_stats'].values(),
-                                       index=d['team_stats'].keys()).sort_values(by=['Points', 'Win', 'Score'], ascending=False)
+                                       index=d['team_stats'].keys()).sort_values(by=['Percentage', 'Points', 'Win', 'Score'], ascending=False)
+
+        # df_stats[fname]['Percentage'].apply(np.floor, inPlace=True)
 
         # Create Position in the Table
         df_stats[fname]['Position'] = list(
             range(1, len(df_stats[fname].index)+1))
 
         # Rearrange Columns
-        df_stats[fname] = df_stats[fname][['Position',
-                                           'Points', 'Win', 'Tie', 'Lost', 'FAILED', 'Score']]
+        df_stats[fname] = df_stats[fname][['Position', 'Percentage', 'Points', 'Win', 'Tie', 'Lost', 'FAILED', 'Score']]
+
+        # Round percentage to no decimals
+        df_stats[fname]['Percentage'] = df_stats[fname]['Percentage'].round(decimals=0)
+        df_stats[fname]['Percentage'] = df_stats[fname]['Percentage'].astype(int)
 
     return df_games, df_stats
 
