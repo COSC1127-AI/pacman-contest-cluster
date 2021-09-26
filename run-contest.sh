@@ -21,10 +21,10 @@ fi
 
 DIR_SCRIPT=`dirname $0` # Find path of the current script
 NOW=`date +"%Y-%m-%d--%H-%M"`
-LOG_FILE="${DIR_SCRIPT}/contest-feedback-${NOW}.log"
 PYTHON=/usr/local/bin/python
 TEE=/usr/bin/tee
-
+LOG_FILE="contest-${NOW}.log"      # log of the contest
+CONFIG_FILE="config-${NOW}.json"   # config file to save configuration
 
 ################################
 # VARIABLES TO CHANGE PER CASE
@@ -41,7 +41,6 @@ TAG=testing
 TIMESTAMP_FILE=pc-timestamps.csv
 SUBMISSIONS=submissions
 WORKERS_FILE=/mnt/ssardina-volume/cosc1125-1127-AI/AI21/p-contest/workers-nectar21.json
-CONFIG_FILE=config-feedback.json    # config file to save configuration
 WWW=/mnt/ssardina-volume/cosc1125-1127-AI/AI21/p-contest/preliminary/www
 STAFF_DIR=/mnt/ssardina-volume/cosc1125-1127-AI/AI21/p-contest/reference-contest/reference-teams
 
