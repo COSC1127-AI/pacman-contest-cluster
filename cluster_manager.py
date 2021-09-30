@@ -64,8 +64,6 @@ CORE_PACKAGE_DIR = "/tmp/pacman_files"
 NO_LOCAL_RETRIES = (
     1  # Number of retries when a remote command failed (e.g., connection lost)
 )
-NO_GLOBAL_TRIES = 2
-
 
 class ErrorInGame(Exception):
     """raise this when there's a lookup error for my app"""
@@ -124,32 +122,29 @@ class ClusterManager:
         results = (
             []
         )  # list of results: job.data, exit_code, result_out, result_err, job_secs_taken
-        try_no = 0
         while jobs_list:
-            try_no = try_no + 1
             results_run = Parallel(self.pool.qsize(), backend="threading")(
                 delayed(run_job)(self.pool, job) for job in jobs_list
             )
 
-            if try_no < NO_GLOBAL_TRIES:
-                games_failed = [
-                    job_data
-                    for job_data, exit_code, _, _, _ in results_run
-                    if exit_code == -1
-                ]
-                jobs_list = [
-                    j for j in jobs_list if j.data in games_failed
-                ]  # extract failed jobs (to retry)
-                good_results = [
-                    tuple(result) for result in results_run if not result[1] == -1
-                ]
-                results = (
-                    results + good_results
-                )  # keep non-error results only (rest will be re-tried)
-            else:
-                # tough luck, include failed jobs in results as they came with score = -1 (failed)...
-                results = results + results_run
-                break
+            # Remove all failed games
+            while None in results_run:
+                results_run.remove(None)
+
+            games_failed = [    
+                job_data
+                for job_data, exit_code, _, _, _ in results_run
+                if exit_code == -1
+            ]
+            jobs_list = [
+                j for j in jobs_list if j.data in games_failed
+            ]  # extract failed jobs (to retry)
+            good_results = [
+                tuple(result) for result in results_run if not result[1] == -1
+            ]
+            results = (
+                results + good_results
+            )  # keep non-error results only (rest will be re-tried)
 
         if len(time_games) > 0:
             avg_secs_game = round(sum(time_games) / len(time_games), 0)
@@ -266,7 +261,7 @@ def run_job(pool, job):
                 )
         except Exception as e:
             logging.error(
-                "Somehow the following job FAILED to execute (will reconnect & retry): {} with exception: {}".format(
+                "Somehow the job {} FAILED to execute with exception: {}".format(
                     str(job.id), str(job)
                 )
             )
@@ -284,7 +279,8 @@ def run_job(pool, job):
             else:
                 no_failed_jobs += 1
                 logging.error("I am giving up on job %s" % str(job.id))
-                result_job_on_worker = job.data, -1, "", "Match did not work", 1
+                # result_job_on_worker = job.data, -1, "", "Match did not work", 1
+                result_job_on_worker = None
         break
     games_played = no_successful_jobs + no_failed_jobs
     games_left = no_total_jobs - no_successful_jobs
