@@ -2,6 +2,11 @@
 ##########################
 #
 # run like <script> |& tee contest-day-`date +"%Y-%m-%d--%H-%M"`.txt
+#
+# This script also uses Python system git_clone_submissions.py to
+#   clone repos: https://github.com/ssardina-teaching/git-hw-submissions
+#
+
 
 ##### GET OPTIONS FROM COMMAND-LINE
 NO_ARGS=$#   # Get the number of arguments passed in the command line
@@ -25,7 +30,8 @@ TEE=/usr/bin/tee
 # VARIABLES TO CHANGE PER CASE
 ################################
 
-# Script locations
+# Scripts' locations
+# git_clone_submissions.py: https://github.com/ssardina-teaching/git-hw-submissions
 DIR_CLONER=/mnt/ssardina-volume/cosc1125-1127-AI/git-hw-submissions.git/
 DIR_CLUSTER=/mnt/ssardina-volume/cosc1125-1127-AI/AI21/p-contest/pacman-contest-cluster.git/
 
