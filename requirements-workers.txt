@@ -12,3 +12,5 @@ py_trees
 keras-rl
 gym
 tf-agents
+frozendict
+pmgpy
