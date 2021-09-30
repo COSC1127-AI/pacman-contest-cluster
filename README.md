@@ -338,7 +338,6 @@ $ find tmp-failed -name \*<TEAM NAME>\*.log -delete
 
 When resuming the contest in `tmp-failed/`, it will only run the games for the logs you just deleted.
 
-
 ### Re-run only updated teams
 
 One quick and good strategy is to run a big contest but re-playing all games where one of the teams was updated.
@@ -422,9 +421,14 @@ Now your script will run every midnight at 16:01 and a log will be left.
 
 ## MODIFYING THE CONTEST GAME
 
-The code implementing a game simulator between two players is located in `contest/` as a _git submodule_ from [pacman-contest-agent](https://github.com/AI4EDUC/pacman-contest-agent) repository, which also serves as an empty agent template.
+The code implementing a game simulator between two players is located in `contest/` as a _git submodule_ from [pacman-contest-agent](https://github.com/AI4EDUC/pacman-contest-agent) repository, which also serves as an empty agent template. Remember that to get the source from its repo, one needs to do this before:
 
-As of 2019, that code runs under Python 3.x. The game simulator for Python 2.7 is kept in repository [pacman-contest-27](https://github.com/AI4EDUC/pacman-contest-27/) repository.
+```bash
+$ git submodule init
+$ git submodule update --remote
+```
+
+As of 2019, that code runs under Python 3.6+.
 
 Note that the submodule source under `contest/` is NOT used for the actual cluster tournament, which only uses the source packed in `contest.zip` file.
 
@@ -433,13 +437,6 @@ It is however left there under `contest/` just in case one wants to run and test
 ```bash
 $ cd contest/
 $ python3 capture.py -r teams/staff_team_super/myTeam.py -b teams/staff_team_medium/myTeam.py
-```
-
-Remember that to get the source from its repo, one needs to do this before:
-
-```bash
-$ git submodule init
-$ git submodule update --remote
 ```
 
 Since the actual simulator code used by the cluster contest script is the one packed in `contest.zip`, any changes, fixes, upgrades, extensions to the simulator have to be done outside and zipped it into `contest.zip` file again.
