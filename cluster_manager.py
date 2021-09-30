@@ -419,13 +419,14 @@ def run_job_on_worker(worker, job):
         "END OF GAME in host %s (%s) - START COPYING BACK RESULT: %s"
         % (worker.hostname, dest_dir, report_match(job))
     )
-    # Retrieve replay file
+    # Retrieve replay-0 and log-0 files produced in the game
+    # E.g., tf = TransferableFile(local_path='tmp/contest-a/replays-run/sklearn2_vs_waka_waka2_RANDOM6520.replay', remote_path='tmp/contest-a/replay-0')
     for tf in job.return_files:
         # print(tf)
         sftp.get(localpath=tf.local_path, remotepath=tf.remote_path)
     sftp.close()
 
-    # clean temporary directory for game
+    # clean temporary directory for the game in remote (e.g., /tmp/cluster_instance_sklearn2-vs-waka_waka2-in-RANDOM6520-2021-09-30-13-58-35/tmp/contest-a)
     worker.exec_command("rm -rf %s" % dest_dir)
 
     logging.info(
