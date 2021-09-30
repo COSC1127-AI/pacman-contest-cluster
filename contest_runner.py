@@ -674,7 +674,7 @@ class ContestRunner:
 
             points = (wins * 3) + draws
             self.team_stats[team] = [
-                ((points*100)/(3*(wins+draws+loses))),
+                ((points*100)/(3*(wins+draws+loses))) if wins+draws+loses > 0 else 0,
                 points,
                 wins,
                 draws,
