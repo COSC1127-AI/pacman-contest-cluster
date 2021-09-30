@@ -112,6 +112,8 @@ python3 pacman_html_generator.py --h
     sudo cp planners/ff /usr/local/bin/.
   ```
 
+  You can get some of the FF planners [here](https://github.com/ssardina-planning/planners).
+
 #### Central Script Host
 
 In the **local machine** (e.g., your laptop) that will dispatch game jobs to the cluster via the `pacman_contest_cluster.py` script:
