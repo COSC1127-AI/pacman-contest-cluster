@@ -3,6 +3,7 @@
 """
 ClusterManager manages a set of remote workers and distributes a list of jobs using a greedy policy (jobs are assigned,
 in order, to the first free worker. Transfers and communications are done over SSH.
+
 The manager creates a temporary environment for each job, and can copy files to and from such environment (via relative
 paths) or anywhere else (via absolute paths).
 
@@ -10,7 +11,7 @@ Extreme care is recommended to both commands and file paths passed: this script 
 you!
 """
 __author__ = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
-__copyright__ = "Copyright 2017-2018"
+__copyright__ = "Copyright 2017-2021"
 __license__ = "GPLv3"
 
 from collections import namedtuple
@@ -39,9 +40,7 @@ logging.basicConfig(
 )
 logging.getLogger("paramiko").setLevel(logging.WARNING)
 
-# ----------------------------------------------------------------------------------------------------------------------
-# Import class from helper module
-
+# Three namedtuples that will be extensively used to manage remotes
 Host = namedtuple(
     "Host",
     ["no_cpu", "hostname", "username", "password", "key_filename", "key_password"]
@@ -71,8 +70,15 @@ class ErrorInGame(Exception):
 
 class ClusterManager:
     def __init__(self, hosts, jobs, core_req_file=None):
-        self.hosts = hosts  # type: 'List[Host]'
-        self.jobs = jobs  # type: 'List[Job]'
+        """Initialize a ClusterManager to run jobs in hosts
+
+        Args:
+            hosts (list[Host]): list of hosts in the cluster
+            jobs (list[Job]): list of jobs to execute in hosts
+            core_req_file (list(str), optional): list of files to transfer to hosts. Defaults to None.
+        """
+        self.hosts = hosts  
+        self.jobs = jobs  
         self.workers = []  # type: 'List[SSHClient]'
         self.pool = Queue()  # type: 'Queue[SSHClient]'
         self.no_tries = NO_LOCAL_RETRIES
@@ -92,7 +98,7 @@ class ClusterManager:
             % (no_total_jobs, len(hosts), total_no_workers)
         )
 
-        # Firsts, authenticate abd build all workers (each Hostname + core gives a worker)
+        # Firsts, authenticate and build all workers (each Hostname + core gives a worker)
         self.workers = Parallel(total_no_workers, backend="threading")(
             delayed(create_worker)(host)
             for host in self.hosts
@@ -102,7 +108,7 @@ class ClusterManager:
         # Second, transfer the required core files to each hostname, if any
         #  (this is good because there there will be many less than workers, just one per IP)
         logging.info("FIRST COPYING REQUIRED FILES TO HOSTS....")
-        if not core_req_file is None:
+        if core_req_file is not None:
             Parallel(len(self.hosts), backend="threading")(
                 delayed(transfer_core_package)(
                     host.hostname, self.workers, core_req_file
@@ -203,18 +209,27 @@ def create_worker(host):
 
 # Transfer the core package and leave it in /tmp/pacman_files
 def transfer_core_package(hostname, workers, required_files):
+    """Transfers a set of required_files to the worker with hostname
+
+    #TODO:  given that the hostname field in workers is already the IP, does it make sense to pass workers, rather than just using hostname
+
+    Args:
+        hostname (str): host to transfer the file
+        workers (list(dict)): list of workers (one has is hostname)
+        required_files (list(TransferableFile)): list of files to transfer
+    """
     # Find a worker for this hostname and transfer the required files to des_dir
     for worker in workers:
         if worker.hostname == hostname:
-            # clean temporary directory of worker
+            # do a full clean of previous temporary directory at worker
             worker.exec_command("rm -rf /tmp/cluster_instance*")
 
-            logging.info("[START] CORE PACKAGE TRANSFERED TO HOST %s\n" % hostname)
+            logging.info(f"[START] CORE PACKAGE TRANSFERRED TO HOST {hostname}\n")
             sftp = worker.open_sftp()
             for tf in required_files:
                 sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
             sftp.close()
-            logging.info("[END] CORE PACKAGE TRANSFERED TO HOST %s\n" % hostname)
+            logging.info(f"[END] CORE PACKAGE TRANSFERRED TO HOST {hostname}\n")
             break
     return
 
@@ -236,7 +251,7 @@ def run_job(pool, job):
             no_successful_jobs += 1
         # TODO: this captures any error that may happen when doing the job in the worker. Is it enough?
         except ErrorInGame as e:
-            # Somehow some games the zip does no uncompress well.....
+            # Somehow some games the zip does do not un-compress correctly.....
             logging.error(
                 "Job with ID {} has FAILED (will retry) with exception: {}".format(
                     job.id, str(e)
@@ -416,8 +431,7 @@ def run_job_on_worker(worker, job):
     time_games.append(job_secs_taken)
 
     logging.debug(
-        "END OF GAME in host %s (%s) - START COPYING BACK RESULT: %s"
-        % (worker.hostname, dest_dir, report_match(job))
+        f"END OF GAME in host {worker.hostname} ({dest_dir}) - START COPYING BACK RESULT: {report_match(job)}"
     )
     # Retrieve replay-0 and log-0 files produced in the game
     # E.g., tf = TransferableFile(local_path='tmp/contest-a/replays-run/sklearn2_vs_waka_waka2_RANDOM6520.replay', remote_path='tmp/contest-a/replay-0')
@@ -427,15 +441,13 @@ def run_job_on_worker(worker, job):
     sftp.close()
 
     # clean temporary directory for the game in remote (e.g., /tmp/cluster_instance_sklearn2-vs-waka_waka2-in-RANDOM6520-2021-09-30-13-58-35/tmp/contest-a)
-    worker.exec_command("rm -rf %s" % dest_dir)
+    worker.exec_command(f"rm -rf {dest_dir}")
 
     logging.info(
-        "FINISHED GAME in host %s (%s time taken; %s): %s"
-        % (worker.hostname, job_secs_taken, dest_dir, report_match(job))
+        f"FINISHED GAME in host {worker.hostname} ({job_secs_taken} time taken; {dest_dir}): {report_match(job)}"
     )
     logging.debug(
-        "FINISHED SUCCESSFULLY EXECUTING command in host %s dir %s: %s"
-        % (worker.hostname, dest_dir, job.command)
+        f"FINISHED SUCCESSFULLY EXECUTING command in host {worker.hostname} dir {dest_dir}: {job.command}"
     )
 
     return job.data, exit_code, result_out, result_err, job_secs_taken

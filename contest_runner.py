@@ -15,9 +15,18 @@ from cluster_manager import ClusterManager, Job, Host, TransferableFile
 
 
 class ContestRunner:
-    # submissions file format: s???????[_datetime].zip
-    # submissions folder format: s???????[_datetime]
-    # datetime in ISO8601 format:  https://en.wikipedia.org/wiki/ISO_8601
+    """Class representing one Capture the Flag contest with a set of teams in a set of layouts
+
+    The class creates individual jobs, one per game between teams in the contest, to run each game. 
+    It uses ClusterManager to run those jobs in a set of hosts, and then analyses the outputs.
+
+    The main API interface is run_contest_remotely(.) to run one single contest with a set of teams in a set of hosts
+
+    Function _get_game_command() generates the actual command that runs each game:
+
+        python3 capture.py -c -q --record --recordLog --delay 0.0 --fixRandomSeed' -r "{red_team}" -b "{blue_team}" -l {layout} -i {steps}
+
+    """
     def __init__(self, settings):
 
         self.organizer = settings["organizer"]
@@ -73,41 +82,134 @@ class ContestRunner:
         self.errors = {n: 0 for n, _ in self.teams}
         self.team_stats = {n: 0 for n, _ in self.teams}
 
-    def _close(self):
-        pass
 
-    def clean_up(self):
-        pass
-        # shutil.rmtree(self.tmp_dir)
+    def _generate_job(self, red_team, blue_team, layout):
+        """
+        Generates a job command to play red_team against blue team in a layout. This job is run inside the sandbox
+        folder for this particular game (e.g., /tmp/cluster_instance_xxxx)
 
-    def _generate_command(self, red_team, blue_team, layout):
-        (red_team_name, red_team_agent_factory) = red_team
-        (blue_team_name, blue_team_agent_factory) = blue_team
-        # TODO: make the -c an option at the meta level to "Catch exceptions and enforce time limits"
-        command = 'python3 capture.py -c -r "{red_team_agent_factory}" -b "{blue_team_agent_factory}" -l {layout} -i {steps} -q --record --recordLog --delay 0.0 --fixRandomSeed'.format(
-            red_team_agent_factory=red_team_agent_factory,
-            blue_team_agent_factory=blue_team_agent_factory,
-            layout=layout,
-            steps=self.max_steps,
+        :param red_team: the path to the red team (e.g., teams/targethdplus/myTeam.py)
+        :param blue_team: the path to the blue team (e.g., teams/targethdplus/myTeam.py)
+        :param layout: the name of the layout (e.g., RANDOM2737)
+        :return: a Job() object with the job to be scheduled in cluster
+        """
+        red_team_name, _ = red_team
+        blue_team_name, _ = blue_team
+
+        game_command = self._get_game_command(red_team, blue_team, layout)
+
+        deflate_command = "mkdir -p {contest_dir} ; unzip -o {zip_file} -d {contest_dir} ; chmod +x -R *".format(
+            zip_file=os.path.join("/tmp", CORE_CONTEST_TEAM_ZIP_FILE),
+            contest_dir=self.tmp_dir,
         )
-        return command
 
-    def _analyse_output(
-        self, red_team, blue_team, layout, exit_code, output, total_secs_taken
-    ):
-        """
-        Analyzes the output of a match and updates self.games accordingly.
-        """
-        (red_team_name, red_team_agent_factory) = red_team
-        (blue_team_name, blue_team_agent_factory) = blue_team
+        command = "{deflate_command} ; cd {contest_dir} ; {game_command} ; touch {replay_filename}".format(
+            deflate_command=deflate_command,
+            contest_dir=self.tmp_dir,
+            game_command=game_command,
+            replay_filename="replay-0",
+        )
 
-        # dump the log of the game into file for the game: red vs blue in layout
+        replay_file_name = "{red_team_name}_vs_{blue_team_name}_{layout}.replay".format(
+            layout=layout,
+            run_id=self.contest_timestamp_id,
+            red_team_name=red_team_name,
+            blue_team_name=blue_team_name,
+        )
+
         log_file_name = "{red_team_name}_vs_{blue_team_name}_{layout}.log".format(
             layout=layout,
             run_id=self.contest_timestamp_id,
             red_team_name=red_team_name,
             blue_team_name=blue_team_name,
         )
+
+        ret_file_replay = TransferableFile(
+            local_path=os.path.join(self.tmp_replays_dir, replay_file_name),
+            remote_path=os.path.join(self.tmp_dir, "replay-0"),
+        )
+        ret_file_log = TransferableFile(
+            local_path=os.path.join(self.tmp_logs_dir, log_file_name),
+            remote_path=os.path.join(self.tmp_dir, "log-0"),
+        )
+
+        return Job(
+            command=command,
+            required_files=[],
+            return_files=[ret_file_replay, ret_file_log],
+            data=(red_team, blue_team, layout),
+            id="{}-vs-{}-in-{}".format(red_team_name, blue_team_name, layout),
+        )
+
+    # Generates a job to restore a game read_team vs blue_team in layout
+    def _generate_empty_job(self, red_team, blue_team, layout):
+        red_team_name, _ = red_team
+        blue_team_name, _ = blue_team
+
+        command = ""
+
+        return Job(
+            command=command,
+            required_files=[],
+            return_files=[],
+            data=(red_team, blue_team, layout),
+            id="{}-vs-{}-in-{}".format(red_team_name, blue_team_name, layout),
+        )
+
+
+    def _get_game_command(self, red_team, blue_team, layout):
+        """Generate the shell command to run one game between two teams in a layout
+
+        Args:
+            red_team (tuple): red team name and path to file
+            blue_team (tuple): blue team name and path to file
+            layout (str): layout to be played
+
+        Returns:
+            str: shell command to execute using Python and capture.py simulator
+        """
+
+        (red_team_name, red_team_path_file) = red_team
+        (blue_team_name, blue_team_path_file) = blue_team
+
+        cmd = f'python3 capture.py -c -q --record --recordLog --delay 0.0 --fixRandomSeed'
+        cmd = cmd + " " + f'-r "{red_team_path_file}" -b "{blue_team_path_file}" -l {layout} -i {self.max_steps}'
+
+        return cmd
+
+    def _analyse_all_outputs(self, results):
+        logging.info(
+            f"About to analyze game result outputs. Number of result output to analyze: {len(results)}")
+        for result in results:
+            (
+                (red_team, blue_team, layout),
+                exit_code,
+                output,
+                error,
+                total_secs_taken,
+            ) = result
+            if not exit_code == 0:
+                print(
+                    "Game {} VS {} in {} exited with code {} and here is the output:".format(
+                        red_team[0], blue_team[0], layout, exit_code, output
+                    )
+                )
+            self._analyse_output(
+                red_team, blue_team, layout, exit_code, None, total_secs_taken
+            )
+
+    def _analyse_output(
+        self, red_team, blue_team, layout, exit_code, output, total_secs_taken
+    ):
+        """
+        Analyzes the output of a match in the log files and updates self.games accordingly.
+        """
+        (red_team_name, red_team_agent_factory) = red_team
+        (blue_team_name, blue_team_agent_factory) = blue_team
+
+        # dump the log of the game into file for the game: red vs blue in layout
+        log_file_name = f"{red_team_name}_vs_{blue_team_name}_{layout}.log"
+        
         # results/results_<run_id>/{red_team_name}_vs_{blue_team_name}_{layout}.log
         if output is not None:
             with open(os.path.join(self.tmp_logs_dir, log_file_name), "w") as f:
@@ -115,7 +217,6 @@ class ContestRunner:
                     print(output.decode("utf-8"), file=f)
                 except:
                     print(output, file=f)
-
         else:
             with open(os.path.join(self.tmp_logs_dir, log_file_name), "r") as f:
                 try:
@@ -134,6 +235,7 @@ class ContestRunner:
                 )
             )
 
+        # now parse the output to get all the info: winner, etc
         score, winner, loser, bug, totaltime = self._parse_result(
             output, red_team_name, blue_team_name, layout
         )
@@ -171,11 +273,12 @@ class ContestRunner:
 
     def _parse_result(self, output, red_team_name, blue_team_name, layout):
         """
-        Parses the result log of a match.
+        Parses the result log of a match to extract outcome.
+
         :param output: an iterator of the lines of the result log
         :param red_team_name: name of Red team
         :param blue_team_name: name of Blue team
-        :return: a tuple containing score, winner, loser and a flag signalling whether there was a bug
+        :return: a tuple containing score, winner, loser and a flag signaling whether there was a bug
         """
         score = 0
         winner = None
@@ -282,35 +385,85 @@ class ContestRunner:
 
         return score, winner, loser, bug, totaltime
 
+    def _calculate_team_stats(self):
+        """
+        From each individual game, compute stats per team (% won, points, wins, etc.) and store it in self.team_stats
+        """
+        staff_team_names = [t[0] for t in self.staff_teams]
+        for team, scores in self.ladder.items():
+            if self.hide_staff_teams and team in staff_team_names:
+                # remove staff team from dictionary.
+                self.team_stats.pop(team, None)
+                continue
+            wins = 0
+            draws = 0
+            loses = 0
+            sum_score = 0
+            for s in scores:
+                if s == ERROR_SCORE:
+                    continue
+                if s > 0:
+                    wins += 1
+                elif s == 0:
+                    draws += 1
+                else:
+                    loses += 1
+                sum_score += s
+
+            points = (wins * 3) + draws
+            self.team_stats[team] = [
+                ((points*100)/(3*(wins+draws+loses))) if wins+draws+loses > 0 else 0,
+                points,
+                wins,
+                draws,
+                loses,
+                self.errors[team],
+                sum_score,
+            ]
+
+
+    ########################################################################
+    # NOW THE API FOR THE CLASS
+    ########################################################################
+
     @staticmethod
     def upload_file(file_full_path, remote_name=None, remove_local=False):
+        """Transfers a file to service transfer.sh
+
+        Args:
+            file_full_path (str): file to be transferred
+            remote_name (str, optional): file name at remote (if different). Defaults to None.
+            remove_local (bool, optional): local has to be deleted. Defaults to False.
+
+        Raises:
+            ValueError: error when transferring the file to remote service
+
+        Returns:
+            [str]: URL link to remote for the file
+        """
         file_name = os.path.basename(file_full_path)
         remote_name = remote_name or file_name
 
-        logging.info("Transferring %s to transfer.sh service..." % file_name)
-        transfer_cmd = "curl --upload-file %s https://transfer.sh/%s" % (
-            file_full_path,
-            remote_name,
-        )
+        logging.info(f"Transferring {file_name} to transfer.sh service...")
+
+        transfer_cmd = f"curl --upload-file {file_full_path} https://transfer.sh/{remote_name}"
         try:
             # This will yield a byte, not a str (at least in Python 3)
             transfer_url = subprocess.check_output(transfer_cmd, shell=True)
             if "Could not save metadata" in transfer_url:
                 raise ValueError(
-                    "Transfer.sh returns incorrect url: %s" % transfer_url)
+                    f"Transfer.sh returns incorrect url: {transfer_url}")
             if remove_local:
                 print("rm %s" % file_full_path)
                 os.system("rm %s" % file_full_path)
                 transfer_url = transfer_url.decode()  # convert to string
             logging.info(
-                "File %s transfered successfully to transfer.sh service; URL: %s"
-                % (file_name, transfer_url)
+                f"File {file_name} transfered successfully to transfer.sh service; URL: {transfer_url}"
             )
         except Exception as e:
             # If transfer failed, use the standard server
             logging.error(
-                "Transfer-url failed, using local copy to store games. Exception: %s"
-                % str(e)
+                f"Transfer-url failed, using local copy to store games. Exception: {e}"
             )
             raise
             # transfer_url = file_name
@@ -424,8 +577,26 @@ class ContestRunner:
 
         return stats_file_rel_path, replays_file_url, logs_file_url
 
-    # prepare local direcotires to store replays, logs, etc.
-    def prepare_dirs(self):
+
+
+
+    def run_contest_remotely(self, hosts, resume_folder=None, transfer_core=True):
+        """This is the MAIN API function to actually run a single contest in a cluster.
+        Notice that a Multi-contest is a set of contests.
+
+        1. First, build a (huge) list of Jobs that must be run, one per game.
+        2. Creates and runs a ClusterManager with that jobs
+        3. Process outputs and build stats
+
+        Can either start a contest from scratch or resume a previous one from a folder.
+
+        Args:
+            hosts (list(Host)): list of namedtuple Host to run the contest
+            resume_folder (str, optional): folder with temp data of previous contest to resume. Defaults to None.
+            transfer_core (bool, optional): True to transfer core files. Defaults to True.
+        """
+
+        # prepare local folders to store replays, logs, stats, etc.
         if not os.path.exists(self.stats_archive_dir):
             os.makedirs(self.stats_archive_dir)
         if not os.path.exists(self.replays_archive_dir):
@@ -433,104 +604,7 @@ class ContestRunner:
         if not os.path.exists(self.logs_archive_dir):
             os.makedirs(self.logs_archive_dir)
 
-    # Generates a job to play read_team vs blue_team in layout
-    def _generate_job(self, red_team, blue_team, layout):
-        """
-        Generates a job command to play red_team against blue team in a layout. This job is run inside the sandbox
-        folder for this particular game (e.g., /tmp/cluster_instance_xxxx)
-
-        :param red_team: the path to the red team (e.g., teams/targethdplus/myTeam.py)
-        :param blue_team: the path to the blue team (e.g., teams/targethdplus/myTeam.py)
-        :param layout: the name of the layout (e.g., RANDOM2737)
-        :return: a Job() object with the job to be scheduled in cluster
-        """
-        red_team_name, _ = red_team
-        blue_team_name, _ = blue_team
-
-        game_command = self._generate_command(red_team, blue_team, layout)
-
-        deflate_command = "mkdir -p {contest_dir} ; unzip -o {zip_file} -d {contest_dir} ; chmod +x -R *".format(
-            zip_file=os.path.join("/tmp", CORE_CONTEST_TEAM_ZIP_FILE),
-            contest_dir=self.tmp_dir,
-        )
-
-        command = "{deflate_command} ; cd {contest_dir} ; {game_command} ; touch {replay_filename}".format(
-            deflate_command=deflate_command,
-            contest_dir=self.tmp_dir,
-            game_command=game_command,
-            replay_filename="replay-0",
-        )
-
-        replay_file_name = "{red_team_name}_vs_{blue_team_name}_{layout}.replay".format(
-            layout=layout,
-            run_id=self.contest_timestamp_id,
-            red_team_name=red_team_name,
-            blue_team_name=blue_team_name,
-        )
-
-        log_file_name = "{red_team_name}_vs_{blue_team_name}_{layout}.log".format(
-            layout=layout,
-            run_id=self.contest_timestamp_id,
-            red_team_name=red_team_name,
-            blue_team_name=blue_team_name,
-        )
-
-        ret_file_replay = TransferableFile(
-            local_path=os.path.join(self.tmp_replays_dir, replay_file_name),
-            remote_path=os.path.join(self.tmp_dir, "replay-0"),
-        )
-        ret_file_log = TransferableFile(
-            local_path=os.path.join(self.tmp_logs_dir, log_file_name),
-            remote_path=os.path.join(self.tmp_dir, "log-0"),
-        )
-
-        return Job(
-            command=command,
-            required_files=[],
-            return_files=[ret_file_replay, ret_file_log],
-            data=(red_team, blue_team, layout),
-            id="{}-vs-{}-in-{}".format(red_team_name, blue_team_name, layout),
-        )
-
-    # Generates a job to restore a game read_team vs blue_team in layout
-    def _generate_empty_job(self, red_team, blue_team, layout):
-        red_team_name, _ = red_team
-        blue_team_name, _ = blue_team
-
-        command = ""
-
-        return Job(
-            command=command,
-            required_files=[],
-            return_files=[],
-            data=(red_team, blue_team, layout),
-            id="{}-vs-{}-in-{}".format(red_team_name, blue_team_name, layout),
-        )
-
-    def _analyse_all_outputs(self, results):
-        logging.info(
-            f"About to analyze game result outputs. Number of result output to analyze: {len(results)}")
-        for result in results:
-            (
-                (red_team, blue_team, layout),
-                exit_code,
-                output,
-                error,
-                total_secs_taken,
-            ) = result
-            if not exit_code == 0:
-                print(
-                    "Game {} VS {} in {} exited with code {} and here is the output:".format(
-                        red_team[0], blue_team[0], layout, exit_code, output
-                    )
-                )
-            self._analyse_output(
-                red_team, blue_team, layout, exit_code, None, total_secs_taken
-            )
-
-    def run_contest_remotely(self, hosts, resume_folder=None, first=True):
-        self.prepare_dirs()
-
+        # next calculate all jobs that must be run
         if resume_folder is not None:
             # if we are resuming, copy all logs and replays and then resume
             contest_folder = os.path.split(self.tmp_dir)[1]
@@ -547,23 +621,21 @@ class ContestRunner:
         else:
             jobs = self.run_contest_jobs()
 
-        #  This is the core package to be transferable to each host
-        core_req_file = TransferableFile(
-            local_path=os.path.join(TMP_DIR, CORE_CONTEST_TEAM_ZIP_FILE),
-            remote_path=os.path.join("/tmp", CORE_CONTEST_TEAM_ZIP_FILE),
-        )
 
-        # create cluster with hosts and jobs and run it by starting it, and then analyze output results
-        # results will contain all outputs from every game played
-        if first:
-            cm = ClusterManager(hosts, jobs, [core_req_file])
-        else:
-            # subsequent contests don't need to transfer the files again
-            cm = ClusterManager(hosts, jobs, None)
-        # sys.exit(0)
+        # Create ClusterManager to run jobs in hosts and start it to run all jobs
+        # Variable results will contain ALL outputs from every game played, to be analyzed then
+        core_req_files = None
+        if transfer_core:
+            #  This is the core package to be transferable to each host
+            core_req_files = [TransferableFile(
+                local_path=os.path.join(TMP_DIR, CORE_CONTEST_TEAM_ZIP_FILE),
+                remote_path=os.path.join("/tmp", CORE_CONTEST_TEAM_ZIP_FILE),
+            )]
+        cm = ClusterManager(hosts, jobs, core_req_files)
         results = cm.start()
-
         logging.info("########## GAMES FINISHED - NEXT ANALYSING OUTPUT OF GAMES")
+
+        # Time to analyze all the outputs
         self._analyse_all_outputs(results)
         self._calculate_team_stats()
         logging.info("########## ANALYSIS OF GAME OUTPUTS COMPLETED")
@@ -617,7 +689,6 @@ class ContestRunner:
                                 red_team, blue_team, layout))
 
         else:
-
             for red_team, blue_team in combinations(self.teams, r=2):
                 for layout in self.layouts:
                     red_team_name, _ = red_team
@@ -648,38 +719,3 @@ class ContestRunner:
             f'A total of {games_restored} games have been restored', flush=True)
         return jobs
 
-    def _calculate_team_stats(self):
-        """
-        Compute ladder and create html with results. The html is saved in results_<contest_timestamp_id>/results.html.
-        """
-        staff_team_names = [t[0] for t in self.staff_teams]
-        for team, scores in self.ladder.items():
-            if self.hide_staff_teams and team in staff_team_names:
-                # remove staff team from dictionary.
-                self.team_stats.pop(team, None)
-                continue
-            wins = 0
-            draws = 0
-            loses = 0
-            sum_score = 0
-            for s in scores:
-                if s == ERROR_SCORE:
-                    continue
-                if s > 0:
-                    wins += 1
-                elif s == 0:
-                    draws += 1
-                else:
-                    loses += 1
-                sum_score += s
-
-            points = (wins * 3) + draws
-            self.team_stats[team] = [
-                ((points*100)/(3*(wins+draws+loses))) if wins+draws+loses > 0 else 0,
-                points,
-                wins,
-                draws,
-                loses,
-                self.errors[team],
-                sum_score,
-            ]

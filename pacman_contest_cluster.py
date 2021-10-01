@@ -262,13 +262,13 @@ if __name__ == "__main__":
         print("Asked to play against staff team only but none available...")
         exit(1)
 
-    first = True
+    transfer_core_packages = True
     start_time = datetime.datetime.now()
     logging.info(f"########## Starting contest at: {start_time.astimezone(TIMEZONE).strftime('%Y-%m-%d-%H-%M')}")
     for runner in multi_contest.create_contests():
         start_time_runner = datetime.datetime.now()
-        runner.run_contest_remotely(hosts, resume_contest_folder, first)
-        first = False
+        runner.run_contest_remotely(hosts, resume_contest_folder, transfer_core_packages)
+        transfer_core_packages = False   # next contests do not need to transfer core packages again; they are in hosts
 
         stats_file_url, replays_file_url, logs_file_url = runner.store_results()
         html_generator = HtmlGenerator(settings["www_dir"], settings["organizer"], settings["score_thresholds"])
@@ -277,7 +277,6 @@ if __name__ == "__main__":
         )
         logging.info(f"########## Web pages generated for the split contest: {runner.contest_timestamp_id}. Next cleaning up contest split...")
 
-        runner.clean_up()
     end_time = datetime.datetime.now()
     logging.info(f"########## Ending contest at: {end_time.astimezone(TIMEZONE).strftime('%Y-%m-%d-%H-%M')}")
     logging.info(f"########## Contest duration: {end_time - start_time}")
