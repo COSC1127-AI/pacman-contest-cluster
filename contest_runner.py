@@ -532,6 +532,7 @@ class ContestRunner:
         self.prepare_dirs()
 
         if resume_folder is not None:
+            # if we are resuming, copy all logs and replays and then resume
             contest_folder = os.path.split(self.tmp_dir)[1]
             resume_folder = os.path.join(resume_folder, contest_folder)
             shutil.rmtree(self.tmp_logs_dir)

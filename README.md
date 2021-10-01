@@ -25,9 +25,10 @@ Table of Contents
     - [Run a contest](#run-a-contest)
     - [Run contest only vs staff teams](#run-contest-only-vs-staff-teams)
     - [Run a multi/split contest](#run-a-multisplit-contest)
-    - [Resume partial contest](#resume-partial-contest)
+  - [RESUME/EXTEND/MODIFY EXECUTED CONTEST](#resumeextendmodify-executed-contest)
     - [Re-run only some teams in a given contest](#re-run-only-some-teams-in-a-given-contest)
     - [Re-run only updated teams](#re-run-only-updated-teams)
+    - [Remove agent from contest](#remove-agent-from-contest)
   - [WEB PAGE GENERATION](#web-page-generation)
     - [Interactive Dashboard](#interactive-dashboard)
   - [AUTOMATE/SCHEDULE CONTEST RUNS](#automateschedule-contest-runs)
@@ -277,28 +278,38 @@ When having too many teams, you can use the `--split n` option to generate `n` b
 
 For example, to run a split multi-contest with 5 sub-contests use `--split 5`.
 
-### Resume partial contest
+## RESUME/EXTEND/MODIFY EXECUTED CONTEST
 
-It is possible to **resume** an existing failed/partial competition or **repeat** a specific competition by using the option `--resume-contest-folder`.
+It is possible to **resume** an existing failed/partial competition or **modify/extend** a specific competition by using the option `--resume-contest-folder`.
 
-So, if a run fails and is incomplete, all the logs generated so far can be found in the folder ``tmp\logs-run`` in your the local machine cloned repo.
+This could be useful, for example, when:
 
-To _resume_ the competition (so that all games played are used and not re-played):
+* a contest has failed half-way: we can resume from where it is left and run only the games that are missing;
+* want to extend a previously ran contest with more layouts;
+* want to delete a team from a previously executed contest; 
+* want to repair/change an agent (submitted or staff).
 
-1. Copy the temporal files into a different temporal folder: `mv tmp tmp-failed`. 
-   * This is important, the folder `tmp/` as is cannot be used as it will be re-generated for each contest.
-2. Tell the script to use that folder to get the existing logs by appending `--resume-contest-folder tmp-failed/` and the configuration file stored in that existing contest:
+In all cases, the idea is to re-use the logs and replays stored in the existing temporal folder of the already executed contest, namely, `tmp/logs-run` and `tmp/replays-run`.
+
+In all cases, the method is the same:
+
+1. Move or copy the temporary folder of the contest to be resumed/modified: `mv tmp tmp.bak`. 
+   * This is extremely important, the folder `tmp/` will be re-created from scratch, so we have to move away and save the one corresponding to the contest to be modified/extended.
+3. Perform whatever changes to the previous contest by modifying `tmp.bak/`; for example:
+   * Delete all the logs of some teams if you wan to re-run that team.
+   * Modify `tmp.bak/config.jason` to delete some team that should not be included.
+4. Run the script and use `--resume-contest-folder tmp.bak/` to instruct resuming that saved contest:
+
+    ```shell
+    $ python pacman-contest-cluster.git/pacman_contest_cluster.py  --resume-contest-folder tmp.bak
+    ```
+
+This will run the exact configuration used in the contest being resumed by reading and using saved configuration `tmp.bak/config.json`. Importantly, all agents (submitted and staff) will be packed from scratch.
+
+One can override the options in the configuration file by adding options. For example, to extend an existing contest with more layout games, use options `--no-fixed-layouts` and `--no-random-layouts` with greater numbers than the one in the contest done. For example, if the contest in `tmp.bak/` included 2 fixed and 3 random layouts, we can extend it with more one more of each type as follows:
 
 ```shell
-$ python pacman-contest-cluster.git/pacman_contest_cluster.py  --resume-contest-folder tmp-failed
-```
-
-This will run the exact configuration used in the contest being resumed by reading and using saved configuration `tmp-failed/config.json`. 
-
-To extend an existing contest with more layout games, use options `--no-fixed-layouts` and `--no-random-layouts` with greater numbers than the one in the contest done. For example, if the contest in `tmp-failed/` included 2 fixed and 3 random layouts, we can extend it with more one more of each type as follows:
-
-```shell
-$ python pacman-contest-cluster.git/pacman_contest_cluster.py --no-random-layouts 3 --no-fixed-layouts 4 --resume-contest-folder tmp-failed
+$ python pacman-contest-cluster.git/pacman_contest_cluster.py --no-random-layouts 3 --no-fixed-layouts 4 --resume-contest-folder tmp.bak
 ```
 
 This will add one more fixed and one more random layout, both chosen randomly.
@@ -311,7 +322,7 @@ If you want to control exactly which fixed or random layout to add, then use opt
 For example, if the previous contest used `contest05Capture` and `contest16Capture` fixed layouts and `7669,1332,765`, one can extend it further with specific layouts `contest20Capture` and `1111` as follows:
 
 ```shell
-$ python pacman-contest-cluster.git/pacman_contest_cluster.py --no-random-layouts 3 --no-fixed-layouts 4 --fixed-layout-seeds contest05Capture,contest16Capture,contest20Capture --random-layout-seeds 7669,1332,765,1111 --resume-contest-folder tmp-failed
+$ python pacman-contest-cluster.git/pacman_contest_cluster.py --no-random-layouts 3 --no-fixed-layouts 4 --fixed-layout-seeds contest05Capture,contest16Capture,contest20Capture --random-layout-seeds 7669,1332,765,1111 --resume-contest-folder tmp.bak
 ```
 
 Remember the seeds of the layouts used in the previous contests are always saved in file `config.json`. It can also be manually extracted from log file names as follows:
@@ -319,13 +330,13 @@ Remember the seeds of the layouts used in the previous contests are always saved
 1. For the random seeds:
 
     ```bash
-    $ ls -la tmp-failed/logs-run/ |  grep RANDOM | sed -e "s/.*RANDOM\(.*\)\.log/\1\,/g" | sort -u | xargs -n 100
+    $ ls -la tmp.bak/logs-run/ |  grep RANDOM | sed -e "s/.*RANDOM\(.*\)\.log/\1\,/g" | sort -u | xargs -n 100
     ```
 
 2. For the fixed layouts:
 
     ```bash
-    $ ls -la tmp-failed/logs-run/ |  grep -v RANDOM | grep log | sed -e "s/.*_\(.*\)\.log/\1\,/g" | sort -u | xargs -n 100
+    $ ls -la tmp.bak/logs-run/ |  grep -v RANDOM | grep log | sed -e "s/.*_\(.*\)\.log/\1\,/g" | sort -u | xargs -n 100
     ```
 
 ### Re-run only some teams in a given contest
@@ -335,10 +346,10 @@ If only one or a few teams failed, one can just re-run those ones by basically d
 To delete the logs of a given team:
 
 ```bash
-$ find tmp-failed -name \*<TEAM NAME>\*.log -delete
+$ find tmp.bak -name \*<TEAM NAME>\*.log -delete
 ```
 
-When resuming the contest in `tmp-failed/`, it will only run the games for the logs you just deleted.
+When resuming the contest in `tmp.bak/`, it will only run the games for the logs you just deleted.
 
 ### Re-run only updated teams
 
@@ -347,10 +358,15 @@ One quick and good strategy is to run a big contest but re-playing all games whe
 To do so, we use the above method but we first delete all the logs of the teams that have been updated:
 
 ```bash
-$ for d in `cat ai20-contest-timestamps.csv | grep updated | awk -F "\"*,\"*" '{print $1}'` ; do find tmp-failed/contest-a/logs-run/ -name \*$d*.log ; done
+$ for d in `cat ai20-contest-timestamps.csv | grep updated | awk -F "\"*,\"*" '{print $1}'` ; do find tmp.bak/contest-a/logs-run/ -name \*$d*.log ; done
 ```
 
 This takes advantage of the cloning script that leaves a column in the csv file stating whether the repo was updated or not from the last cloning.
+
+### Remove agent from contest
+
+To remove an agent `XYZ`, delete all the logs for that team in `tmp.bak/` and delete the team from  `tmp.bak/config.json`. Then resume the contest, it will skip ALL the games and produce the new contest without team  XYZ`.
+
 
 ## WEB PAGE GENERATION
 
