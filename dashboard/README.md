@@ -30,7 +30,11 @@ To run the web-server serving the dashboard,  open a `screen` or `tmux` virtual 
 $ streamlit run dashboard.py
 ```
 
-The server will be listening on port 8501 by default.
+The server will be listening on port 8501 by default. To change the port (e.g., when running more than one server):
+
+``shell
+$ streamlit run dashboard.py --server.port 8502
+```
 
 The reason to use `screen` or `tmux` is that this server will often be run in the remote cluster, so you want to keep running even when you disconnect.
 
