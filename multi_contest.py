@@ -22,7 +22,7 @@ def list_partition(list_in, n):
 
 def get_agent_factory(team_name):
     """returns the agent factory for a given team"""
-    return os.path.join(TEAMS_SUBDIR, team_name, AGENT_FACTORY)
+    return os.path.join(TEAMS_SUBDIR, team_name, AGENT_FILE_NAME)
 
 
 class MultiContest:

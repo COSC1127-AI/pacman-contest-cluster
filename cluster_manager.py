@@ -158,14 +158,8 @@ class ClusterManager:
         else:
             avg_secs_game = 0
             max_secs_game = 0
-        logging.info(
-            "########## STATISTICS: {} games played / {} per game / {} the longest game".format(
-                no_successful_jobs,
-                str(datetime.timedelta(seconds=avg_secs_game)),
-                str(datetime.timedelta(seconds=max_secs_game)),
-            )
-        )
-        return results
+
+        return results, no_successful_jobs, datetime.timedelta(seconds=avg_secs_game), datetime.timedelta(seconds=max_secs_game)
 
 
 def create_worker(host):
@@ -352,36 +346,23 @@ def run_job_on_worker(worker, job):
     instance_id = "{}-{}".format(
         job.id.replace(" ", "_"), datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     )
-    dest_dir = "/tmp/cluster_instance_{}".format(instance_id)
+    dest_dir = f"/tmp/cluster_instance_{instance_id}"
 
-    logging.info(
-        "ABOUT TO RUN JOB in host %s (%s): %s"
-        % (worker.hostname, dest_dir, report_match(job))
-    )
+    logging.info(f"ABOUT TO RUN JOB in host {worker.hostname} ({dest_dir}): {report_match(job)}")
     sftp = worker.open_sftp()
     try:
         sftp.mkdir(dest_dir)
     except IOError:  # dir already exists!
-        logging.debug(
-            "Directory {} seems to exist in {}. Deleting it... ".format(
-                dest_dir, worker.hostname
-            )
-        )
+        logging.debug(f"Directory {dest_dir} seems to exist in {worker.hostname}. Deleting it... ")
         _rmdir(sftp, dest_dir)
         # worker.exec_command('rm -rf %s' % dest_dir)
         sftp.mkdir(dest_dir)
     except:  # dir already exists!
-        logging.debug(
-            "Error creating directory {} in host {}.".format(dest_dir, worker.hostname)
-        )
+        logging.debug(f"Error creating directory {dest_dir} in host {worker.hostname}.")
         _rmdir(sftp, dest_dir)
         sftp.mkdir(dest_dir)
 
     sftp.chdir(dest_dir)
-
-    # copy core package into the temporary dir for this particular job
-    # worker.exec_command('cp -a %s/* %s' % (CORE_PACKAGE_DIR, dest_dir))
-    # logging.debug('GAME PREPARED AND COPIED in host %s (%s): %s' % (worker.hostname, dest_dir, report_match(job)))
 
     # If the job requires files transfer them to the remote path
     # (for pacman now, required files is empty, as we transfer the core package once at the start and then copy it)
@@ -390,13 +371,10 @@ def run_job_on_worker(worker, job):
         #          callback=lambda x, y: report_progress_bytes_transfered(x, y, str(job.id)))
         sftp.put(localpath=tf.local_path, remotepath=tf.remote_path)
 
-    logging.debug(
-        "ABOUT TO EXECUTE command in host %s dir %s: %s"
-        % (worker.hostname, dest_dir, job.command)
-    )
+    logging.debug(f"ABOUT TO EXECUTE command in host {worker.hostname} dir {dest_dir}: {job.command}")
     # run job
     startTime = datetime.datetime.now()
-    actual_command = """cd %s ; sh -c '%s'""" % (dest_dir, job.command)
+    actual_command = f"""cd {dest_dir} ; sh -c '{job.command}'"""
     try:
         # TODO: do we want to put a timeout here in case the call does not return? some pacman games take 3 min eh
         # _, ssh_stdout, ssh_stderr = worker.exec_command(actual_command, timeout=60, get_pty=True)  # Non-blocking call
@@ -411,15 +389,12 @@ def run_job_on_worker(worker, job):
         # if random.randint(0, 10) > 5: # to force failure!
         #     exit_code = -1
         if not exit_code == 0:
-            raise ErrorInGame("Error in running game - cmd: {}".format(actual_command))
+            raise ErrorInGame(f"Error in running game - cmd: {actual_command}")
     except ErrorInGame:
         raise
     except Exception as e:
         job_secs_taken = datetime.datetime.now() - startTime
-        logging.warning(
-            "TIME OUT in host %s (%s secs. taken; %s): %s"
-            % (worker.hostname, job_secs_taken, dest_dir, report_match(job))
-        )
+        logging.warning(f"TIME OUT in host {worker.hostname} ({job_secs_taken} secs. taken; {dest_dir}): {report_match(job)}")
         raise
     job_secs_taken = (
         datetime.datetime.now().replace(microsecond=0)
@@ -433,7 +408,7 @@ def run_job_on_worker(worker, job):
     logging.debug(
         f"END OF GAME in host {worker.hostname} ({dest_dir}) - START COPYING BACK RESULT: {report_match(job)}"
     )
-    # Retrieve replay-0 and log-0 files produced in the game
+    # Retrieve replay-0 and log-0 files produced in host to the local contest temporal folder
     # E.g., tf = TransferableFile(local_path='tmp/contest-a/replays-run/sklearn2_vs_waka_waka2_RANDOM6520.replay', remote_path='tmp/contest-a/replay-0')
     for tf in job.return_files:
         # print(tf)

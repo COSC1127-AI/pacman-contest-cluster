@@ -13,7 +13,6 @@ from config import *
 
 from cluster_manager import ClusterManager, Job, Host, TransferableFile
 
-
 class ContestRunner:
     """Class representing one Capture the Flag contest with a set of teams in a set of layouts
 
@@ -26,34 +25,38 @@ class ContestRunner:
 
         python3 capture.py -c -q --record --recordLog --delay 0.0 --fixRandomSeed' -r "{red_team}" -b "{blue_team}" -l {layout} -i {steps}
 
+    One should distinguish two different directories:
+    
+        1. The temporary folder where all the data of the multi-contest will be collected into (TMP_DIR). 
+            It will have subfolders for each contest with their logs, replays, etc.
+        2. The output WWW folder where the HTML and data will be dumped (settings["www_dir"]). 
+            Logs, replays, stats will be dumped there (plain and compressed versions) together with an HTML page
     """
+
     def __init__(self, settings):
 
         self.organizer = settings["organizer"]
         self.max_steps = settings["max_steps"]
+        self.contest_timestamp_id = settings["contest_timestamp_id"]
+        self.score_thresholds = settings["score_thresholds"]
 
+        # Set the paths for the temporal placement of data (logs, replays, contest script)
+        self.tmp_dir = settings["tmp_dir"]
+        self.tmp_contest = os.path.join(self.tmp_dir, TMP_CONTEST_DIR)
+        self.tmp_replays_dir = os.path.join(self.tmp_dir, TMP_REPLAYS_DIR)
+        self.tmp_logs_dir = os.path.join(self.tmp_dir, TMP_LOGS_DIR)
+
+        # Set the paths of data in the WWW output (logs, replays, stats)
         self.www_dir = settings["www_dir"]
-        self.stats_archive_dir = os.path.join(
-            self.www_dir, STATS_ARCHIVE_DIR,
-        )
-        self.logs_archive_dir = os.path.join(
-            self.www_dir, LOGS_ARCHIVE_DIR,
-        )
-        self.replays_archive_dir = os.path.join(
-            self.www_dir, REPLAYS_ARCHIVE_DIR,
-        )
+        self.stats_www_dir = os.path.join(self.www_dir, STATS_ARCHIVE_DIR)
+        self.logs_www_dir = os.path.join(self.www_dir, LOGS_ARCHIVE_DIR)
+        self.replays_www_dir = os.path.join(self.www_dir, REPLAYS_ARCHIVE_DIR)
 
         self.upload_replays = settings["upload_replays"]
         self.upload_logs = settings["upload_logs"]
 
-        # self.maxTimeTaken = Null
-
         # flag indicating the contest only will run student teams vs staff teams, instead of a full tournament
         self.staff_teams_vs_others_only = settings["staff_teams_vs_others_only"]
-
-        self.contest_timestamp_id = settings["contest_timestamp_id"]
-
-        # a flag indicating whether to hide staff teams in the output
         self.hide_staff_teams = settings["hide_staff_teams"]
 
         self.teams = settings["teams"]
@@ -61,11 +64,7 @@ class ContestRunner:
         self.all_teams = self.teams + self.staff_teams
         self.layouts = settings["layouts"]
 
-        self.tmp_dir = settings["tmp_dir"]
-        self.tmp_contest = os.path.join(self.tmp_dir, TMP_CONTEST_DIR)
-        self.tmp_replays_dir = os.path.join(self.tmp_dir, TMP_REPLAYS_DIR)
-        self.tmp_logs_dir = os.path.join(self.tmp_dir, TMP_LOGS_DIR)
-
+        # Build the temp folders if they do not exist
         if os.path.exists(self.tmp_dir):
             shutil.rmtree(self.tmp_dir)
         os.makedirs(self.tmp_dir)
@@ -414,7 +413,7 @@ class ContestRunner:
                 os.system("rm %s" % file_full_path)
                 transfer_url = transfer_url.decode()  # convert to string
             logging.info(
-                f"File {file_name} transfered successfully to transfer.sh service; URL: {transfer_url}"
+                f"File {file_name} transferred successfully to transfer.sh service; URL: {transfer_url}"
             )
         except Exception as e:
             # If transfer failed, use the standard server
@@ -426,17 +425,24 @@ class ContestRunner:
 
         return transfer_url
 
-    def store_results(self):
-        """Generates all the resulting files for the contest: log, replays, stat packs under the WWW output dir
+    def generate_www(self):
+        """Generates all the resulting files of the contest into the WWW folder 
+        
+            1. logs (plain, compressed all, and compress per team) will go to self.logs_www_dir
+            2. replays (plain, compressed all, and compress per team) will go to self.replays_www_dir
+            3. stats will be dumped into self.stats_www_dir (as a JSON file)
 
-        This will compress all the logs and replays and stats into single files and per team (for dashboard)
+        Full compressed logs and replays are used by the main classical leaderboard web page.
+        Logs/replays may optionally be uploaded to transfer.sh service and linked (save space).
+
+        Plain logs and replays, and per team compressed versions are used by the dashboard.
 
         Returns:
-            [tuple]: the URL or path to the stats, replays, and logs
+            [tuple]: the URL/path to the stats, replays, and logs
         """
 
-        # Basic data stats
-        data_stats = {
+        # We start collecting basic stats - this variable will be later dumped as JSON
+        contest_stats = {
             "games": self.games,
             "team_stats": self.team_stats,
             "random_layouts": [l for l in self.layouts if l.startswith("RANDOM")],
@@ -446,100 +452,115 @@ class ContestRunner:
             "timestamp_id": self.contest_timestamp_id,
         }
 
-        # PROCESS REPLAYS: compress (and pssibly upload)
-        replays_archive_name = f"replays_{self.contest_timestamp_id}.tar.gz"
-        replays_archive_full_path = os.path.join(
-            self.replays_archive_dir, replays_archive_name
-        )
-        with tarfile.open(
-            replays_archive_full_path, "w:gz") as tar:
-            tar.add(self.tmp_replays_dir, arcname="/")
+        ################################
+        # 1. PROCESS REPLAYS
+        ################################
+
+        # The specific folder in the WWW structure for this particular contest
+        # single replays and compressed per teams will go there
+        replays_folder = os.path.join(self.replays_www_dir, f'replays_{self.contest_timestamp_id}')
+
+        # First, copy ALL the single replays from contest tmp folder to WWW replay location
+        shutil.copytree(self.tmp_replays_dir, replays_folder)
+
+        # Second, make a tar.gz file with all replays (optionally upload it to transfer.sh)
+        replays_archive = os.path.join(self.replays_www_dir, f"replays_{self.contest_timestamp_id}.tar.gz")
+        with tarfile.open(replays_archive, "w:gz") as tar:
+            tar.add(replays_folder, arcname="/")
+        
+        # rel path to WWW dir of compressed replay file to use for linking it in WWW
+        replays_file_link = os.path.relpath(replays_archive, self.www_dir)  
+
         if self.upload_replays:
             try:
-                replays_file_path = self.upload_file(
-                    replays_archive_full_path, remove_local=False
+                transfer_url = self.upload_file(
+                    replays_archive, remove_local=False
                 )
-                data_stats["url_replays"] = replays_file_path.decode()
+                contest_stats["url_replays"] = transfer_url.decode()
+                replays_file_link = transfer_url
+                #TODO: I guess we must now delete replays_archive, otherwie what is the point?
             except Exception as e:
-                replays_file_path = os.path.relpath(
-                    replays_archive_full_path, self.www_dir
-                )
-        else:
-            replays_file_path = os.path.relpath(
-                replays_archive_full_path, self.www_dir
-            )  # stats-archive/stats_xxx.json
+                logging.error(f"Exception when uploading replay file {os.path.split(replays_archive)[-1]}: {e}")
 
-        # Copy folder
-        replays_folder_name = f'replays_{self.contest_timestamp_id}'
-        replays_archive_full_path = os.path.join(
-            self.replays_archive_dir, replays_folder_name)
-        shutil.copytree(self.tmp_replays_dir, replays_archive_full_path)
+        # Third, create replay compress archives for each team
+        for team_name in self.team_stats.keys():
+            replays_team_archive = os.path.join(self.replays_www_dir, f'replays_{self.contest_timestamp_id}', f'replays_{team_name}.tar.gz')
+            replay_files_to_pack = glob.glob(os.path.join(replays_folder, f"*{team_name}*"))
+            with tarfile.open(replays_team_archive, "w:gz") as tar:
+                for replay_file in replay_files_to_pack:
+                    tar.add(replay_file, arcname="/")
 
-        # Create replay compress archives for each team
-        # store the files without the folders
-        for t in self.team_stats.keys():
-            replays_folder_name = f'replays_{self.contest_timestamp_id}'
-            replays_archive_name = f'replays_{t}.tar.gz'
-            replays_archive_full_path =os.path.abspath(os.path.join(
-                self.replays_archive_dir, replays_folder_name, replays_archive_name))
-            replays_folder_full_path = os.path.abspath(os.path.join(
-                self.replays_archive_dir, replays_folder_name))
-            replay_files_to_pack = ' '.join([os.path.basename(f) for f in glob.glob(f"{replays_folder_full_path}/*{t}*")])
-            os.system(
-                f'tar zcf {replays_archive_full_path} -C {replays_folder_full_path} {replay_files_to_pack}')
+            # do it via shell; much faster?
+            # replay_files_to_pack = ' '.join([os.path.basename(f) for f in glob.glob(os.path.join(replays_folder, f"*{team_name}*"))])
+            # os.system(
+            #     f'tar zcf {replays_team_archive} -C {replays_folder_full_path} {replay_files_to_pack}')
 
-        # PROCESS LOGS: compress (and possibly upload)
-        logs_archive_name = f"logs_{self.contest_timestamp_id}.tar.gz"
-        logs_archive_full_path = os.path.join(
-            self.logs_archive_dir, logs_archive_name)
-        with tarfile.open(
-            logs_archive_full_path, "w:gz") as tar:
-            tar.add(self.tmp_logs_dir, arcname="/")
-        if self.upload_logs:
+
+        ################################
+        # 2. PROCESS LOGS
+        ################################
+
+        # The specific folder in the WWW structure for this particular contest
+        # single logs and compressed per teams will go there
+        replays_folder = os.path.join(self.replays_www_dir, f'replays_{self.contest_timestamp_id}')
+        logs_folder = os.path.join(self.logs_www_dir, f'logs_{self.contest_timestamp_id}')
+
+        # First, copy all the logs from contest temporary folder to WWW location
+        shutil.copytree(self.tmp_logs_dir, logs_folder)
+
+        # Second, build a full compressed file with all logs that have been copied across (may be very large!)
+        logs_archive = os.path.join(self.logs_www_dir, f"logs_{self.contest_timestamp_id}.tar.gz")
+        with tarfile.open(logs_archive, "w:gz") as tar:
+            tar.add(replays_folder, arcname="/")
+
+        # rel path to WWW dir of compressed replay file to use for linking it in WWW
+        logs_file_link = os.path.relpath(logs_archive, self.www_dir)   
+
+        if self.upload_logs: # Upload log to to transfer.sh
             try:
-                logs_file_path = self.upload_file(
-                    logs_archive_full_path, remove_local=False
+                transfer_url = self.upload_file(
+                    logs_archive, remove_local=False
                 )
-                data_stats["url_logs"] = logs_file_path.decode()
+                contest_stats["url_logs"] = transfer_url.decode()
+                logs_file_link = transfer_url
+                #TODO: I guess we must now delete replays_archive, otherwie what is the point?
             except Exception as e:
-                logs_file_path = os.path.relpath(
-                    logs_archive_full_path, self.www_dir)
-        else:
-            logs_file_path = os.path.relpath(
-                logs_archive_full_path, self.www_dir)
+                logging.error(f"Exception when uploading log file {os.path.split(logs_archive)[-1]}: {e}")
 
-        # Copy folder
-        logs_folder_name = f'logs_{self.contest_timestamp_id}'
-        logs_archive_full_path = os.path.join(
-            self.logs_archive_dir, logs_folder_name)
-        shutil.copytree(self.tmp_logs_dir, logs_archive_full_path)
-
-        # Create tar.gz log archives for each team
+        # Third, create tar.gz log archives for each team
         # store the files without the folders
-        for t in self.team_stats.keys():
-            logs_folder_name = f'logs_{self.contest_timestamp_id}'
-            logs_archive_name = f'logs_{t}.tar.gz'
-            logs_archive_full_path = os.path.join(
-                self.logs_archive_dir, logs_folder_name, logs_archive_name)
-            logs_folder_full_path = os.path.join(
-                self.logs_archive_dir, logs_folder_name)
+        for team_name in self.team_stats.keys():
+            logs_team_archive = os.path.join(self.logs_www_dir, f'logs_{self.contest_timestamp_id}', f'logs_{team_name}.tar.gz')
+            logs_files_to_pack = glob.glob(os.path.join(logs_folder, f"*{team_name}*"))
+            with tarfile.open(logs_team_archive, "w:gz") as tar:
+                for log_file in logs_files_to_pack:
+                    tar.add(log_file, arcname="/")
 
-            log_files_to_pack = ' '.join([os.path.basename(f) for f in glob.glob(f"{logs_folder_full_path}/*{t}*")])
-            os.system(
-                f'tar zcf {logs_archive_full_path} -C {logs_folder_full_path} {log_files_to_pack}')
+            # do it via shell; much faster?
+            # logs_files_to_pack = ' '.join([os.path.basename(f) for f in glob.glob(os.path.join(logs_folder, f"*{team_name}*"))])
+            # os.system(
+            #     f'tar zcf {logs_team_archive} -C {logs_folder_full_path} {logs_files_to_pack}')
 
-        # STORE STATS in a json file
-        # stats_xxx.json
-        stats_file_name = f"stats_{self.contest_timestamp_id}.json"
-        # www/stats-archive/stats_xxx.json
-        stats_file_full_path = os.path.join(
-            self.stats_archive_dir, stats_file_name)
-        stats_file_rel_path = os.path.relpath(
-            stats_file_full_path, self.www_dir)
+        ################################
+        # 3. PROCESS & STORE STATS
+        ################################
+        stats_file_full_path = os.path.join(self.stats_www_dir, f"stats_{self.contest_timestamp_id}.json")
         with open(stats_file_full_path, "w") as f:
-            json.dump(data_stats, f)
+            json.dump(contest_stats, f)
 
-        return stats_file_rel_path, replays_file_path, logs_file_path
+        # rel link to use in WWW
+        stats_file_link = os.path.relpath(stats_file_full_path, self.www_dir)
+
+
+        ################################
+        # 4. GENERATE WWW
+        ################################
+        from pacman_html_generator import HtmlGenerator
+
+        html_generator = HtmlGenerator(self.www_dir, self.organizer, self.score_thresholds)
+        html_generator.add_run(self.contest_timestamp_id, stats_file_link, replays_file_link, logs_file_link)
+
+        return stats_file_link, replays_file_link, logs_file_link
 
 
     def run_contest_remotely(self, hosts, resume_folder=None, transfer_core=True):
@@ -556,15 +577,18 @@ class ContestRunner:
             hosts (list(Host)): list of namedtuple Host to run the contest
             resume_folder (str, optional): folder with temp data of previous contest to resume. Defaults to None.
             transfer_core (bool, optional): True to transfer core files. Defaults to True.
+
+        Returns:
+            result (list(job.data, exit_code, result_out, result_err, job_secs_taken)): the results from ClusterManager
         """
 
         # prepare local folders to store replays, logs, stats, etc.
-        if not os.path.exists(self.stats_archive_dir):
-            os.makedirs(self.stats_archive_dir)
-        if not os.path.exists(self.replays_archive_dir):
-            os.makedirs(self.replays_archive_dir)
-        if not os.path.exists(self.logs_archive_dir):
-            os.makedirs(self.logs_archive_dir)
+        if not os.path.exists(self.stats_www_dir):
+            os.makedirs(self.stats_www_dir)
+        if not os.path.exists(self.replays_www_dir):
+            os.makedirs(self.replays_www_dir)
+        if not os.path.exists(self.logs_www_dir):
+            os.makedirs(self.logs_www_dir)
 
         # next calculate all jobs that must be run
         if resume_folder is not None:
@@ -593,23 +617,22 @@ class ContestRunner:
                 remote_path=os.path.join("/tmp", CORE_CONTEST_TEAM_ZIP_FILE),
             )]
         cm = ClusterManager(hosts, jobs, core_req_files)
-        results = cm.start()
-        logging.info(
-            "########## GAMES FINISHED - NEXT ANALYSING OUTPUT OF GAMES")
+        results, no_successful_job, avg_time, max_time = cm.start()
 
+        # results is list of (job.data, exit_code, result_out, result_err, job_secs_taken)
+        return results, no_successful_job, avg_time, max_time  
+
+    def analyze_results(self, results):
         # Time to analyze all the outputs
         self._analyse_all_outputs(results)
         self._calculate_team_stats()
-        logging.info("########## ANALYSIS OF GAME OUTPUTS COMPLETED")
 
     def _generate_contest_jobs(self, resume=False):
         """Generate a list of Jobs for the games to play
-
         Uses _generate_empty_job() and _generate_job() to build an actual Job
 
         Args:
             resume (bool, optional): True if we are resuming a previous contest and some logs have been copied across already. Defaults to False.
-
         Returns:
             [list(Jobs)]: list of all jobs to run, each being a game
         """
@@ -624,12 +647,15 @@ class ContestRunner:
                         log_file_name = f"{red_team[0]}_vs_{blue_team[0]}_{layout}.log"
                         if resume and os.path.isfile(os.path.join(self.tmp_logs_dir, log_file_name)):
                             games_restored += 1
-                            print(f"{games_restored} Game {log_file_name} restored")
-                            jobs.append(self._generate_empty_job(red_team, blue_team, layout))
+                            print(
+                                f"{games_restored} Game {log_file_name} restored")
+                            jobs.append(self._generate_empty_job(
+                                red_team, blue_team, layout))
                             continue
-                        
+
                         # either not resume anything or log file does not exist
-                        jobs.append(self._generate_job(red_team, blue_team, layout))
+                        jobs.append(self._generate_job(
+                            red_team, blue_team, layout))
         else:
             for red_team, blue_team in combinations(self.all_teams, r=2):
                 for layout in self.layouts:
@@ -638,17 +664,21 @@ class ContestRunner:
                     if resume and os.path.isfile(os.path.join(self.tmp_logs_dir, log_file_name)):
                         games_restored += 1
                         print(f"{games_restored} Game {log_file_name} restored")
-                        jobs.append(self._generate_empty_job(red_team, blue_team, layout))
+                        jobs.append(self._generate_empty_job(
+                            red_team, blue_team, layout))
                         continue
                     log_file_name = f"{blue_team[0]}_vs_{red_team[0]}_{layout}.log"
                     if resume and os.path.isfile(os.path.join(self.tmp_logs_dir, log_file_name)):
                         games_restored += 1
                         print(f"{games_restored} Game {log_file_name} restored")
-                        jobs.append(self._generate_empty_job(blue_team, red_team, layout))
+                        jobs.append(self._generate_empty_job(
+                            blue_team, red_team, layout))
                         continue
 
                     # either not resume anything or log file does not exist
-                    jobs.append(self._generate_job(red_team, blue_team, layout))
+                    jobs.append(self._generate_job(
+                        red_team, blue_team, layout))
         if games_restored > 0:
-                print(f'A total of {games_restored} games have been restored. Missing: {len(jobs)-games_restored}', flush=True)
+            print(
+                f'A total of {games_restored} games have been restored. Missing: {len(jobs)-games_restored}', flush=True)
         return jobs

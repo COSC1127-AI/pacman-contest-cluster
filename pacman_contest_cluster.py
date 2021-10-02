@@ -28,7 +28,6 @@ import datetime
 # from dataclasses import dataclass
 from cluster_manager import Host
 from multi_contest import MultiContest
-from pacman_html_generator import HtmlGenerator
 from config import *
 import copy
 
@@ -264,21 +263,31 @@ if __name__ == "__main__":
 
     transfer_core_packages = True
     start_time = datetime.datetime.now()
-    logging.info(f"########## Starting contest at: {start_time.astimezone(TIMEZONE).strftime('%Y-%m-%d-%H-%M')}")
+    logging.info(f"########## STARTING MULTI-CONTEST AT: {start_time.astimezone(TIMEZONE).strftime('%Y-%m-%d-%H-%M')}")
     for runner in multi_contest.create_contests():
-        start_time_runner = datetime.datetime.now()
-        runner.run_contest_remotely(hosts, resume_contest_folder, transfer_core_packages)
+        start_time_contest = datetime.datetime.now()
+
+        logging.info(f"########## STARTING SPLIT CONTEST: {runner.contest_timestamp_id}")
+        results, no_successful_job, avg_time, max_time = runner.run_contest_remotely(hosts, resume_contest_folder, transfer_core_packages)
+        logging.info(f"########## GAMES IN SPLIT CONTEST COMPLETED: {no_successful_job} jobs done; {avg_time} avg time/game; {max_time} longest game")
+        
+        logging.info(f"########## NOW ANALYZING OUTPUTS (may take time...): {runner.contest_timestamp_id}")
+        runner.analyze_results(results)
         transfer_core_packages = False   # next contests do not need to transfer core packages again; they are in hosts
 
-        stats_file_url, replays_file_url, logs_file_url = runner.store_results()
-        html_generator = HtmlGenerator(settings["www_dir"], settings["organizer"], settings["score_thresholds"])
-        html_generator.add_run(
-            runner.contest_timestamp_id, stats_file_url, replays_file_url, logs_file_url
-        )
-        logging.info(f"########## Web pages generated for the split contest: {runner.contest_timestamp_id}. Next cleaning up contest split...")
+        # After it has run, we produce all the WWW content
+        logging.info(f"########## ANALYZES OF SPLIT CONTEST DONE, now generating its web page: {runner.contest_timestamp_id}")
+        stats_file_url, replays_file_url, logs_file_url = runner.generate_www()
+
+        # OLD, not it is done by runner
+        # html_generator = HtmlGenerator(settings["www_dir"], settings["organizer"], settings["score_thresholds"])
+        # html_generator.add_run(
+        #     runner.contest_timestamp_id, stats_file_url, replays_file_url, logs_file_url
+        # )
+        logging.info(f"########## WEB PAGES GENERATED for the split contest: {runner.contest_timestamp_id}")
+        logging.info(f"########## END OF SPLIT CONTEST {runner.contest_timestamp_id} - TIME TAKEN: {datetime.datetime.now() - start_time_contest}")
 
     end_time = datetime.datetime.now()
-    logging.info(f"########## Ending contest at: {end_time.astimezone(TIMEZONE).strftime('%Y-%m-%d-%H-%M')}")
-    logging.info(f"########## Contest duration: {end_time - start_time}")
-    logging.info("########## All contest split ran... Thank you!")
+    logging.info(f"########## Ending multi-contest at {end_time.astimezone(TIMEZONE).strftime('%Y-%m-%d-%H-%M')} - Duration: {end_time - start_time}")
+    logging.info("########## Thank you!")
         

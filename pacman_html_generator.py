@@ -92,10 +92,6 @@ def load_settings():
 # ----------------------------------------------------------------------------------------------------------------------
 
 class HtmlGenerator:
-    ERROR_SCORE = 9999
-    RESULTS_DIR = 'results'
-    # TIMEZONE = timezone('Australia/Melbourne')    # obtained from config.py
-
     def __init__(self, www_dir, organizer, score_thresholds=None):
         """
         Initializes this generator.
@@ -357,7 +353,7 @@ class HtmlGenerator:
                 output += """<td>%s</td>""" % str(datetime.timedelta(seconds=time_taken))
 
                 # Score and Winner
-                if score == self.ERROR_SCORE:
+                if score == ERROR_SCORE:
                     if winner == n1:
                         output += """<td >--</td>"""
                         output += """<td><b>ONLY FAILED: %s</b></td>""" % n2
@@ -407,8 +403,8 @@ if __name__ == '__main__':
             # Extract the id for that particular content from the stat file stats_<ID-TIMESTAMP>
             run_id = match.group(1)
 
-            replays_file_name = 'replays_%s.tar' % run_id
-            logs_file_name = 'logs_%s.tar' % run_id
+            replays_file_name = f'replays_{run_id}.tar'
+            logs_file_name = f'logs_{run_id}.tar'
 
             stats_file_full_path = os.path.join(stats_dir, stats_file_name)
             replays_file_full_path = os.path.join(replays_dir, replays_file_name) if replays_dir else None
