@@ -502,7 +502,6 @@ class ContestRunner:
 
         # The specific folder in the WWW structure for this particular contest
         # single logs and compressed per teams will go there
-        replays_folder = os.path.join(self.replays_www_dir, f'replays_{self.contest_timestamp_id}')
         logs_folder = os.path.join(self.logs_www_dir, f'logs_{self.contest_timestamp_id}')
 
         # First, copy all the logs from contest temporary folder to WWW location
@@ -511,7 +510,7 @@ class ContestRunner:
         # Second, build a full compressed file with all logs that have been copied across (may be very large!)
         logs_archive = os.path.join(self.logs_www_dir, f"logs_{self.contest_timestamp_id}.tar.gz")
         with tarfile.open(logs_archive, "w:gz") as tar:
-            tar.add(replays_folder, arcname="/")
+            tar.add(logs_folder, arcname="/")
 
         # rel path to WWW dir of compressed replay file to use for linking it in WWW
         logs_file_link = os.path.relpath(logs_archive, self.www_dir)   
