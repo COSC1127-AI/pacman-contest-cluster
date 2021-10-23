@@ -93,10 +93,7 @@ class ClusterManager:
         no_total_jobs = len(self.jobs)
         no_successful_jobs = 0
         no_failed_jobs = 0
-        logging.info(
-            "########## ABOUT TO RUN %d jobs in %d hosts (%d CPUs)"
-            % (no_total_jobs, len(hosts), total_no_workers)
-        )
+        logging.info(f"########## ABOUT TO RUN {no_total_jobs} jobs in {len(hosts)} hosts ({total_no_workers} CPUs)")
 
         # Firsts, authenticate and build all workers (each Hostname + core gives a worker)
         self.workers = Parallel(total_no_workers, backend="threading")(
@@ -313,10 +310,7 @@ def run_job(pool, job):
 def report_progress_bytes_transfered(xfer, to_be_xfer, job_id):
     remains_per = 0.000
     remains_per = (xfer / to_be_xfer) * 100
-    logging.debug(
-        "Complete percent for job %s: %.2f%% - (%d bytes transfered out of %d)"
-        % (job_id, remains_per, xfer, to_be_xfer)
-    )
+    logging.debug(f"Complete percent for job {job_id}: {remains_per:.2f}% - ({xfer} bytes transfered out of {to_be_xfer})")
 
 
 def report_match(job):

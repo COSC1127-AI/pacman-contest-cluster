@@ -17,4 +17,4 @@ keras-rl
 gym
 tf-agents
 frozendict
-
+coloredlogs

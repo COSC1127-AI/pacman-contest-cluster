@@ -22,7 +22,6 @@ import os
 import sys
 import argparse
 import json
-import logging
 import datetime
 
 # from dataclasses import dataclass
@@ -31,17 +30,22 @@ from multi_contest import MultiContest
 from config import *
 import copy
 
+
+import logging
+import coloredlogs
+LOGGING_FMT="%(asctime)s %(levelname)-5s %(message)s"
+LOGGING_DATE="%a, %d %b %Y %H:%M:%S"
+LOGGING_LEVEL=logging.INFO
+
 # check https://stackoverflow.com/questions/10677721/advantages-of-logging-vs-print-logging-best-practices
 # logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG, datefmt='%a, %d %b %Y %H:%M:%S')
 logging.basicConfig(
-    format="%(asctime)s %(levelname)-8s %(message)s",
+    format=LOGGING_FMT,
     level=logging.INFO,
-    datefmt="%a, %d %b %Y %H:%M:%S",
+    datefmt=LOGGING_DATE,
 )
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-# Load settings either from config.json or from the command line
+# Set format and level of debug
+coloredlogs.install(level=LOGGING_LEVEL, fmt=LOGGING_FMT, datefmt=LOGGING_DATE)
 
 
 def default(str):
