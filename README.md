@@ -108,7 +108,7 @@ python3 pacman_html_generator.py --h
     pip3 install tensorflow sklearn scipy neat-python --user
     ```
 
-- If students want to use planners to solve pacman PDDL models for their solutions, copy any planner to `/usr/local/bin`. For example, in the NeCTAR cluster:
+- If students want to use planners to solve pacman PDDL models for their solutions, copy any planner to `/usr/local/bin` in each host. For example, in the NeCTAR cluster:
 
   ```shell
     sudo cp planners/ff /usr/local/bin/.
