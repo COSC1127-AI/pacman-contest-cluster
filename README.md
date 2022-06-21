@@ -33,6 +33,7 @@ Table of Contents
     - [Interactive Dashboard](#interactive-dashboard)
   - [AUTOMATE/SCHEDULE CONTEST RUNS](#automateschedule-contest-runs)
   - [MODIFYING THE CONTEST GAME](#modifying-the-contest-game)
+    - [Modifying fixed layouts](#modifying-fixed-layouts)
   - [TROUBLESHOOTING](#troubleshooting)
   - [SCREENSHOT](#screenshot)
   - [LICENSE](#license)
@@ -107,7 +108,7 @@ python3 pacman_html_generator.py --h
     pip3 install tensorflow sklearn scipy neat-python --user
     ```
 
-- If students want to use planners to solve pacman PDDL models for their solutions, copy any planner to `/usr/local/bin`. For example, in the NeCTAR cluster:
+- If students want to use planners to solve pacman PDDL models for their solutions, copy any planner to `/usr/local/bin` in each host. For example, in the NeCTAR cluster:
 
   ```shell
     sudo cp planners/ff /usr/local/bin/.
@@ -464,6 +465,18 @@ For example, if one modifies the code in `contest/`, a new `contest.zip` can be 
 ```bash
 $ rm -f contest.zip ; cd contest/ ; zip -r  ../contest.zip * ; cd ..
 ```
+
+### Modifying fixed layouts
+
+The set of fixed layouts used in the script is in zip file `layouts.zip`, which includes the layouts in folder [`layouts/layouts/`](layouts/layouts/).
+
+If a layout is added to the folder or an existing layout is modified, we can re-generate the layout zip file as follows:
+
+```shell
+$ zip -j layouts.zip layouts/layouts/*.lay
+``` 
+
+Now the script will use the new `layouts.zip` file for the fixed layouts.
 
 ## TROUBLESHOOTING
 

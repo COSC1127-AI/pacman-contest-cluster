@@ -35,8 +35,6 @@ FILE_CSS = os.path.join(DIR_SCRIPT, "style.css")
 # Load settings either from config.json or from the command line
 
 def load_settings():
-    DEFAULT_CONFIG_FILE = 'config.json'
-
     parser = argparse.ArgumentParser(
         description='This script generates the HTML structure given the logs of all the runs of this tournament.'
     )
@@ -76,7 +74,7 @@ def load_settings():
     # Check mandatory parameters are there, otherwise quit
     missing_parameters = {'organizer', 'www_dir'} - set(settings.keys())
     if missing_parameters:
-        logging.error('Missing parameters: %s. Aborting.' % list(sorted(missing_parameters)))
+        logging.error(f'Missing parameters: {list(sorted(missing_parameters))}. Aborting.')
         parser.print_help()
         sys.exit(1)
 
