@@ -129,6 +129,8 @@ In the **local machine** (e.g., your laptop) that will dispatch game jobs to the
 
 - Simply run: `pip3 install -r requirements.txt --user`
 
+- Additionally there is a requirement to locally install the cluster manager module located [here](https://github.com/ssardina-teaching/cluster-manager). Follow instructions on that repository.
+
 In addition to that:
 
 - Each submission is a `.zip` file or a directory; all within some folder (e.g., `teams/`)
@@ -199,7 +201,6 @@ NOTE: One could install the lighter Lighttpd web-server, but it happens that it 
 
 The main script `pacman_contest_cluster.py` runs a full contest and uses:
 
-- `cluster_manager.py`: the support script to manage clusters (used by `pacman_contest_cluster.py`).
 - `contest.zip`: the actual main contest infrastructure, based on that one from UC (with minor fixes, e.g., delay in replays, upgraded to Python 3.x)
 - `layouts.zip`: some interesting layouts that can be used (beyond the randomly generated ones)
 - `staff_team_{basic,medium,top}.zip`: the teams from staff, used for `--include-staff-team` option.
@@ -222,7 +223,7 @@ In a nutshell, the script follows the following steps:
 3. Take `contest.zip`, `layouts.zip` (where some fixed layouts are stored), and the set of collected set of teams and:
     1. create a temporary full contest dir `contest-tmp`;
     2. zip it into `contest_and_teams.zip` file;
-    3. transfer  `contest_and_teams.zip` to each available worker.
+    3. transfer  `contest_and_teams.zip` to each available worker (using the [cluster manager](https://github.com/ssardina-teaching/cluster-manager)).
 4. For each game:
     1. expand in `contest_and_teams.zip` to `/tmp/cluster_xxxxxxx`;
     2. run game;
