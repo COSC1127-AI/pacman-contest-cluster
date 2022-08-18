@@ -18,3 +18,5 @@ gym
 tf-agents
 frozendict
 coloredlogs
+
+#cluster_manager #this is a local package which must first be downloaded and installed from https://github.com/ssardina-teaching/cluster-manager 
