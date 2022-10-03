@@ -8,15 +8,14 @@ Dan Klein (klein@cs.berkeley.edu) at UC Berkeley.
 After running the tournament, the script generates a leaderboard report in HTML for web hosting which includes
 logs and replays for each game.
                     
-The script was developed for RMIT COSC1125/1127 AI course in Semester 1, 2017 by Sebastian Sardina and PhD
-student Marco Tamassia. The script is in turn based on an original script from Nir Lipovetzky for local runs.
+The script was first developed for RMIT COSC1125/1127 AI course in Semester 1, 2017 by Sebastian Sardina and PhD student Marco Tamassia. The script was based on an original one from Nir Lipovetzky for local runs.
 
-It is currently maintained by Sebastian Sardina and Nir Lipovetzky; contact them for any question.
+Since then, it has been significantly extended; and is currently maintained by Sebastian Sardina and Nir Lipovetzky; contact them for any question.
 """
-__author__ = "Sebastian Sardina, Marco Tamassia, Nir Lipovetzky, and Andrew Chester"
-__copyright__ = "Copyright 2017-2020"
-__license__ = "GPLv3"
-__repo__ = "https://github.com/AI4EDUC/pacman-contest-cluster"
+__author__ = "Sebastian Sardina, Nir Lipovetzky, Marco Tamassia and Andrew Chester"
+__copyright__ = "Copyright 2017-2022"
+__license__ = "Apache-2.0 license"
+__repo__ = "https://github.com/COSC1127/pacman-contest-cluster"
 
 import os
 import sys
