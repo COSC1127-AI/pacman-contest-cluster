@@ -604,9 +604,15 @@ class ContestRunner:
                     resume_folder, "replays-run"), self.tmp_replays_dir
             )
             jobs = self._generate_contest_jobs(resume=True)
+
+            # when we resume we ask for confirmation before starting...
+            if input("Enter 'Yes' to continue; anything else to abort: ") != "Yes":
+                     logging.error("Aborting contest...")
+                     exit(1)
         else:
             jobs = self._generate_contest_jobs(resume=False)
-
+            
+ 
         # Create ClusterManager to run jobs in hosts and start it to run all jobs
         # Variable results will contain ALL outputs from every game played, to be analyzed then
         core_req_files = None

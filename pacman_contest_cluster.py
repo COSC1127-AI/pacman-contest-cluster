@@ -158,6 +158,7 @@ def load_settings():
     settings_json = {}
     settings_cli = {}
 
+    # Resume an existing contest: 
     if args['resume_contest_folder'] is not None:
         settings_cli["resume_contest_folder"] = args['resume_contest_folder']
         config_json_file = os.path.join(args['resume_contest_folder'], DEFAULT_CONFIG_FILE)
