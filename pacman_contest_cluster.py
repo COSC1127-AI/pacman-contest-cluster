@@ -217,7 +217,10 @@ def load_settings():
         parser.print_help()
         sys.exit(1)
 
-    # dump current config files into configuration file if requested to do so
+    # Dump current config files into configuration file if requested
+    # this config file only contains the CLI options given, it will not include for example the random layouts chosen
+    # this config is useful to re-run the same type of contest over and over, but not to reproduce an exact contest
+    # as it may miss information like which particular layouts have been chosen randomly
     if args['build_config_file']:
         logging.info(f"Dumping current options to file {args['build_config_file']}")
         with open(args['build_config_file'], "w") as f:
@@ -281,13 +284,13 @@ if __name__ == "__main__":
 
         # After it has run, we produce all the WWW content
         logging.info(f"########## ANALYZES OF SPLIT CONTEST DONE, now generating its web page: {runner.contest_timestamp_id}")
-        stats_file_url, replays_file_url, logs_file_url = runner.generate_www()
+        config_file_url, stats_file_url, replays_file_url, logs_file_url = runner.generate_www()
+        logging.info(f"Config location: {config_file_url}")
+        logging.info(f"Stats location: {stats_file_url}")
+        logging.info(f"Replays location: {replays_file_url}")
+        logging.info(f"Logs location: {logs_file_url}")
+        
 
-        # OLD, not it is done by runner
-        # html_generator = HtmlGenerator(settings["www_dir"], settings["organizer"], settings["score_thresholds"])
-        # html_generator.add_run(
-        #     runner.contest_timestamp_id, stats_file_url, replays_file_url, logs_file_url
-        # )
         logging.info(f"########## WEB PAGES GENERATED for the split contest: {runner.contest_timestamp_id}")
         logging.info(f"########## END OF SPLIT CONTEST {runner.contest_timestamp_id} - TIME TAKEN: {datetime.datetime.now() - start_time_contest}")
 

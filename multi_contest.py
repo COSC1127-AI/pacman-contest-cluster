@@ -150,11 +150,12 @@ class MultiContest:
                 self.settings, f, sort_keys=True, indent=4, separators=(",", ": ")
             )
 
-        self.settings["layouts"] = self.layouts
+        self.settings["layouts"] = list(self.layouts)
         self.settings["staff_teams"] = [
             (team, get_agent_factory(team)) for team in self.staff_teams
         ]
 
+        # build one contest for each split (own tmp folder, teams, id)
         for i, teams in enumerate(team_split):
             settings = copy.deepcopy(self.settings)
             settings["teams"] = [(team, get_agent_factory(team))

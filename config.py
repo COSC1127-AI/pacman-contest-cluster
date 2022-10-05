@@ -16,6 +16,7 @@ TIMEZONE = timezone("Australia/Melbourne")
 #  logs_archive/replays_{contest_timestamp_id}.tar.gz  # lots of .log files
 #  stats_archive/replays_{contest_timestamp_id}.json
 STATS_ARCHIVE_DIR = "stats-archive"
+CONFIG_ARCHIVE_DIR = "config-archive"
 LOGS_ARCHIVE_DIR = "logs-archive"
 REPLAYS_ARCHIVE_DIR = "replays-archive"
 

@@ -35,7 +35,8 @@ class ContestRunner:
     """
 
     def __init__(self, settings):
-
+        self.config = settings
+        
         self.organizer = settings["organizer"]
         self.max_steps = settings["max_steps"]
         self.contest_timestamp_id = settings["contest_timestamp_id"]
@@ -50,6 +51,7 @@ class ContestRunner:
         # Set the paths of data in the WWW output (logs, replays, stats)
         self.www_dir = settings["www_dir"]
         self.stats_www_dir = os.path.join(self.www_dir, STATS_ARCHIVE_DIR)
+        self.config_www_dir = os.path.join(self.www_dir, CONFIG_ARCHIVE_DIR)
         self.logs_www_dir = os.path.join(self.www_dir, LOGS_ARCHIVE_DIR)
         self.replays_www_dir = os.path.join(self.www_dir, REPLAYS_ARCHIVE_DIR)
 
@@ -523,7 +525,7 @@ class ContestRunner:
                 )
                 contest_stats["url_logs"] = transfer_url.decode()
                 logs_file_link = transfer_url
-                #TODO: I guess we must now delete replays_archive, otherwie what is the point?
+                #TODO: I guess we must now delete replays_archive, otherwise what is the point?
             except Exception as e:
                 logging.error(f"Exception when uploading log file {os.path.split(logs_archive)[-1]}: {e}")
 
@@ -542,14 +544,19 @@ class ContestRunner:
             #     f'tar zcf {logs_team_archive} -C {logs_folder_full_path} {logs_files_to_pack}')
 
         ################################
-        # 3. PROCESS & STORE STATS
+        # 3. STORE STATS and CONFIG
         ################################
         stats_file_full_path = os.path.join(self.stats_www_dir, f"stats_{self.contest_timestamp_id}.json")
         with open(stats_file_full_path, "w") as f:
             json.dump(contest_stats, f)
-
         # rel link to use in WWW
         stats_file_link = os.path.relpath(stats_file_full_path, self.www_dir)
+        
+        config_file_full_path = os.path.join(self.config_www_dir, f"config_{self.contest_timestamp_id}.json")
+        with open(config_file_full_path, "w") as f:
+            json.dump(self.config, f, sort_keys=True, indent=4, separators=(",", ": "))
+        # rel link to use in WWW
+        config_file_link = os.path.relpath(config_file_full_path, self.www_dir)
 
 
         ################################
@@ -560,7 +567,7 @@ class ContestRunner:
         html_generator = HtmlGenerator(self.www_dir, self.organizer, self.score_thresholds)
         html_generator.add_run(self.contest_timestamp_id, stats_file_link, replays_file_link, logs_file_link)
 
-        return stats_file_link, replays_file_link, logs_file_link
+        return config_file_link, stats_file_link, replays_file_link, logs_file_link
 
 
     def run_contest_remotely(self, hosts, resume_folder=None, transfer_core=True):
@@ -582,13 +589,10 @@ class ContestRunner:
             result (list(job.data, exit_code, result_out, result_err, job_secs_taken)): the results from ClusterManager
         """
 
-        # prepare local folders to store replays, logs, stats, etc.
-        if not os.path.exists(self.stats_www_dir):
-            os.makedirs(self.stats_www_dir)
-        if not os.path.exists(self.replays_www_dir):
-            os.makedirs(self.replays_www_dir)
-        if not os.path.exists(self.logs_www_dir):
-            os.makedirs(self.logs_www_dir)
+        # prepare local folders to store configs, replays, logs, stats, etc.
+        for d in [self.config_www_dir, self.stats_www_dir, self.replays_www_dir, self.logs_www_dir]:
+            if not os.path.exists(d):
+                os.makedirs(d)
 
         # next calculate all jobs that must be run
         if resume_folder is not None:
