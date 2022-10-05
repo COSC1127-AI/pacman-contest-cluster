@@ -10,10 +10,6 @@ paths) or anywhere else (via absolute paths).
 Extreme care is recommended to both commands and file paths passed: this script performs no checks whatsoever - it's on
 you!
 """
-__author__ = "Sebastian Sardina, Marco Tamassia, and Nir Lipovetzky"
-__copyright__ = "Copyright 2017-2021"
-__license__ = "GPLv3"
-
 from collections import namedtuple
 from queue import Queue
 import random
