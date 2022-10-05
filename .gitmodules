@@ -1,3 +1,4 @@
 [submodule "contest"]
 	path = contest
-	url = git@github.com:AI4EDUC/pacman-contest-agent.git
+	url = git@github.com:COSC1127/pacman-contest-agent.git
+	branch=main
