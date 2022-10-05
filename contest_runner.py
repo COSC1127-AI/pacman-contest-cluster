@@ -24,7 +24,7 @@ class ContestRunner:
 
     Function _get_game_command() generates the actual command that runs each game:
 
-        python3 capture.py -c -q --record --recordLog --delay 0.0 --fixRandomSeed' -r "{red_team}" -b "{blue_team}" -l {layout} -i {steps}
+        python3 capture.py -c -q --record --recordLog --delay 0.0 --fixRandomSeed -r "{red_team}" -b "{blue_team}" -l {layout} -i {steps}
 
     One should distinguish two different directories:
     

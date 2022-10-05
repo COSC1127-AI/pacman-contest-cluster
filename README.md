@@ -54,11 +54,7 @@ The system contains two main scripts:
 To see options available run:
 
 ```bash
-python3  pacman_contest_cluster.py -h
-```
-
-```bash
-python3 pacman_html_generator.py --h
+$ python  pacman_contest_cluster.py -h
 ```
 
 ### Features
@@ -92,12 +88,12 @@ python3 pacman_html_generator.py --h
 
     ```bash
     sudo apt-get update
-    sudo apt-get install python3-pip unzip vim
-    sudo pip3 install setuptools
+    sudo apt-get install python-pip unzip vim
+    sudo pip install setuptools
 
     wget https://raw.githubusercontent.com/AI4EDUC/pacman-contest-cluster/master/requirements.txt
     python -m pip install --user --upgrade pip
-    sudo pip3 install -r requirements.txt
+    sudo pip install -r requirements.txt
     ```
 
     If you do not have root access you can use `pip install -r requirements.txt --user` to do a user install. Get [requirements.txt](requirements.txt) with wget.
@@ -105,7 +101,7 @@ python3 pacman_html_generator.py --h
 - Many students benefit from the availability other tools, like [TensorFlow](https://www.tensorflow.org/), [scikit-learn](http://scikit-learn.org/), [neat-python](https://github.com/CodeReclaimers/neat-python):
 
     ```shell
-    pip3 install tensorflow sklearn scipy neat-python --user
+    pip install tensorflow sklearn scipy neat-python --user
     ```
 
 - If students want to use planners to solve pacman PDDL models for their solutions, copy any planner to `/usr/local/bin` in each host. For example, in the NeCTAR cluster:
@@ -121,13 +117,13 @@ python3 pacman_html_generator.py --h
 In the **local machine** (e.g., your laptop) that will dispatch game jobs to the cluster via the `pacman_contest_cluster.py` script:
 
 - unzip & zip (to pack and unpack submissions and files for transfer): `sudo apt-get install -y unzip zip`
-- Python >= 3.5 with:
+- Python >= 3.6 with:
   - setuptools
   - iso8601
   - pytz
   - paramiko
 
-- Simply run: `pip3 install -r requirements.txt --user`
+- Simply run: `pip install -r requirements.txt --user`
 
 In addition to that:
 
@@ -241,7 +237,7 @@ The full contest is **all-against-all tournament** with the following rank gener
 Using a CSV file to specify team names, include staff teams:
 
 ````shell
-$ python3  pacman_contest_cluster.py --compress-log \
+$ python  pacman_contest_cluster.py --compress-log \
         --organizer "RMIT COSC1125/1127 - Intro to AI" \
         --teams-roots AI17-contest/teams1/ AI17-contest/teams2/  \
         --www-dir www/ \
@@ -254,7 +250,7 @@ $ python3  pacman_contest_cluster.py --compress-log \
 Collecting submitted files in teams, and using the zip filename as teamname, and uploading the replays file only into a sharing file service instead of your local directory:
 
 ````shell
-$ python3  pacman_contest_cluster.py --compress-log \
+$ python  pacman_contest_cluster.py --compress-log \
         --organizer "UoM COMP90054/2018 - AI Planning" \
         --teams-roots AI17-contest/teams/  \
         --www-dir www/ \
@@ -376,7 +372,7 @@ A contest will leave JSON files with all stats, replays, and logs, from which a 
 For example, to build web page in `www/` from stats, replays, and logs dirs:
 
 ```shell
-$ python3 pacman_html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" \
+$ python pacman_html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" \
     --www-dir www/ \
     --stats-archive-dir stats-archive/  \
     --replays-archive-dir replays-archive/ \ 
@@ -386,7 +382,7 @@ $ python3 pacman_html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" 
 or if all stats, replays, and logs are within `www/` then just:
 
 ```shell
-$ python3 pacman_html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" --www-dir www/
+$ python pacman_html_generator.py --organizer "Inter Uni RMIT-Mel Uni Contest" --www-dir www/
 ```
 
 **Observation:** If the stats file for a run has the `transfer.sh` URL for logs/replays, those will be used.
@@ -455,7 +451,7 @@ It is however left there under `contest/` just in case one wants to run and test
 
 ```bash
 $ cd contest/
-$ python3 capture.py -r teams/staff_team_super/myTeam.py -b teams/staff_team_medium/myTeam.py
+$ python capture.py -r teams/staff_team_super/myTeam.py -b teams/staff_team_medium/myTeam.py
 ```
 
 Since the actual simulator code used by the cluster contest script is the one packed in `contest.zip`, any changes, fixes, upgrades, extensions to the simulator have to be done outside and zipped it into `contest.zip` file again.
