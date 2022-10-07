@@ -1,23 +1,26 @@
-import streamlit as st
-import pandas as pd
+import streamlit as st  # https://docs.streamlit.io/streamlit-cloud/trust-and-security
+import streamlit.components.v1 as components
+
 import numpy as np
+import pandas as pd
+from pandas import json_normalize
+
 import plotly.express as px
 import seaborn as sns
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from datetime import datetime
+
 import re
 import os
 import json
+from datetime import datetime
+
 import itables.interactive
 from itables import show
 from IPython.core.display import display, display_html, Javascript, HTML
 
-import streamlit.components.v1 as components
 
-
-from pandas import json_normalize
 
 # import all configuration vars
 from config import SHOW_TEAMS_PROGRESS_CHECKBOX, DEPLOYED_URL, ORGANIZER, STATS_FOLDER
@@ -87,20 +90,20 @@ def main():
     df_stats = df_all_stats[json_selectbox]
     timestamp_id = get_id_from_json(json_selectbox)
 
+    st.image("pacman-banner-825x165.jpg")
+
     # Title Bar
-
-    #date_time_obj = datetime.strptime(json_selectbox, 'stats_%Y-%m-%d-%H-%M.json')
     date_time_obj = get_date_from_json(json_selectbox)
-
     st.title(f'Pacman {ORGANIZER} Dashboard')
     st.header(f'Date: {date_time_obj}')
+    
 
-    # Show Table
+    # Show ladder table
     if table_checkbox:
         st.dataframe(df_stats.style.apply(lambda x: ['background: lightyellow' if (
             'staff_team' in x.name) else '' for i in x], axis=1), width=1500, height=1500)
 
-    # Show Results
+    # Show Game Results
     st.markdown('# Games')
 
     # Extract set of teams
@@ -110,7 +113,6 @@ def main():
     team_names_students = team_names_set.difference(team_names_staff)
 
     # Select Team Results
-
     team_filter = st.selectbox('Filter by your team', options=[
                                "N/A"] + list(team_names_students), index=0)
 
@@ -130,7 +132,7 @@ def main():
 
     if games_checkbox or games_pie_checkbox or team_progress_checkbox:
         select_teams_radio = st.radio(
-            "Select Preselection of Opponents: ", ('All Teams', 'Staff Teams', 'None'), index=1)
+            "Select Preselection of Opponents: ", ('All Teams', 'Staff Teams', 'None'), index=2)
 
         if select_teams_radio == 'All Teams':
             select_teams = team_names
