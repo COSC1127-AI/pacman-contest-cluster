@@ -652,14 +652,14 @@ class ContestRunner:
                         # when playing staff teams only, team always plays red
                         log_file_name2 = f"{staff[0]}_vs_{team[0]}_{layout}.log"
                         if resume:  # if game between these two in layout exist, then skip and recover it
-                            log_file_name1 = f"{team[0]}_vs_{staff[0]}_{layout}.log"
-                            log_file_name2 = f"{staff[0]}_vs_{team[0]}_{layout}.log"
-                            if os.path.isfile(os.path.join(self.tmp_logs_dir, log_file_name1)):
+                            log_file_name1 = os.path.join(self.tmp_logs_dir, f"{team[0]}_vs_{staff[0]}_{layout}.log")
+                            log_file_name2 = os.path.join(self.tmp_logs_dir, f"{staff[0]}_vs_{team[0]}_{layout}.log")
+                            if os.path.isfile(log_file_name1) and os.stat(log_file_name1).st_size != 0:
                                 games_restored += 1
                                 print(f"Game {log_file_name1} restored (total restored: {games_restored})")
                                 jobs.append(self._generate_empty_job(team, staff, layout))
                                 continue
-                            elif os.path.isfile(os.path.join(self.tmp_logs_dir, log_file_name2)):
+                            elif os.path.isfile(log_file_name2) and os.stat(log_file_name2).st_size != 0:
                                 games_restored += 1
                                 print(f"Game {log_file_name2} restored (total restored: {games_restored})")
                                 jobs.append(self._generate_empty_job(staff, team, layout))
@@ -675,23 +675,6 @@ class ContestRunner:
                         # either not resume anything or log file does not exist
                         jobs.append(self._generate_job(
                             red_team, blue_team, layout))
-            # for red_team in self.teams:
-            #     for blue_team in self.staff_teams:
-            #         for layout in self.layouts:
-            #             # remember red_team = (name of team, path of file)
-            #             # when playing staff teams only, team always plays red
-            #             log_file_name = f"{red_team[0]}_vs_{blue_team[0]}_{layout}.log"
-            #             if resume and os.path.isfile(os.path.join(self.tmp_logs_dir, log_file_name)):
-            #                 games_restored += 1
-            #                 print(
-            #                     f"{games_restored} Game {log_file_name} restored")
-            #                 jobs.append(self._generate_empty_job(
-            #                     red_team, blue_team, layout))
-            #                 continue
-
-            #             # either not resume anything or log file does not exist
-            #             jobs.append(self._generate_job(
-            #                 red_team, blue_team, layout))
         else:
             for red_team, blue_team in combinations(self.all_teams, r=2):
                 for layout in self.layouts:
