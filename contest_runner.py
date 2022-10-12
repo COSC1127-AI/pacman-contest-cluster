@@ -212,7 +212,7 @@ class ContestRunner:
                 log_output = ""
 
         # now parse the output to get all the info: winner, etc
-        score, winner, loser, bug, totaltime = self._parse_result(
+        score, winner, loser, bug, total_time = self._parse_result(
             log_output, red_team_name, blue_team_name, layout
         )
 
@@ -227,7 +227,7 @@ class ContestRunner:
             score = ERROR_SCORE
         
         # Append match game outcome to self.games
-        self.games.append((red_team_name, blue_team_name, layout, score, winner, totaltime))
+        self.games.append((red_team_name, blue_team_name, layout, score, winner, total_time))
 
     def _parse_result(self, output, red_team_name, blue_team_name, layout):
         """
@@ -243,7 +243,7 @@ class ContestRunner:
         loser = None
         bug = False
         tied = False
-        totaltime = 0
+        total_time = 0
 
         try:
             output = output.decode()  # convert byte into string
@@ -323,25 +323,21 @@ class ContestRunner:
                     tied = True
 
                 if line.find("Total Time Game: ") != -1:
-                    totaltime = int(
+                    total_time = int(
                         float(line.split("Total Time Game: ")[1].split(" ")[0])
                     )
 
             # signal strange case where script was unable to find outcome of game - should never happen!
             if winner is None and loser is None and not tied:
                 logging.error(
-                    "Note able to parse out for game {} vs {} in {} (no traceback available)".format(
-                        red_team_name, blue_team_name, layout
-                    )
-                )
-                print(output)
+                    f"Note able to successfully parse output for game {red_team_name} vs {blue_team_name} in {layout}: \n {output} \n =====================================")
                 winner = None
                 loser = None
                 tied = True
                 score = -1
                 # sys.exit(1)
 
-        return score, winner, loser, bug, totaltime
+        return score, winner, loser, bug, total_time
 
     def _calculate_team_stats(self):
         """
