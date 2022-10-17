@@ -329,26 +329,25 @@ def _rmdir(sftp, path):
 def run_job_on_worker(worker, job):
     global max_secs_game
 
-    #  worker is an SSHClient
-
     # create remote env
-    instance_id = "".join(random.choice("0123456789abcdef") for _ in range(30))
     instance_id = "{}-{}".format(
         job.id.replace(" ", "_"), datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     )
     dest_dir = f"/tmp/cluster_instance_{instance_id}"
-
+    
     logging.info(f"ABOUT TO RUN JOB in host {worker.hostname} ({dest_dir}): {report_match(job)}")
     sftp = worker.open_sftp()
     try:
         sftp.mkdir(dest_dir)
-    except IOError:  # dir already exists!
-        logging.debug(f"Directory {dest_dir} seems to exist in {worker.hostname}. Deleting it... ")
+    except IOError as io:  # dir already exists!
+        logging.warning(f"IOError while creating dir {dest_dir} in host {worker.hostname}: ", io)
+        traceback.print_exc()
         _rmdir(sftp, dest_dir)
         # worker.exec_command('rm -rf %s' % dest_dir)
         sftp.mkdir(dest_dir)
-    except:  # dir already exists!
-        logging.debug(f"Error creating directory {dest_dir} in host {worker.hostname}.")
+    except Exception as e:  # all other catches
+        logging.warning(f"Error creating directory {dest_dir} in host {worker.hostname}: ", e)
+        traceback.print_exc()
         _rmdir(sftp, dest_dir)
         sftp.mkdir(dest_dir)
 
