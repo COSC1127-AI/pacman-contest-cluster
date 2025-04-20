@@ -150,11 +150,12 @@ class MultiContest:
                 self.settings, f, sort_keys=True, indent=4, separators=(",", ": ")
             )
 
-        self.settings["layouts"] = self.layouts
+        self.settings["layouts"] = list(self.layouts)
         self.settings["staff_teams"] = [
             (team, get_agent_factory(team)) for team in self.staff_teams
         ]
 
+        # build one contest for each split (own tmp folder, teams, id)
         for i, teams in enumerate(team_split):
             settings = copy.deepcopy(self.settings)
             settings["teams"] = [(team, get_agent_factory(team))
@@ -363,42 +364,3 @@ class MultiContest:
             else:
                 submission_zip_file.extractall(team_destination_dir)
             self.submission_times[team_name] = submission_time
-
-    
-    
-    
-    @staticmethod
-    def _load_teams(team_names_file):
-        """DEPRECATED: NOT USED ANYMORE BUT LEFT HERE IN CASE WE WANT TO RESUSE TO FILTER TEAMS GIVEN IN A FILE
-
-        Args:
-            team_names_file ([type]): [description]
-
-        Returns:
-            [type]: [description]
-        """
-        team_names = {}
-        with open(team_names_file, "r") as f:
-            reader = csv.reader(f, delimiter=",", quotechar='"')
-
-            student_id_col = None
-            team_col = None
-            for row in reader:
-                if student_id_col is None:
-                    student_id_col = row.index("STUDENT_ID")
-                    team_col = row.index("TEAM_NAME")
-
-                student_id = row[student_id_col]
-
-                # couple of controls
-                team_name = row[team_col].replace(
-                    "/", "NOT_FUNNY").replace(" ", "_")
-                if team_name == "staff_team":
-                    logging.warning(
-                        "staff_team is a reserved team name. Skipping.")
-                    continue
-
-                if not student_id or not team_name:
-                    continue
-                team_names[student_id] = team_name
-        return team_names

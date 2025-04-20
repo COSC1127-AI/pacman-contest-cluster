@@ -2,15 +2,11 @@
 ##########################
 #
 # run like <script> |& tee contest-day-`date +"%Y-%m-%d--%H-%M"`.txt
-#
-# This script also uses Python system git_clone_submissions.py to
-#   clone repos: https://github.com/ssardina-teaching/git-hw-submissions
-#
-
 
 ##### GET OPTIONS FROM COMMAND-LINE
 NO_ARGS=$#   # Get the number of arguments passed in the command line
 MY_NAME=${0##*/} 
+DIR_SCRIPT=`dirname $0` # Find path of the current script
 
 if [ "$NO_ARGS" != 4 ]; then
   printf "**** Script by Sebastian Sardina (2020) \n\n"
@@ -19,48 +15,53 @@ if [ "$NO_ARGS" != 4 ]; then
   exit
 fi
 
-DIR_SCRIPT=`dirname $0` # Find path of the current script
-NOW=`date +"%Y-%m-%d--%H-%M"`
-PYTHON=/usr/local/bin/python
-TEE=/usr/bin/tee
-LOG_FILE="contest-${NOW}.log"      # log of the contest
-CONFIG_FILE="config-${NOW}.json"   # config file to save configuration
-
 ################################
 # VARIABLES TO CHANGE PER CASE
 ################################
 
-# Scripts' locations
-# git_clone_submissions.py: https://github.com/ssardina-teaching/git-hw-submissions
+# System variables
+PYTHON=/usr/local/bin/python
+TEE=/usr/bin/tee
+NOW=`date +"%Y-%m-%d--%H-%M"`
+# Script locations
 DIR_CLONER=/mnt/ssardina-volume/cosc1125-1127-AI/git-hw-submissions.git/
-DIR_CLUSTER=/mnt/ssardina-volume/cosc1125-1127-AI/AI21/p-contest/pacman-contest-cluster.git/
+DIR_CLUSTER=/mnt/ssardina-volume/cosc1125-1127-AI/AI22/contest/pacman-contest-cluster.git/
+WORKERS_FILE=/mnt/ssardina-volume/cosc1125-1127-AI/AI22/contest/workers-nectar22.json
 
-# Options to the scripts
-REPO_FILE=pc-repos.csv
+# Project variables
+GH_ORG="RMIT-COSC1127-1125-AI22"
+PREFIX_REPOS="contest"
 TAG=testing
-TIMESTAMP_FILE=pc-timestamps.csv
-SUBMISSIONS=submissions
-WORKERS_FILE=/mnt/ssardina-volume/cosc1125-1127-AI/AI21/p-contest/workers-nectar21.json
-WWW=/mnt/ssardina-volume/cosc1125-1127-AI/AI21/p-contest/preliminary/www
-STAFF_DIR=/mnt/ssardina-volume/cosc1125-1127-AI/AI21/p-contest/reference-contest/reference-teams
+ROOT_PROJECT=/mnt/ssardina-volume/cosc1125-1127-AI/AI22/contest/preliminary
+LOG_FILE="${ROOT_PROJECT}/contest-feedback-${NOW}.log"      # log of the contest
+CONFIG_FILE=${ROOT_PROJECT}/config-feedback-${NOW}.json   # config file to save configuration
+REPO_FILE=${ROOT_PROJECT}/repos.csv
+TIMESTAMP_FILE=${ROOT_PROJECT}/timestamps.csv
+SUBMISSIONS=${ROOT_PROJECT}/submissions
+WWW=${ROOT_PROJECT}/www
+STAFF_DIR=${ROOT_PROJECT}/reference-teams/
 
-# Configuration of contest
+# Configuration of contest as per CLI options provided
 SPLIT=$1
 RANDOM_LAYOUTS=$2
 FIXED_LAYOUTS=$3
-
-#RANDOM_LAYOUTS=3
-#FIXED_LAYOUTS=2
-
-DESCRIPTION="RMIT COSC1127/1125 AI'21 (Prof. Sebastian Sardina) - $4"
+DESCRIPTION="RMIT COSC1127/1125 AI'22 (Prof. Sebastian Sardina) - $4"
 STEPS=1200
 
 
 main_function() {
-  # First, get into the dir where this script is located!
+  # 1. get into the dir where this script is located!
   cd $DIR_SCRIPT
 
-  # Clone the primary repos using the main tag (e.g., "test-submission")
+  # 2. Scrape all repos available (as they may be created at different times...)
+  OPTIONS=( -u ssardina -t ~/.ssh/keys/gh-token-ssardina.txt $GH_ORG $PREFIX_REPOS $REPO_FILE )
+  CMD=($PYTHON $DIR_CLONER/gh_classroom_collect.py ${OPTIONS[@]})
+  echo "=================================================="
+  echo ${CMD[@]} 
+  echo "=================================================="
+  ${CMD[@]}
+
+  # 3. Clone the primary repos using the main tag (e.g., "test-submission")
   OPTIONS=( --file-timestamps $TIMESTAMP_FILE  $REPO_FILE $TAG $SUBMISSIONS )
   CMD=($PYTHON $DIR_CLONER/git_clone_submissions.py ${OPTIONS[@]})
   echo "=================================================="
@@ -69,8 +70,14 @@ main_function() {
   # $PYTHON $DIR_CLONER/git_clone_submissions.py "${OPTIONS[@]}"
   ${CMD[@]}
   
-  # Build options to run contest
-  OPTIONS=( --organizer "$DESCRIPTION" --teams-roots $SUBMISSIONS  --www-dir $WWW  --max-steps $STEPS  --no-fixed-layouts $FIXED_LAYOUTS --no-random-layouts $RANDOM_LAYOUTS  --workers-file $WORKERS_FILE --build-config-file $CONFIG_FILE --split $SPLIT --staff-teams-roots $STAFF_DIR  --hide-staff-teams --score-thresholds 25 38 53 88 )
+  # 3. Run a contest
+  OPTIONS=( --organizer "$DESCRIPTION" 
+    --teams-roots $SUBMISSIONS  
+    --staff-teams-vs-others-only --staff-teams-roots $STAFF_DIR --hide-staff-teams     --www-dir $WWW  --workers-file $WORKERS_FILE
+    --max-steps $STEPS 
+    --no-fixed-layouts $FIXED_LAYOUTS --no-random-layouts $RANDOM_LAYOUTS   --build-config-file $CONFIG_FILE 
+    --split $SPLIT 
+    --score-thresholds 25 38 53 88 )
   CMD=($PYTHON $DIR_CLUSTER/pacman_contest_cluster.py "${OPTIONS[@]}")
   echo "=================================================="
   echo ${CMD[@]} 

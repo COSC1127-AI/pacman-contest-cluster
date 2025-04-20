@@ -135,3 +135,4 @@ Output.txt
 gmon.out
 score
 *.orig
+cluster_manager-old.py
