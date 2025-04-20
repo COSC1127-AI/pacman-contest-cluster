@@ -134,3 +134,4 @@ ai21-prelim.json
 Output.txt
 gmon.out
 score
+*.orig
