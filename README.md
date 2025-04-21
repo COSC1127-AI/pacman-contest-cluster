@@ -2,11 +2,14 @@
 
 This system runs complex contests for the [UC Berkley Pacman Conquer the Flag](http://ai.berkeley.edu/contest.html) game.
 
-Designed & developed for RMIT COSC1125/1127 AI course in 2017 by lecturer A/Prof. Sebastian Sardina (with programming support by Marco Tamassia), based on an original script from Dr. Nir Lipovetzky (Melbourne University). Since then, the tool has been continuously improved and extended to fit RMIT COSC1125/1127 and UNIMELB COMP90054 AI course.
+Designed & developed for RMIT COSC1125/1127 AI course in 2017 by lecturer Prof. Sebastian Sardina (with programming support by Marco Tamassia), based on an original script from Dr. Nir Lipovetzky (Melbourne University). Since then, the tool has been continuously improved and extended to fit RMIT COSC1125/1127 and UNIMELB COMP90054 AI course.
 
-The system runs on Python 3.x. Currently used on Python 3.6.
+The system runs on Python 3.9+.
 
-**CONTACT:** Prof. Sebastian Sardina (ssardina@gmail.com) and Dr. Nir Lipovetzky (nirlipo@gmail.com)
+**CONTACT:** Prof. Sebastian Sardina (ssardina@gmail.com)
+
+> [!IMPORTANT]
+> Refer to [SETUP.md](SETUP.md) on how to setup the framework (in the coordination machine and all worker hosts) and [INSTRUCTIONS.md](INSTRUCTIONS.md) on how to use the framework. 👌
 
 ## Overview
 
@@ -24,13 +27,13 @@ The main script is `pacman_contest_cluster.py`.
 To see options available run:
 
 ```bash
-python3  pacman_contest_cluster.py -h
+$ python pacman_contest_cluster.py -h
 ```
 
 ## Features
 
-- Build `n` subcontests where teams are assigned randomly to one of them (`--split` option).
-- Play teams only against staff teams.
+- Build `n` sub-contests where teams are assigned randomly to one of them (`--split` option).
+- Play teams only against staff/reference teams.
 - Runs multiple games at the same time by using a cluster of worker machines/CPUs.
   - option `--workers-file <json file>`
   - connection via ssh with tunneling support if needed.
@@ -53,4 +56,3 @@ python3  pacman_contest_cluster.py -h
 - Dr. Andrew Chester (while tutor at RMIT 2020-2024)
 - A/Prof. Nir Lipovetzky (Melbourne University)
 - Dr. Marco Tamassia (2017)
-
