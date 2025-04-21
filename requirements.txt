@@ -1,22 +1,11 @@
 setuptools
-paramiko
-joblib
-future
 iso8601
 pytz
 tabulate
-gitpython
-numpy
-keras
-tensorflow
-sklearn
-scipy
-neat-python
-py_trees
-keras-rl
-gym
-tf-agents
+# gitpython
 frozendict
 coloredlogs
 
-#cluster_manager #this is a local package which must first be downloaded and installed from https://github.com/ssardina-teaching/cluster-manager 
+# Also, install cluster_manager as a local package:
+# https://github.com/ssardina-teaching/cluster-manager
+#cluster_manager

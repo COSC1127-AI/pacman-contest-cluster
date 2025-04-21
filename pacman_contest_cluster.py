@@ -7,14 +7,14 @@ Dan Klein (klein@cs.berkeley.edu) at UC Berkeley.
 
 After running the tournament, the script generates a leaderboard report in HTML for web hosting which includes
 logs and replays for each game.
-                    
+
 The script was first developed for RMIT COSC1125/1127 AI course in Semester 1, 2017 by Sebastian Sardina and PhD student Marco Tamassia. The script was based on an original one from Nir Lipovetzky for local runs.
 
 Since then, it has been significantly extended; and is currently maintained by Sebastian Sardina and Nir Lipovetzky; contact them for any question.
 """
-__author__ = "Sebastian Sardina, Nir Lipovetzky, Marco Tamassia and Andrew Chester"
-__copyright__ = "Copyright 2017-2022"
-__license__ = "Apache-2.0 license"
+__author__ = "Sebastian Sardina, Andrew Chester, Nir Lipovetzky, and Marco Tamassia"
+__copyright__ = "Copyright 2017-2025"
+__license__ = "MIT License"
 __repo__ = "https://github.com/COSC1127/pacman-contest-cluster"
 
 import os
@@ -24,7 +24,9 @@ import json
 import datetime
 
 # from dataclasses import dataclass
-from cluster_manager import Host
+import cluster_manager
+
+from cluster_manager.config import Host
 from multi_contest import MultiContest
 from config import *
 import copy
@@ -158,7 +160,7 @@ def load_settings():
     settings_json = {}
     settings_cli = {}
 
-    # Resume an existing contest: 
+    # Resume an existing contest:
     if args['resume_contest_folder'] is not None:
         settings_cli["resume_contest_folder"] = args['resume_contest_folder']
         config_json_file = os.path.join(args['resume_contest_folder'], DEFAULT_CONFIG_FILE)
@@ -277,7 +279,7 @@ if __name__ == "__main__":
         logging.info(f"########## STARTING SPLIT CONTEST: {runner.contest_timestamp_id}")
         results, no_successful_job, avg_time, max_time = runner.run_contest_remotely(hosts, resume_contest_folder, transfer_core_packages)
         logging.info(f"########## GAMES IN SPLIT CONTEST COMPLETED: {no_successful_job} jobs done; {avg_time} avg time/game; {max_time} longest game")
-        
+
         logging.info(f"########## NOW ANALYZING OUTPUTS (may take time...): {runner.contest_timestamp_id}")
         runner.analyze_results(results)
         transfer_core_packages = False   # next contests do not need to transfer core packages again; they are in hosts
@@ -289,7 +291,7 @@ if __name__ == "__main__":
         logging.info(f"Stats location: {stats_file_url}")
         logging.info(f"Replays location: {replays_file_url}")
         logging.info(f"Logs location: {logs_file_url}")
-        
+
 
         logging.info(f"########## WEB PAGES GENERATED for the split contest: {runner.contest_timestamp_id}")
         logging.info(f"########## END OF SPLIT CONTEST {runner.contest_timestamp_id} - TIME TAKEN: {datetime.datetime.now() - start_time_contest}")
@@ -297,4 +299,3 @@ if __name__ == "__main__":
     end_time = datetime.datetime.now()
     logging.info(f"########## Ending multi-contest at {end_time.astimezone(TIMEZONE).strftime('%Y-%m-%d-%H-%M')} - Duration: {end_time - start_time}")
     logging.info("########## Thank you!")
-        

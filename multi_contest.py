@@ -3,10 +3,25 @@ import shutil
 import zipfile
 import random
 import iso8601
-import csv
 import datetime
 import json
 import logging
+import os
+import sys
+
+from config import (
+    TEAMS_SUBDIR,
+    AGENT_FILE_NAME,
+    TMP_DIR,
+    TMP_CONTEST_DIR,
+    DIR_SCRIPT,
+    CONTEST_ZIP_FILE,
+    STAFF_TEAM_FILENAME_PATTERN,
+    SUBMISSION_FILENAME_PATTERN,
+    DEFAULT_CONFIG_FILE,
+    CORE_CONTEST_TEAM_ZIP_FILE,
+    TIMEZONE
+)
 
 from string import ascii_lowercase
 
@@ -34,12 +49,14 @@ class MultiContest:
 
         if not os.path.exists(os.path.join(DIR_SCRIPT, CONTEST_ZIP_FILE)):
             logging.error(
-                f"Contest zip file {CONTEST_ZIP_FILE} could not be found. Aborting.")
+                f"Contest zip file {CONTEST_ZIP_FILE} could not be found. Aborting."
+            )
             sys.exit(1)
 
         if not settings["fixed_layouts_file"]:
             logging.error(
-                f"Layouts file {settings['fixed_layouts_file']} could not be found. Aborting.")
+                f"Layouts file {settings['fixed_layouts_file']} could not be found. Aborting."
+            )
             sys.exit(1)
 
         # this is a folder with the whole contest folder (with system + teams) in the multi-contest folder
@@ -90,14 +107,13 @@ class MultiContest:
         # settings["teams_roots"] is a list of folders
         for team_root in settings["teams_roots"]:
             for submission_file in os.listdir(team_root):
-                submission_path = os.path.join(
-                    team_root, submission_file)
+                submission_path = os.path.join(team_root, submission_file)
                 if submission_file.endswith(".zip") or os.path.isdir(submission_path):
                     self._setup_team(
                         submission_path,
                         teams_dir,
                         ignore_file_name_format=settings["ignore_file_name_format"],
-                        is_staff_team=False
+                        is_staff_team=False,
                     )
 
         # Include staff teams if available (ones with pattern STAFF_TEAM_FILENAME_PATTERN)
@@ -116,9 +132,11 @@ class MultiContest:
                             submission_path
                         ):
                             self._setup_team(
-                                submission_path, teams_dir, 
+                                submission_path,
+                                teams_dir,
                                 ignore_file_name_format=True,
-                                is_staff_team=True)
+                                is_staff_team=True,
+                            )
 
         # zip directory for transfer to remote workers; zip goes into temp directory
         shutil.make_archive(
@@ -158,11 +176,11 @@ class MultiContest:
         # build one contest for each split (own tmp folder, teams, id)
         for i, teams in enumerate(team_split):
             settings = copy.deepcopy(self.settings)
-            settings["teams"] = [(team, get_agent_factory(team))
-                                 for team in teams]
-            settings["tmp_dir"] = os.path.join(
-                TMP_DIR, f"contest-{ascii_lowercase[i]}")
-            settings["contest_timestamp_id"] = f"{self.contest_timestamp_id}-{ascii_lowercase[i]}"
+            settings["teams"] = [(team, get_agent_factory(team)) for team in teams]
+            settings["tmp_dir"] = os.path.join(TMP_DIR, f"contest-{ascii_lowercase[i]}")
+            settings["contest_timestamp_id"] = (
+                f"{self.contest_timestamp_id}-{ascii_lowercase[i]}"
+            )
             contests.append(ContestRunner(settings))
 
         return contests
@@ -226,13 +244,15 @@ class MultiContest:
             exit(1)
         if len(fixed_layout_seeds) > no_fixed_layouts:
             logging.error(
-                f"Too many fixed seeds layouts selected ({len(fixed_layout_seeds)}) for a total of {no_fixed_layouts} fixed layouts requested to play.")
+                f"Too many fixed seeds layouts selected ({len(fixed_layout_seeds)}) for a total of {no_fixed_layouts} fixed layouts requested to play."
+            )
             exit(1)
         if not fixed_layout_seeds.issubset(
             layouts_available
         ):  # NOT empty, list of layouts provided
             logging.error(
-                f"There are fixed layout seeds that are not available: {fixed_layout_seeds.difference(layouts_available)}.")
+                f"There are fixed layout seeds that are not available: {fixed_layout_seeds.difference(layouts_available)}."
+            )
             exit(1)
 
         # assign the set of fixed layouts to be used: the seeds given and complete with random picks from available
@@ -246,7 +266,8 @@ class MultiContest:
         # Next, pick the random layouts, and included all the seeds provided if any
         if len(random_seeds) > no_random_layouts:
             logging.error(
-                f"Too many random seeds layouts ({len(random_seeds)}) for a total of {no_random_layouts} random layouts requested to play.")
+                f"Too many random seeds layouts ({len(random_seeds)}) for a total of {no_random_layouts} random layouts requested to play."
+            )
             exit(1)
 
         # complete the mising random layouts
@@ -261,8 +282,7 @@ class MultiContest:
         random_layouts_selected = set(
             [x for x in self.layouts if re.compile(r"RANDOM[0-9]*").match(x)]
         )
-        fixed_layouts_selected = self.layouts.difference(
-            random_layouts_selected)
+        fixed_layouts_selected = self.layouts.difference(random_layouts_selected)
 
         seeds_strings = [
             m.group(1)
@@ -313,15 +333,15 @@ class MultiContest:
                 )
                 return
 
-        if ignore_file_name_format: # use exact name of file as team name
+        if ignore_file_name_format:  # use exact name of file as team name
             team_name = os.path.basename(submission_path)
-            team_name = team_name[:-
-                                  4] if team_name.endswith(".zip") else team_name
+            team_name = team_name[:-4] if team_name.endswith(".zip") else team_name
             submission_time = None
         else:
             # Set team name from submission file name - extract given pattern
-            match = re.match(SUBMISSION_FILENAME_PATTERN,
-                            os.path.basename(submission_path))
+            match = re.match(
+                SUBMISSION_FILENAME_PATTERN, os.path.basename(submission_path)
+            )
             submission_time = None
             if match:
                 team_name = match.group(1)
@@ -343,8 +363,19 @@ class MultiContest:
 
         if team_name not in self.submission_times:
             if submission_zip_file is None:
-                shutil.copytree(submission_path, team_destination_dir, ignore=shutil.ignore_patterns(
-                    '.git', '*.log', '*.replay', '*.gz', '*img*', '*layouts*', '*wiki*'))
+                shutil.copytree(
+                    submission_path,
+                    team_destination_dir,
+                    ignore=shutil.ignore_patterns(
+                        ".git",
+                        "*.log",
+                        "*.replay",
+                        "*.gz",
+                        "*img*",
+                        "*layouts*",
+                        "*wiki*",
+                    ),
+                )
             else:
                 submission_zip_file.extractall(team_destination_dir)
             if is_staff_team:
@@ -359,8 +390,19 @@ class MultiContest:
         ):
             shutil.rmtree(team_destination_dir)
             if submission_zip_file is None:
-                shutil.copy(submission_path, team_destination_dir, ignore=shutil.ignore_patterns(
-                    '.git', '*.log', '*.replay', '*.gz', '*img*', '*layouts*', '*wiki*'))
+                shutil.copy(
+                    submission_path,
+                    team_destination_dir,
+                    ignore=shutil.ignore_patterns(
+                        ".git",
+                        "*.log",
+                        "*.replay",
+                        "*.gz",
+                        "*img*",
+                        "*layouts*",
+                        "*wiki*",
+                    ),
+                )
             else:
                 submission_zip_file.extractall(team_destination_dir)
             self.submission_times[team_name] = submission_time

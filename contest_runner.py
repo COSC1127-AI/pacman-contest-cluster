@@ -12,7 +12,8 @@ import logging
 from config import *
 import random
 
-from cluster_manager import ClusterManager, Job, Host, TransferableFile
+from cluster_manager.elements import ClusterManager
+from cluster_manager.config import Job, TransferableFile
 
 class ContestRunner:
     """Class representing one Capture the Flag contest with a set of teams in a set of layouts

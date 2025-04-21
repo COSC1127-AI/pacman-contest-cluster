@@ -19,6 +19,8 @@ We need to configure the machine running the central script, and the workers mac
     $ pip install -r https://raw.githubusercontent.com/COSC1127-AI/pacman-contest-cluster/main/requirements-workers.txt
     ```
 
+Finally, you need to locally install the **cluster manager module** located [here](https://github.com/ssardina-teaching/cluster-manager). Follow instructions on that repository. This is a generic framework to delegate jobs to workers and collect their outputs.
+
 ### Extras
 
 Many students benefit from the availability other tools, like [TensorFlow](https://www.tensorflow.org/), [scikit-learn](http://scikit-learn.org/), [neat-python](https://github.com/CodeReclaimers/neat-python).
@@ -55,19 +57,11 @@ In addition to that:
 * Each submission is a `.zip` file or a directory; all within some folder (e.g., `teams/`)
   * The player agent should be in the _root_ of the team zip file or team directory.
   * Submission file/dir name will be used as the team name.
-  * zip/dir should start with "`s`", continue with student number, then `_`, and then date in [iso8601 format](https://en.wikipedia.org/wiki/ISO_8601), then `.zip`
-  * Format stored regexp `SUBMISSION_FILENAME_PATTERN`: `r'^(s\d+)_(.+)?\.zip$'`
-  * Examples of legal team zip files:
-    * `s2736172_2017-05-13T21:32:43.342000+10:00`
-    * `s2736172_2017-05-13.zip`
-  * Examples of team directories:
-    * `Destructor_Pacman-05-13T21:32:43.342000+10:00`
-    * `WeWillWin-05-13`
 * The cluster to be used is specified with option `--workers-file-path`, to point to a `.json` file containing the workers available (including no of cores, IP, username, password, and private key file if needed)
 
 Hence, the user of this system must provide:
 
-* *private keys* for cluster (if needed; specified in `workers.json`).
+* _private keys_ for cluster (if needed; specified in `workers.json`).
 * Directory with set of zip submission files; see above (for option `--teams`)
 * `workers.json`: listing the cluster setting to be used (for option `--workers-file-path`)
 
