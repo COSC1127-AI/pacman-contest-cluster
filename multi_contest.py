@@ -258,7 +258,7 @@ class MultiContest:
         # assign the set of fixed layouts to be used: the seeds given and complete with random picks from available
         self.layouts = fixed_layout_seeds.union(
             random.sample(
-                layouts_available.difference(fixed_layout_seeds),
+                list(layouts_available.difference(fixed_layout_seeds)),
                 no_fixed_layouts - len(fixed_layout_seeds),
             )
         )
