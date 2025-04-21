@@ -1,6 +1,5 @@
 iso8601
 pytz
 tabulate
-gitpython
-py_trees
 frozendict
+pytk

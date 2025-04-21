@@ -1,13 +1,22 @@
 import os
 import re
 import sys
-from pytz import timezone
+from zoneinfo import ZoneInfo
 
 DIR_SCRIPT = sys.path[0]
 
-ERROR_SCORE = 9999
+# !!!! SUPER IMPORTANT !!!!
+# Where Python is installed and the pacman virtual environment
+PTYHON_WORKERS = "$HOME/opt/virtual-envs/pacman/bin/python"
 DEFAULT_ORGANIZER = "Pacman University"
-TIMEZONE = timezone("Australia/Melbourne")
+TIMEZONE = ZoneInfo("Australia/Melbourne")
+
+
+##########################################################
+# Generally the ones below do not need to be changed
+##########################################################
+
+ERROR_SCORE = 9999
 
 # Output directories (all inside the WWW folder):
 #  run_replays/{red_team_name}_vs_{blue_team_name}_{layout}.replay

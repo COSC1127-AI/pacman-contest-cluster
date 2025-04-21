@@ -1,5 +1,6 @@
 import copy
 import shutil
+from typing import List
 import zipfile
 import random
 import iso8601
@@ -145,7 +146,7 @@ class MultiContest:
             self.tmp_contest_dir,
         )
 
-    def create_contests(self):
+    def create_contests(self) -> List[ContestRunner]:
         """Builds a list of ContestRunner objects, one per split contest
 
         Returns:

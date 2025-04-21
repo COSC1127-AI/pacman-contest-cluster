@@ -15,29 +15,41 @@ import random
 from cluster_manager.elements import ClusterManager
 from cluster_manager.config import Job, TransferableFile
 
+from config import (
+    TMP_CONTEST_DIR,
+    TMP_REPLAYS_DIR,
+    TMP_LOGS_DIR,
+    CORE_CONTEST_TEAM_ZIP_FILE,
+    STATS_ARCHIVE_DIR,
+    CONFIG_ARCHIVE_DIR,
+    LOGS_ARCHIVE_DIR,
+    REPLAYS_ARCHIVE_DIR,
+    ERROR_SCORE,
+)
+
 class ContestRunner:
     """Class representing one Capture the Flag contest with a set of teams in a set of layouts
 
-    The class creates individual jobs, one per game between teams in the contest, to run each game. 
+    The class creates individual jobs, one per game between teams in the contest, to run each game.
     It uses ClusterManager to run those jobs in a set of hosts, and then analyses the outputs.
 
     The main API interface is run_contest_remotely(.) to run one single contest with a set of teams in a set of hosts
 
     Function _get_game_command() generates the actual command that runs each game:
 
-        python3 capture.py -c -q --record --recordLog --delay 0.0 --fixRandomSeed -r "{red_team}" -b "{blue_team}" -l {layout} -i {steps}
+        python capture.py -c -q --record --recordLog --delay 0.0 --fixRandomSeed -r "{red_team}" -b "{blue_team}" -l {layout} -i {steps}
 
     One should distinguish two different directories:
-    
-        1. The temporary folder where all the data of the multi-contest will be collected into (TMP_DIR). 
+
+        1. The temporary folder where all the data of the multi-contest will be collected into (TMP_DIR).
             It will have subfolders for each contest with their logs, replays, etc.
-        2. The output WWW folder where the HTML and data will be dumped (settings["www_dir"]). 
+        2. The output WWW folder where the HTML and data will be dumped (settings["www_dir"]).
             Logs, replays, stats will be dumped there (plain and compressed versions) together with an HTML page
     """
 
     def __init__(self, settings):
         self.config = settings
-        
+
         self.organizer = settings["organizer"]
         self.max_steps = settings["max_steps"]
         self.contest_timestamp_id = settings["contest_timestamp_id"]
@@ -86,7 +98,6 @@ class ContestRunner:
         self.errors = {n: 0 for n, _ in self.all_teams}
         self.team_stats = {n: 0 for n, _ in self.all_teams}
 
-
     def _generate_job(self, red_team, blue_team, layout):
         """
         Generates a job command to play red_team against blue team in a layout. This job is run inside the sandbox
@@ -107,6 +118,11 @@ class ContestRunner:
             contest_dir=self.tmp_dir,
         )
 
+        # this will be the complex command to be execute in the worker
+        # Remember SSHClient.exec_command does not automatically load the same environment variables as an interactive login shell.
+        # So, do not rely on anythinfg from the shell and give all
+        # commands with full paths, including the Python used!
+        # https://docs.paramiko.org/en/stable/api/client.html#paramiko.client.SSHClient.exec_command
         command = "{deflate_command} ; cd {contest_dir} ; {game_command} ; touch {replay_filename}".format(
             deflate_command=deflate_command,
             contest_dir=self.tmp_dir,
@@ -160,9 +176,10 @@ class ContestRunner:
             id="{}-vs-{}-in-{}".format(red_team_name, blue_team_name, layout),
         )
 
-
     def _get_game_command(self, red_team, blue_team, layout):
         """Generate the shell command to run one game between two teams in a layout
+
+        The PYTHON_WORKERS points to the exact Python binary to use when running the game. All the environment of that Python must be properly setup
 
         Args:
             red_team (tuple): red team name and path to file
@@ -176,7 +193,7 @@ class ContestRunner:
         (red_team_name, red_team_path_file) = red_team
         (blue_team_name, blue_team_path_file) = blue_team
 
-        cmd = f'python3 capture.py -c -q --record --recordLog --delay 0.0 --fixRandomSeed'
+        cmd = f"{PTYHON_WORKERS} capture.py -c -q --record --recordLog --delay 0.0 --fixRandomSeed"
         cmd = cmd + " " + f'-r "{red_team_path_file}" -b "{blue_team_path_file}" -l {layout} -i {self.max_steps}'
 
         return cmd
@@ -195,7 +212,7 @@ class ContestRunner:
     def _analyse_game_output(self, red_team, blue_team, layout, exit_code, total_secs_taken):
         """
         Analyzes the output of a match from the log file and adds the following tuple to self.games:
-        
+
             (read_team, blue_team, layout, score, winner, time)
         """
         red_team_name, _ = red_team
@@ -226,7 +243,7 @@ class ContestRunner:
 
         if bug:
             score = ERROR_SCORE
-        
+
         # Append match game outcome to self.games
         self.games.append((red_team_name, blue_team_name, layout, score, winner, total_time))
 
@@ -376,7 +393,6 @@ class ContestRunner:
                 sum_score,
             ]
 
-
     ########################################################################
     # NOW THE API FOR THE CLASS
     ########################################################################
@@ -426,8 +442,8 @@ class ContestRunner:
         return transfer_url
 
     def generate_www(self):
-        """Generates all the resulting files of the contest into the WWW folder 
-        
+        """Generates all the resulting files of the contest into the WWW folder
+
             1. logs (plain, compressed all, and compress per team) will go to self.logs_www_dir
             2. replays (plain, compressed all, and compress per team) will go to self.replays_www_dir
             3. stats will be dumped into self.stats_www_dir (as a JSON file)
@@ -467,9 +483,9 @@ class ContestRunner:
         replays_archive = os.path.join(self.replays_www_dir, f"replays_{self.contest_timestamp_id}.tar.gz")
         with tarfile.open(replays_archive, "w:gz") as tar:
             tar.add(replays_folder, arcname="/")
-        
+
         # rel path to WWW dir of compressed replay file to use for linking it in WWW
-        replays_file_link = os.path.relpath(replays_archive, self.www_dir)  
+        replays_file_link = os.path.relpath(replays_archive, self.www_dir)
 
         if self.upload_replays:
             try:
@@ -478,7 +494,7 @@ class ContestRunner:
                 )
                 contest_stats["url_replays"] = transfer_url.decode()
                 replays_file_link = transfer_url
-                #TODO: I guess we must now delete replays_archive, otherwie what is the point?
+                # TODO: I guess we must now delete replays_archive, otherwie what is the point?
             except Exception as e:
                 logging.error(f"Exception when uploading replay file {os.path.split(replays_archive)[-1]}: {e}")
 
@@ -494,7 +510,6 @@ class ContestRunner:
             # replay_files_to_pack = ' '.join([os.path.basename(f) for f in glob.glob(os.path.join(replays_folder, f"*{team_name}*"))])
             # os.system(
             #     f'tar zcf {replays_team_archive} -C {replays_folder_full_path} {replay_files_to_pack}')
-
 
         ################################
         # 2. PROCESS LOGS
@@ -513,7 +528,7 @@ class ContestRunner:
             tar.add(logs_folder, arcname="/")
 
         # rel path to WWW dir of compressed replay file to use for linking it in WWW
-        logs_file_link = os.path.relpath(logs_archive, self.www_dir)   
+        logs_file_link = os.path.relpath(logs_archive, self.www_dir)
 
         if self.upload_logs: # Upload log to to transfer.sh
             try:
@@ -522,7 +537,7 @@ class ContestRunner:
                 )
                 contest_stats["url_logs"] = transfer_url.decode()
                 logs_file_link = transfer_url
-                #TODO: I guess we must now delete replays_archive, otherwise what is the point?
+                # TODO: I guess we must now delete replays_archive, otherwise what is the point?
             except Exception as e:
                 logging.error(f"Exception when uploading log file {os.path.split(logs_archive)[-1]}: {e}")
 
@@ -548,13 +563,12 @@ class ContestRunner:
             json.dump(contest_stats, f)
         # rel link to use in WWW
         stats_file_link = os.path.relpath(stats_file_full_path, self.www_dir)
-        
+
         config_file_full_path = os.path.join(self.config_www_dir, f"config_{self.contest_timestamp_id}.json")
         with open(config_file_full_path, "w") as f:
             json.dump(self.config, f, sort_keys=True, indent=4, separators=(",", ": "))
         # rel link to use in WWW
         config_file_link = os.path.relpath(config_file_full_path, self.www_dir)
-
 
         ################################
         # 4. GENERATE WWW
@@ -566,9 +580,9 @@ class ContestRunner:
 
         return config_file_link, stats_file_link, replays_file_link, logs_file_link
 
-
     def run_contest_remotely(self, hosts, resume_folder=None, transfer_core=True):
         """This is the MAIN API function to actually run a single contest in a cluster.
+
         Notice that a Multi-contest is a set of contests.
 
         1. First, build a (huge) list of Jobs that must be run, one per game.
@@ -586,7 +600,7 @@ class ContestRunner:
             result (list(job.data, exit_code, result_out, result_err, job_secs_taken)): the results from ClusterManager
         """
 
-        # prepare local folders to store configs, replays, logs, stats, etc.
+        # prepare local folders to store configs, replays, logs, stats, etc. as per --www-dir
         for d in [self.config_www_dir, self.stats_www_dir, self.replays_www_dir, self.logs_www_dir]:
             if not os.path.exists(d):
                 os.makedirs(d)
@@ -608,12 +622,11 @@ class ContestRunner:
 
             # when we resume we ask for confirmation before starting...
             if input("Enter 'Yes' to continue; anything else to abort: ") != "Yes":
-                     logging.error("Aborting contest...")
-                     exit(1)
+                logging.error("Aborting contest...")
+                exit(1)
         else:
             jobs = self._generate_contest_jobs(resume=False)
-            
- 
+
         # Create ClusterManager to run jobs in hosts and start it to run all jobs
         # Variable results will contain ALL outputs from every game played, to be analyzed then
         core_req_files = None
@@ -627,7 +640,7 @@ class ContestRunner:
         results, no_successful_job, avg_time, max_time = cm.start()
 
         # results is list of (job.data, exit_code, result_out, result_err, job_secs_taken)
-        return results, no_successful_job, avg_time, max_time  
+        return results, no_successful_job, avg_time, max_time
 
     def analyze_results(self, results):
         # Time to analyze all the outputs
@@ -665,8 +678,8 @@ class ContestRunner:
                                 print(f"Game {log_file_name2} restored (total restored: {games_restored})")
                                 jobs.append(self._generate_empty_job(staff, team, layout))
                                 continue
-                        
-                        if random.randrange(2) == 0:    
+
+                        if random.randrange(2) == 0:
                             red_team = team
                             blue_team = staff
                         else:
