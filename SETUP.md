@@ -1,26 +1,33 @@
 # SETUP
 
-We need to configure the machine running the central script, and the workers machines running pacman single games.
+We need to configure:
 
-## Worker machines
+1. Each worker machine running pacman single games.
+2. The machine running the central script that will distribute the games to the workers.
+3. The web-server that will host the contests ladder webpage.
 
-* Python 3.x with standard libraries.
+## 1. Worker machines
+
+The workers machine need a correct Python set-up to be able to run each Pacman game correctly. In particular, most modern Linux distros will not allow the user to modify the default Python environment, as it may conflict with the system-wide. So, the best way is to setup a specific virtual environment for Pacman in each worker host. At this point, they should all be in the exact path across all workers.
+
+For example, we can create, in each worker machine, a `pacman` virtual environment and install all dependecines requried as follows:
+
+```shell
+$ python -m venv ~/opt/virtual-envs/pacman
+$ pip install --upgrade pip
+$ pip install -r https://raw.githubusercontent.com/COSC1127-AI/pacman-contest-cluster/main/requirements-workers.txt
+```
+
+> [!IMPORTANT]
+> Then, when you configure the central host, set the constant `PTYHON_WORKERS` to `$HOME/opt/virtual-envs/pacman/bin/python` so that the remote execution makes use of the designed pacman virtual environment.
+
+In addition, the worker hsots need:
+
 * Python 3 [Tkinter library](https://docs.python.org/3/library/tkinter.html) (not available in pip!): `sudo apt-get install python3-tk`
 * zip/unzip (to pack and unpack submissions and files for transfer): `sudo apt-get install -y unzip zip vim`
 * Set the SSH server to accept as many connections as you want to run concurrently. This is done by changing option `MaxStartups` in file `/etc/ssh/sshd_config`. By default `sshd` has up to 10 connections.
   * For example, set `MaxStartups 100:30:100` to accept up to 100 simultaneous connections. Remember to restart the ssh server: `sudo service sshd restart`
   * For more info on this, see issue [#26](https://github.com/COSC1127-AI/pacman-contest-cluster/issues/26).
-* Cluster should have all the Python and Unix packages to run the contest. For example, in the [NeCTAR cluster](https://ardc.edu.au/services/nectar-research-cloud/):
-
-    ```shell
-    $ sudo apt-get update
-    $ sudo apt-get install python-pip zip unzip vim
-    $ pip install --upgrade pip
-
-    $ pip install -r https://raw.githubusercontent.com/COSC1127-AI/pacman-contest-cluster/main/requirements-workers.txt
-    ```
-
-Finally, you need to locally install the **cluster manager module** located [here](https://github.com/ssardina-teaching/cluster-manager). Follow instructions on that repository. This is a generic framework to delegate jobs to workers and collect their outputs.
 
 ### Extras
 
@@ -40,20 +47,18 @@ sudo cp planners/ff /usr/local/bin/.
 
 You can get some of the FF planners [here](https://github.com/ssardina-planning/planners).
 
-## Central Script Host
+## 2. Central Script Host
 
-In the **local machine** (e.g., your laptop) that will dispatch game jobs to the cluster via the `pacman_contest_cluster.py` script:
+In the **machine** that will dispatch game jobs to the cluster via the `pacman_contest_cluster.py` script (e.g., your laptop):
 
 * unzip & zip (to pack and unpack submissions and files for transfer): `sudo apt-get install -y unzip zip`
-* Python >= 3.6 with:
-  * `setuptools`
-  * `iso8601`
-  * `pytz`
-  * `paramiko`
+* Python >= 3.6 with all requirements as per `requirements.txt`: `pip install -r requirements.txt`
+* Configure all variables in `config.py`:
+  * ❗At minimum, set `PTYHON_WORKERS` to the full path of the Python binary in the virtual environment used in the worker hosts.
+  * You may also want to set `DEFAULT_ORGANIZER` and `TIMEZONE` to your specific case. 😉
+* A local install of the **cluster manager module** located [here](https://github.com/ssardina-teaching/cluster-manager). Follow instructions on that repository. This is a generic framework to delegate jobs to workers and collect their outputs.
 
-  Simply run: `pip install -r requirements.txt --user`
-
-In addition to that:
+In addition:
 
 * Each submission is a `.zip` file or a directory; all within some folder (e.g., `teams/`)
   * The player agent should be in the _root_ of the team zip file or team directory.
@@ -66,7 +71,7 @@ Hence, the user of this system must provide:
 * Directory with set of zip submission files; see above (for option `--teams`)
 * `workers.json`: listing the cluster setting to be used (for option `--workers-file-path`)
 
-## Web-server configuration
+## 3. Web-server configuration
 
 To host the contest ladders, install Apache web-server first:
 
