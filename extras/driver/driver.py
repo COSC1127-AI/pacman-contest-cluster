@@ -43,9 +43,9 @@ class GitSubmissions():
         self.username = username
         self.password = password
 
-        
+
     def clone_repos( self, team_csv_file ):
-        
+
         teams_file = open(team_csv_file, 'r')
         # Get the list of teams with their GIT URL from csv file
         teams_reader = csv.DictReader(teams_file, delimiter=',')
@@ -95,8 +95,8 @@ class GitSubmissions():
                     team_name = "{}-{}".format(team_name,row['Student number of member 4 (if any)'])
 
             team_names_set.add(team_name)
-                        
-            
+
+
             git_url = row['GitLab SSH repository link']
             if self.use_git_ssh is False:
                 if self.username is not None:
@@ -107,8 +107,8 @@ class GitSubmissions():
                         git_url+=".git"
                 else:
                     git_url = row['GitLab repository link']
-                   
-                
+
+
             git_local_dir = os.path.join(self.output_folder, team_name)
 
             #time.sleep(1) # Time in seconds.
@@ -124,11 +124,11 @@ class GitSubmissions():
                 except KeyboardInterrupt:
                     self.logging.warning('Script terminated via Keyboard Interrupt; finishing...')
                     sys.exit("keyboard interrupted!")
-                    
+
                 submission_time, submission_commit, tagged_time = self.get_tag_time(repo, self.submission_tag)
 
                 if submission_commit is None:
-                    team_missing.append(team_name)                    
+                    team_missing.append(team_name)
                     print('\t\t Team {} is Missing the tag {}.'.format(team_name, self.submission_tag))
                 else:
                     print('\t\t Team {} cloned successfully with tag date {}.'.format(team_name, submission_time))
@@ -206,12 +206,12 @@ class GitSubmissions():
         print('TEAMS AVAILABLE TO COMPETE: {}'.format( available_teams ))
         if available_teams >= self.min_teams_for_competition :
             self.competition_is_on = True
-        
+
     # Extract the timestamp for a given tag in a repo
     def get_tag_time(self, repo, tag_str):
         tag = next((tag for tag in repo.tags if tag.name == tag_str), None)
 
-        # tag_commit = next((tag.commit for tag in repo.tags if tag.name == tag_str), None)        
+        # tag_commit = next((tag.commit for tag in repo.tags if tag.name == tag_str), None)
         if tag is None:
             return None,None,None
         else:
@@ -242,11 +242,11 @@ class RunCommand():
 
     def __init__(self):
         self.hosts = []
-        
+
         self.connections = []
 
     def do_add_host(self, args):
-        """add_host 
+        """add_host
         Add the host to the host list"""
         if args:
             self.hosts.append(args.split(','))
@@ -255,17 +255,17 @@ class RunCommand():
 
     def do_connect(self):
         """Connect to all hosts in the hosts list"""
-        for host in self.hosts:            
+        for host in self.hosts:
             client = paramiko.SSHClient()
             client.set_missing_host_key_policy(
                 paramiko.AutoAddPolicy())
-            client.connect(host[0], 
-                username=host[1], 
+            client.connect(host[0],
+                username=host[1],
                 password=host[2])
             self.connections.append(client)
 
     def do_run(self, command):
-        """run 
+        """run
         Execute this command on all hosts in the list"""
         if command:
             for host, conn in zip(self.hosts, self.connections):
@@ -283,29 +283,29 @@ class RunCommand():
 
     def do_get( self, filename):
         for host, conn in zip(self.hosts, self.connections):
-            scp = SCPClient(conn.get_transport())                  
+            scp = SCPClient(conn.get_transport())
             scp.get(filename)
             print ('get %s file from host: %s:' % (filename, host[0]))
 
     def do_put( self, filename, dest):
         for host, conn in zip(self.hosts, self.connections):
-            scp = SCPClient(conn.get_transport())                  
+            scp = SCPClient(conn.get_transport())
             scp.put(filename,dest)
             print ('put %s file from host: %s:' % (filename, host[0]))
 
 
 def upload_files( src_www, dest_www, year, month, day):
-    
-    cwd = os.getcwd()        
+
+    cwd = os.getcwd()
     os.system("cp -rf %s/* %s/."%(src_www,dest_www))
-    
-    
-    
-    
+
+
+
+
 if __name__ == '__main__':
-    
+
     parser = argparse.ArgumentParser()
-    
+
     parser.add_argument('--src-www',  help='source folder where www data is located. (it is recommended to map a web-server folder using smb)', nargs='?' )
     parser.add_argument('--dest-www',  help='Destination folder to publish www data in a web server. (it is recommended to map a web-server folder using smb)', nargs='?' )
 
@@ -315,16 +315,16 @@ if __name__ == '__main__':
     server_group.add_argument('--teams-server-folder',  help='folder containing all the teams submitted at the server specified at --teams-server-name', nargs='?' )
     server_group.add_argument('--teams-server-url',  help='server address containing the teams submitted', nargs='?' )
 
-    git_group = parser.add_argument_group('Download submission from GIT repos', 'Submission options')    
+    git_group = parser.add_argument_group('Download submission from GIT repos', 'Submission options')
     git_group.add_argument('--teams-git-csv',  help='CSV containining columns TEAM and \'GitLab SSH repository link\' ', nargs='?' )
     git_group.add_argument('--teams-git-output-folder',  help='Folder containing GIT submissions (default: git-teams)', nargs='?' , default='git-teams')
-    
+
     parser.add_argument('--tournament-cmd',  help='specify all the options to run pacman-ssh-contesy.py', nargs='?' )
-    
+
     parser.add_argument('--cron-script-folder',  help='specify the folder to the scripts in order to run cron', nargs='?' )
 
     #parser.add_argument('--driver-settings-json',  help='Specify all settings above in driver-settings.json', nargs='?' )
-    
+
     args = vars(parser.parse_args())
 
     #with open(args['driver_settings_json'], 'r') as f:
@@ -339,8 +339,8 @@ if __name__ == '__main__':
     if 'cron_script_folder' in args:
         os.chdir(args['cron_script_folder'])
         os.system('pwd')
-    
-    
+
+
     '''
     ' ADD HOSTS
     '''
@@ -348,22 +348,22 @@ if __name__ == '__main__':
         print ("SPECIFY all this parameters to get submissions using ssh connection: \n\tpython driver.py --username xxxx --password xxxx --teams-server-url xxx --teams-server-folder xxx --tournament-cmd xxx  \nType --help option for more info\n")
         print ("or SPECIFY a csv file to clone the GIT repos: \n\tpython driver.py  --teams-git-csv xxx --tournament-cmd xxx  \nType --help option for more info\n")
         print (args)
-        
+
         sys.exit(1)
 
-    
+
     if 'teams_git_csv' in args:
 
         username = args['username']
         password = args['password']
-        
+
         git_run = GitSubmissions( username, password )
-       
+
         git_run.output_folder = args['teams_git_output_folder']
-        
+
         git_run.clone_repos( args['teams_git_csv'] )
         #git_run.competition_is_on=True
-        
+
         '''
         ' Retrieve all the zip files, copy them into teams folder
         '''
@@ -378,7 +378,7 @@ if __name__ == '__main__':
                 #limit depth dir tree to 1
                 if len(root[len(git_run.output_folder)+1:])  > 0:
                     continue
-                
+
                 fullpath = os.path.join(root, d)
 
                 '''
@@ -409,17 +409,17 @@ if __name__ == '__main__':
         if git_run.competition_is_on is False:
             print("\n NOT ENOUGH TEAMS TO COMPETE!!\n")
             sys.exit(1)
-        
+
     else:
 
         username = args['username']
-        password = args['password'] 
+        password = args['password']
 
         teams_server_url = args['teams_server_url']
         teams_server_folder = args['teams_server_folder']
 
-     
-        run = RunCommand()        
+
+        run = RunCommand()
 
         run.do_add_host( "%s,%s,%s"%(teams_server_url,username,password) )
 
@@ -447,7 +447,7 @@ if __name__ == '__main__':
 
         run.do_run( "tar cvf teams%s_%s_%s.tar  %s* "%(year,month,day,teams_server_folder) )
         run.do_get( "teams%s_%s_%s.tar"%(year,month,day) )
-        
+
         run.do_close()
 
         os.system("tar xvf teams%s_%s_%s.tar"%(year,month,day) )
@@ -487,19 +487,19 @@ if __name__ == '__main__':
     src_www = 'www'
     if 'src_www' in args:
         src_www = args['src_www']
-    
+
     today = datetime.date.today()
     year = today.year
     month = today.month
     day = today.day
 
-        
+
     print ("RUNNING: python  pacman_contest_cluster.py %s"%(tournament_cmd))
     os.system("python3  pacman_contest_cluster.py %s"%(tournament_cmd))
 
-    
+
     '''
     ' upload files to server
     '''
-    
+
     upload_files( src_www, dest_www, year, month, day)

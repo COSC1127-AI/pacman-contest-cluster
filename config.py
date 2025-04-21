@@ -4,6 +4,7 @@ import sys
 from zoneinfo import ZoneInfo
 
 DIR_SCRIPT = sys.path[0]
+DIR_ASSETS = os.path.join(DIR_SCRIPT, "assets")
 
 # !!!! SUPER IMPORTANT !!!!
 # Where Python is installed and the pacman virtual environment
@@ -35,8 +36,12 @@ TMP_CONTEST_DIR = 'contest-run' # where the contest game script is expanded and 
 TMP_REPLAYS_DIR = 'replays-run'
 TMP_LOGS_DIR = 'logs-run'
 
-CONTEST_ZIP_FILE = "contest.zip"    # the package that contains the contest game script
-CORE_CONTEST_TEAM_ZIP_FILE = "contest_and_teams.zip"    # file with game simulator + all teams (to be transfred to hosts)
+# the package that contains the contest game script (is static; changed only for new contest versions)
+CONTEST_ZIP_FILE = os.path.join(DIR_ASSETS, "contest.zip")
+
+# dynamic file constructed that puts together: contest file game simulator + all teams 
+# this file is transfered once at the start to the worker hosts
+CORE_CONTEST_TEAM_ZIP_FILE = "contest_and_teams.zip"
 
 # STAFF_TEAM_FILENAME_PATTERN = re.compile(r"^staff\_team\_.+\.zip$")
 STAFF_TEAM_FILENAME_PATTERN = re.compile(r"^staff\_team\_.+$")
@@ -47,7 +52,7 @@ AGENT_FILE_NAME = "myTeam.py"
 DEFAULT_CONFIG_FILE = "config.json"
 DEFAULT_MAX_STEPS = 1200
 DEFAULT_FIXED_LAYOUTS = 3
-DEFAULT_LAYOUTS_ZIP_FILE = os.path.join(DIR_SCRIPT, "layouts.zip")
+DEFAULT_LAYOUTS_ZIP_FILE = os.path.join(DIR_ASSETS, "layouts.zip")
 DEFAULT_RANDOM_LAYOUTS = 3
 
 DEFAULT_NO_SPLIT = 1

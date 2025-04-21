@@ -3,14 +3,14 @@
 The main script `pacman_contest_cluster.py` runs a full contest and uses:
 
 - `cluster_manager.py`: the support script to manage clusters (used by `pacman_contest_cluster.py`).
-- `contest.zip`: the actual main contest infrastructure, based on that one from UC (with minor fixes, e.g., delay in replays, upgraded to Python 3.x)
-- `layouts.zip`: some interesting layouts that can be used (beyond the randomly generated ones)
+- `assets/contest.zip`: the actual main contest infrastructure, based on that one from UC (with minor fixes, e.g., delay in replays, upgraded to Python 3.x)
+- `assets/layouts.zip`: some interesting layouts that can be used (beyond the randomly generated ones)
 - `staff_team_{basic,medium,top}.zip`: the teams from staff, used for `--include-staff-team` option.
   - You can point to the directory containing all three staff agents using `--staff-teams-roots` (default is current dir)
   - You can use your own basic, medium, top agents, as long as they are named accordingly.
   - If you want to use our agents, co ntact us. These teams are not shared as they are used for marking purposes. So, if
      you get access to them, please do not distribute.
-- `contest/` folder: developing place for `contest.zip`.
+- `contest/` folder: developing place for `assets/contest.zip`.
 - `extras/` folder: additional scripts and resources; some of them may be out-dated.
 
 ## Contests
