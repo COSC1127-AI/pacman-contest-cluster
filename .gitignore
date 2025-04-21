@@ -134,4 +134,5 @@ ai21-prelim.json
 Output.txt
 gmon.out
 score
-README copy.md
+*.orig
+cluster_manager-old.py

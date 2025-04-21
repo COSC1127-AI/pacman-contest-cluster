@@ -1,16 +1,5 @@
 iso8601
 pytz
 tabulate
-gitpython
-numpy
-keras
-tensorflow
-sklearn
-scipy
-neat-python
-py_trees
-keras-rl
-gym
-tf-agents
 frozendict
-pmgpy
+pytk

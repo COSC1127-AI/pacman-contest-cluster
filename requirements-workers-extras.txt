@@ -1,0 +1,11 @@
+numpy
+keras
+tensorflow
+sklearn
+scipy
+py_trees
+keras-rl
+gym
+tf-agents
+pmgpy
+neat-python
