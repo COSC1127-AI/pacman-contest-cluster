@@ -9,6 +9,7 @@ The system runs on Python 3.9+.
 **CONTACT:** Prof. Sebastian Sardina (ssardina@gmail.com)
 
 > [!IMPORTANT]
+> The system (as of April 2025) has been decoupled from the Cluster Manager framework that allows jobs to be sent to differen hosts, and results/logs be transferred back. Originally all that infrastructure was part of this Pacman system. It is now in the [Cluster Manager](https://github.com/ssardina-teaching/cluster-manager)  independent package.
 > Refer to [SETUP.md](SETUP.md) on how to setup the framework (in the coordination machine and all worker hosts) and [INSTRUCTIONS.md](INSTRUCTIONS.md) on how to use the framework. 👌
 
 ## Overview
