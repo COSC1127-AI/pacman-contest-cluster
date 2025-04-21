@@ -5,6 +5,7 @@ We need to configure the machine running the central script, and the workers mac
 ## Worker machines
 
 * Python 3.x with standard libraries.
+* Python 3 [Tkinter library](https://docs.python.org/3/library/tkinter.html) (not available in pip!): `sudo apt-get install python3-tk`
 * zip/unzip (to pack and unpack submissions and files for transfer): `sudo apt-get install -y unzip zip vim`
 * Set the SSH server to accept as many connections as you want to run concurrently. This is done by changing option `MaxStartups` in file `/etc/ssh/sshd_config`. By default `sshd` has up to 10 connections.
   * For example, set `MaxStartups 100:30:100` to accept up to 100 simultaneous connections. Remember to restart the ssh server: `sudo service sshd restart`
