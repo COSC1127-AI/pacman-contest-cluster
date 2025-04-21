@@ -30,6 +30,8 @@ To see options available run:
 $ python pacman_contest_cluster.py -h
 ```
 
+Script `pacman_html_generator.py` generates an HTML web page from existing data of already ran contests.
+
 ## Features
 
 - Build `n` sub-contests where teams are assigned randomly to one of them (`--split` option).
@@ -56,3 +58,4 @@ $ python pacman_contest_cluster.py -h
 - Dr. Andrew Chester (while tutor at RMIT 2020-2024)
 - A/Prof. Nir Lipovetzky (Melbourne University)
 - Dr. Marco Tamassia (2017)
+
