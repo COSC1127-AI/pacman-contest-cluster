@@ -113,7 +113,6 @@ class MultiContest:
                     self._setup_team(
                         submission_path,
                         teams_dir,
-                        ignore_file_name_format=settings["ignore_file_name_format"],
                         is_staff_team=False,
                     )
 
@@ -303,21 +302,15 @@ class MultiContest:
         self,
         submission_path,
         destination,
-        ignore_file_name_format=True,
         is_staff_team=False,
     ):
         """
-        Extracts team.py from the team submission zip file into a directory inside contest/teams
-            If the zip file name is listed in team-name mapping, then name directory with team name
-            otherwise name directory after the zip file.
+        Extracts team.py from the team submission zip file or dir, into a directory inside contest/teams
+            Team name is the file name or folder name
         Information on the teams are saved in the member variable teams.
 
         :param submission_path: the zip file or directory of the team.
         :param destination: the directory where the team directory is to be created and files copied.
-        :param ignore_file_name_format: if True, an invalid file name format does not cause the team to be ignored.
-        In this case, if the file name truly is not respecting the format, the zip file name (minus the .zip part) is
-        used as team name. If this function is called twice with files having the same name (e.g., if they are in
-        different directories), only the first one is kept.
         :param allow_non_registered_students: if True, students not appearing in the team_names are still allowed (team
         name used is the student id).
         :raises KeyError if the zip file contains multiple copies of team.py, non of which is in the root.
@@ -334,30 +327,9 @@ class MultiContest:
                 )
                 return
 
-        if ignore_file_name_format:  # use exact name of file as team name
-            team_name = os.path.basename(submission_path)
-            team_name = team_name[:-4] if team_name.endswith(".zip") else team_name
-            submission_time = None
-        else:
-            # Set team name from submission file name - extract given pattern
-            match = re.match(
-                SUBMISSION_FILENAME_PATTERN, os.path.basename(submission_path)
-            )
-            submission_time = None
-            if match:
-                team_name = match.group(1)
-
-                # next get the submission date (encoded in filename)
-                try:
-                    submission_time = iso8601.parse_date(match.group(3)).astimezone(
-                        TIMEZONE
-                    )
-                except iso8601.iso8601.ParseError:
-                    if not ignore_file_name_format:
-                        logging.warning(
-                            f'Team zip file "{submission_path}" name has invalid date format. Skipping'
-                        )
-                        return
+        team_name = os.path.basename(submission_path)
+        team_name = team_name[:-4] if team_name.endswith(".zip") else team_name
+        submission_time = None
 
         # This submission will be temporarily expanded into team_destination_dir
         team_destination_dir = os.path.join(destination, team_name)

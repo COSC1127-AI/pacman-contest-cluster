@@ -81,7 +81,7 @@ def load_settings():
     parser.add_argument(
         "--teams-roots",
         nargs="+",
-        help="directory containing the zip files or directories of the teams. See README for format on names.",
+        help="directory containing the zip files or directories of the teams.",
     )
     parser.add_argument(
         "--staff-teams-roots",
@@ -181,7 +181,6 @@ def load_settings():
     settings_default["include_staff_team"] = False
     settings_default["staff_teams_dir"] = None
     settings_default["staff_teams_vs_others_only"] = False
-    settings_default["ignore_file_name_format"] = True
     settings_default["upload_replays"] = False
     settings_default["upload_logs"] = False
     settings_default["hide_staff_teams"] = False

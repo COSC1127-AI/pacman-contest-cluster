@@ -10,7 +10,6 @@ The main script `pacman_contest_cluster.py` runs a full contest and uses:
   - You can use your own basic, medium, top agents, as long as they are named accordingly.
   - If you want to use our agents, co ntact us. These teams are not shared as they are used for marking purposes. So, if
      you get access to them, please do not distribute.
-- `TEAMS-STUDENT-MAPPING.csv`: example of a mapping file
 - `contest/` folder: developing place for `contest.zip`.
 - `extras/` folder: additional scripts and resources; some of them may be out-dated.
 
