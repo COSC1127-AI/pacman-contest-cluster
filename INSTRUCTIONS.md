@@ -14,7 +14,6 @@ Some terminology first:
 >[!IMPORTANT]
 > For setting up the system, refer to [SETUP.md](SETUP.md).
 
-
 - [Instructions](#instructions)
   - [Overview Of Marking Process](#overview-of-marking-process)
   - [Example runs](#example-runs)
@@ -26,9 +25,11 @@ Some terminology first:
     - [Remove agent from contest](#remove-agent-from-contest)
   - [Webpage](#webpage)
     - [Interactive Dashboard](#interactive-dashboard)
+  - [Useful commands](#useful-commands)
+    - [List team performances over time](#list-team-performances-over-time)
+    - [Automate/Schedule Contest Runs](#automateschedule-contest-runs)
   - [Troubleshooting](#troubleshooting)
     - [Cannot connect all hosts with message: _"Exception: Error reading SSH protocol banner"_](#cannot-connect-all-hosts-with-message-exception-error-reading-ssh-protocol-banner)
-
 
 ## Overview Of Marking Process
 
@@ -213,6 +214,72 @@ As of 2020, the system includes a pretty visual dashboard that can display the r
 The dashboard will be served as a web-server, by default on port 8501.
 
 See `/dashboard/` folder for more information how to set-it up and run the dashboard system.
+
+## Useful commands
+
+### List team performances over time
+
+To track the performance of a team over several results:
+
+```shell
+TEAM='super_intelligence_2' ; grep -oP "$TEAM(.*)\d+%" results_2022-*.html | sed -r "s/^.+$TEAM.+(\d+)/$TEAM /g"
+
+super_intelligence_2 >0%
+super_intelligence_2 >46%
+super_intelligence_2 >53%
+super_intelligence_2 >56%
+super_intelligence_2 >56%
+super_intelligence_2 >52%
+super_intelligence_2 >44%
+super_intelligence_2 >43%
+super_intelligence_2 >54%
+super_intelligence_2 >47%
+super_intelligence_2 >49%
+super_intelligence_2 >49%
+super_intelligence_2 >10%
+...
+...
+
+```
+
+### Automate/Schedule Contest Runs
+
+It is convenient to set-up a script that will update all repos and then run a contest. This script can then be scheduled to run every day.
+
+An example script can be found in `run-contest.sh`:
+
+```shell
+$ ./run-contest.sh
+
+usage: ./run-contest.sh <no splits> <no random layouts> <no fixed layouts> <description>
+```
+
+First, copy the script to your working folder for the contest/course edition and update all the variables in it.
+
+For example, to run a contest with split 2, 5 fixed and 4 random layouts, and description "Feedback":
+
+```shell
+$ ./run-contest.sh 1 5 4 Feedback
+```
+
+We can then schedule it via **cron**. To do that, run the following command
+
+```shell
+crontab -e
+```
+
+and introduce the following line:
+
+```shell
+# For more information see the manual pages of crontab(5) and cron(8)
+#
+# m h  dom mon dow   command
+
+# m h  dom mon dow   command
+1 16 * * * <path/to/script/run-contest.sh 1 2 3 Feedback
+```
+
+Now your script will run every midnight at 16:01 and a log will be left.
 
 ## Troubleshooting
 
